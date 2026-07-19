@@ -10,14 +10,11 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/') || id.includes('node_modules/scheduler')) {
             return 'react';
           }
           if (id.includes('node_modules/framer-motion')) {
             return 'framer-motion';
-          }
-          if (id.includes('node_modules/@tanstack/react-query')) {
-            return 'react-query';
           }
           if (id.includes('node_modules/lucide-react')) {
             return 'lucide';
@@ -27,9 +24,6 @@ export default defineConfig({
           }
           if (id.includes('node_modules/react-router')) {
             return 'react-router';
-          }
-          if (id.includes('node_modules')) {
-            return 'vendor';
           }
         },
       },
