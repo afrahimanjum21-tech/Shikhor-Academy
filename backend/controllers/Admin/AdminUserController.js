@@ -36,12 +36,10 @@ export const index = async (req, res) => {
 
     res.json({
       data: rows,
-      pagination: {
-        total: count,
-        page,
-        limit,
-        totalPages: Math.ceil(count / limit),
-      },
+      current_page: page,
+      last_page: Math.ceil(count / limit),
+      per_page: limit,
+      total: count,
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch students', error: error.message });

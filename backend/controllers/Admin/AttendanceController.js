@@ -104,7 +104,7 @@ export const monthlySheet = async (req, res) => {
       })),
     }));
 
-    return res.json({ data: { course_id, month, year, dates, sheet } });
+    return res.json({ course_id, month, year, dates, sheet });
   } catch (error) {
     console.error('AttendanceController.monthlySheet error:', error);
     return res.status(500).json({ message: 'Failed to fetch monthly sheet', error: error.message });

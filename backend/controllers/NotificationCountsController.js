@@ -17,7 +17,7 @@ export const counts = async (req, res) => {
         models.AdmissionApplication.count({ where: { status: 'pending' } }),
         models.Payment.count({ where: { status: 'pending' } }),
         models.Attendance.count({ where: { leave_status: 'pending' } }),
-        models.ContactMessage.count({ where: { read_at: null } }),
+        models.ContactMessage.count({ where: { is_read: false } }),
       ]);
 
       counts.pending_admissions = pendingAdmissions;

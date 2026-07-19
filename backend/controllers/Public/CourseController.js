@@ -18,12 +18,11 @@ export async function index(req, res) {
     });
 
     res.json({
-      courses: rows,
-      pagination: {
-        total: count,
-        page: parseInt(page, 10),
-        totalPages: Math.ceil(count / parseInt(limit, 10)),
-      },
+      data: rows,
+      current_page: parseInt(page, 10),
+      last_page: Math.ceil(count / parseInt(limit, 10)),
+      total: count,
+      per_page: parseInt(limit, 10),
     });
   } catch (error) {
     console.error('Course index error:', error);

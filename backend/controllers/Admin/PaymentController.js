@@ -23,12 +23,10 @@ export const index = async (req, res) => {
 
     return res.json({
       data: rows,
-      pagination: {
-        total: count,
-        page,
-        limit,
-        totalPages: Math.ceil(count / limit),
-      },
+      current_page: page,
+      last_page: Math.ceil(count / limit),
+      per_page: limit,
+      total: count,
     });
   } catch (error) {
     console.error('PaymentController.index error:', error);

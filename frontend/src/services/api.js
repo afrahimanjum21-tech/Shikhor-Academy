@@ -26,30 +26,41 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-const PAGINATED_ENDPOINTS = [
+// Endpoints whose `{ data: [...] }` wrapper should auto-unwrap to bare array.
+// __IMPORTANT__: Do NOT add `/admin/contact-messages` or similar paginated
+// endpoints here — those components need the pagination metadata at the top level.
+const UNWRAP_ENDPOINTS = [
     '/admin/students',
     '/admin/batches',
     '/admin/course-categories',
     '/admin/events',
     '/public/notices',
     '/admin/payments',
-    '/admin/teachers',
     '/public/teachers',
     '/public/gallery',
     '/public/materials',
     '/public/courses',
     '/public/course-categories',
+    '/public/faculty',
+    '/admin/admissions',
+    '/admin/faculty',
+    '/admin/faculty/',
+    '/admin/e-learning',
+    '/admin/exams',
+    '/admin/courses',
+    '/admin/attendance/leave-requests',
+    '/admin/routines',
+    '/admin/student/',
 ];
 
 api.interceptors.response.use((response) => {
     try {
         if (
             response.data &&
-            Array.isArray(response.data.data) &&
-            typeof response.data.current_page === 'number'
+            Array.isArray(response.data.data)
         ) {
             const url = (response.config && response.config.url) || '';
-            if (PAGINATED_ENDPOINTS.some(ep => url.includes(ep))) {
+            if (UNWRAP_ENDPOINTS.some(ep => url.includes(ep))) {
                 response.data = response.data.data;
             }
         }

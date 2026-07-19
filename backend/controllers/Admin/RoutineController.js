@@ -38,7 +38,7 @@ export const meta = async (req, res) => {
 
     const days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-    return res.json({ data: { batches, days } });
+    return res.json({ batches, days });
   } catch (error) {
     console.error('RoutineController.meta error:', error);
     return res.status(500).json({ message: 'Failed to fetch meta data', error: error.message });
