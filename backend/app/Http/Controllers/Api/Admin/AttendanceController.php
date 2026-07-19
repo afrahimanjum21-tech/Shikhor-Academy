@@ -309,6 +309,22 @@ class AttendanceController extends Controller
             'leave_approved_by' => Auth::id(),
         ]);
 
+        try {
+            $attendance->load('student.user');
+            $studentEmail = $attendance->student?->user?->email;
+            $studentName = $attendance->student?->user?->name ?? 'Student';
+            if ($studentEmail) {
+                Mail::raw(
+                    "Dear {$studentName},\n\nYour leave request for {$attendance->date} ({$attendance->session}) has been APPROVED.\n\nReason: {$attendance->leave_reason}\nPunch out time: {$attendance->punch_out_at}\n\nBest regards,\nUttoron Coaching Center",
+                    fn ($message) => $message
+                        ->to($studentEmail)
+                        ->subject('Leave request approved')
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::error('Leave approval email failed: ' . $e->getMessage());
+        }
+
         return response()->json(['message' => 'Leave request approved']);
     }
 
@@ -319,6 +335,22 @@ class AttendanceController extends Controller
             'leave_approved_at' => now(),
             'leave_approved_by' => Auth::id(),
         ]);
+
+        try {
+            $attendance->load('student.user');
+            $studentEmail = $attendance->student?->user?->email;
+            $studentName = $attendance->student?->user?->name ?? 'Student';
+            if ($studentEmail) {
+                Mail::raw(
+                    "Dear {$studentName},\n\nYour leave request for {$attendance->date} ({$attendance->session}) has been REJECTED.\n\nReason given: {$attendance->leave_reason}\n\nBest regards,\nUttoron Coaching Center",
+                    fn ($message) => $message
+                        ->to($studentEmail)
+                        ->subject('Leave request rejected')
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::error('Leave rejection email failed: ' . $e->getMessage());
+        }
 
         return response()->json(['message' => 'Leave request rejected']);
     }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
+import { useNotificationCounts } from "../../context/NotificationContext";
 import {
     AlertCircle,
     AlertTriangle,
@@ -22,6 +23,7 @@ const statusClass = {
 };
 
 export default function TuitionFees() {
+    const { markViewed } = useNotificationCounts();
     const [data, setData] = useState({
         course_fee: 0,
         total_paid: 0,
@@ -48,6 +50,8 @@ export default function TuitionFees() {
             setLoading(false);
         }
     };
+
+    useEffect(() => { markViewed('fees'); }, [markViewed]);
 
     useEffect(() => {
         fetchData();

@@ -46,6 +46,21 @@ class User extends Authenticatable
         return $this->hasOne(TeacherProfile::class);
     }
 
+    public function batchAssignments()
+    {
+        return $this->hasMany(TeacherBatchAssignment::class, 'teacher_id');
+    }
+
+    public function assignments()
+    {
+        return $this->hasMany(Assignment::class, 'teacher_id');
+    }
+
+    public function faculty()
+    {
+        return $this->hasOne(Faculty::class);
+    }
+
     public function getProfilePhotoUrlAttribute()
     {
         $path = $this->profile_photo_path;
@@ -61,9 +76,19 @@ class User extends Authenticatable
             return null;
         }
 
-        $path = ltrim(str_replace('\\', '/', $path), '/');
-        $path = preg_replace('#^(public/|storage/)#', '', $path);
+        // Already a full URL
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
 
+        $path = ltrim(str_replace('\\', '/', $path), '/');
+
+        // Files stored via public disk (storage/app/public/*) need the /storage/ prefix
+        if (str_starts_with($path, 'faculty/') || str_starts_with($path, 'teacher_photos/')) {
+            return url('storage/' . $path);
+        }
+
+        // Files stored directly in public/ (e.g. uploads/admission_photos/*)
         return url($path);
     }
 }

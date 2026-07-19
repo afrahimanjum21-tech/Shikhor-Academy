@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import api from "../../services/api";
 import { Calendar, Check, ChevronLeft, ChevronRight, Clock, Loader2, Save, X } from "lucide-react";
+import notify from "../../services/notification";
 
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const sessionLabel = { morning: "M", evening: "E" };
@@ -27,7 +28,7 @@ export default function AttendanceManager() {
             const res = await api.get("/admin/attendance/monthly", { params: { course_id: courseId, month: monthStr } });
             setData(res.data);
         } catch (err) {
-            alert(err.response?.data?.message || "Failed to load attendance sheet");
+            notify.error(err.response?.data?.message || "Failed to load attendance sheet");
         } finally {
             setLoading(false);
         }
@@ -55,7 +56,7 @@ export default function AttendanceManager() {
             setEditing(null);
             fetchSheet();
         } catch (err) {
-            alert(err.response?.data?.message || "Failed to save attendance");
+            notify.error(err.response?.data?.message || "Failed to save attendance");
         }
     };
 
@@ -64,7 +65,7 @@ export default function AttendanceManager() {
             await api.post(`/admin/attendance/leave-requests/${id}/${action}`);
             fetchSheet();
         } catch (err) {
-            alert(err.response?.data?.message || "Failed to update leave request");
+            notify.error(err.response?.data?.message || "Failed to update leave request");
         }
     };
 
@@ -75,23 +76,23 @@ export default function AttendanceManager() {
 
     return (
         <div className="space-y-5">
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3 md:p-5">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 md:gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-[#1F4E79] flex items-center gap-2">
-                            <Calendar size={24} /> Attendance Sheet
+                        <h1 className="text-lg md:text-2xl font-bold text-[#1F4E79] flex items-center gap-2">
+                            <Calendar size={20} className="md:size-6" /> Attendance Sheet
                         </h1>
-                        <p className="text-sm text-gray-500 mt-1">Morning and evening attendance with punch in/out tracking.</p>
+                        <p className="text-xs md:text-sm text-gray-500 mt-0.5 md:mt-1">Morning and evening attendance with punch in/out tracking.</p>
                     </div>
-                    <div className="flex flex-wrap gap-3 items-center">
-                        <select className="border border-gray-300 p-2.5 rounded-lg text-sm min-w-64 bg-white" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+                    <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
+                        <select className="border border-gray-300 p-2 rounded-lg text-sm bg-white w-full sm:w-auto" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
                             <option value="">Select Course</option>
                             {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
                         </select>
-                        <div className="flex items-center gap-1 border border-gray-300 rounded-lg bg-white">
-                            <button onClick={() => shiftMonth(-1)} className="p-2 hover:bg-gray-100 rounded-l"><ChevronLeft size={16}/></button>
-                            <span className="px-3 text-sm font-bold w-40 text-center">{MONTH_NAMES[monthDate.getMonth()]} {monthDate.getFullYear()}</span>
-                            <button onClick={() => shiftMonth(1)} className="p-2 hover:bg-gray-100 rounded-r"><ChevronRight size={16}/></button>
+                        <div className="flex items-center gap-1 border border-gray-300 rounded-lg bg-white self-start sm:self-auto">
+                            <button onClick={() => shiftMonth(-1)} className="p-1.5 md:p-2 hover:bg-gray-100 rounded-l"><ChevronLeft size={14} className="md:size-4"/></button>
+                            <span className="px-2 md:px-3 text-xs md:text-sm font-bold w-28 md:w-40 text-center">{MONTH_NAMES[monthDate.getMonth()]} {monthDate.getFullYear()}</span>
+                            <button onClick={() => shiftMonth(1)} className="p-1.5 md:p-2 hover:bg-gray-100 rounded-r"><ChevronRight size={14} className="md:size-4"/></button>
                         </div>
                     </div>
                 </div>
@@ -236,7 +237,7 @@ function AttendanceModal({ editing, onClose, onSave }) {
     });
 
     return (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 responsive-modal">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
                 <h2 className="font-bold text-lg text-[#1F4E79]">Edit Attendance</h2>
                 <p className="text-sm text-gray-500 mt-1">{editing.student.name} - {editing.date} ({editing.session})</p>

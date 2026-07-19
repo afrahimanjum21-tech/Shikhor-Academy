@@ -3,11 +3,13 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AdmissionApplication;
+use App\Models\Batch;
+use App\Models\SiteSetting;
 use App\Models\User;
 use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
+
 use Illuminate\Support\Facades\Mail;
 use App\Mail\AdmissionStatusMail;
 use Illuminate\Support\Str;
@@ -39,7 +41,7 @@ class AdmissionManagerController extends Controller
             $user = User::create([
                 'name' => $app->full_name,
                 'email' => $request->email, // অ্যাডমিনের দেওয়া লগইন ইমেইল
-                'password' => Hash::make($request->password),
+                'password' => $request->password,
                 'role' => 'student',
                 'phone' => $app->phone,
                 'is_active' => true
@@ -47,11 +49,15 @@ class AdmissionManagerController extends Controller
 
             // ২. স্টুডেন্ট প্রোফাইল তৈরি (সব ডাটা কপি করা হচ্ছে)
             $studentId = 'STU-' . date('Y') . '-' . str_pad($user->id, 4, '0', STR_PAD_LEFT);
+
+            // অ্যাডমিশনের কোর্সের প্রথম ব্যাচটি অটো-অ্যাসাইন করুন
+            $batch = Batch::where('course_id', $app->course_id)->first();
             
             Student::create([
                 'user_id' => $user->id,
                 'student_id_card_no' => $studentId,
                 'admission_id' => $app->id,
+                'current_batch_id' => $batch?->id,
                 'guardian_phone' => $app->father_mobile ?? $app->phone,
                 'admission_date' => now(),
 
@@ -117,18 +123,21 @@ class AdmissionManagerController extends Controller
                 $user = User::create([
                     'name' => $app->full_name,
                     'email' => $app->email, // বাল্কের সময় ছাত্রের ইমেইলই লগইন
-                    'password' => Hash::make($password),
+                    'password' => $password,
                     'role' => 'student',
                     'phone' => $app->phone,
                     'is_active' => true
                 ]);
 
                 $studentId = 'STU-' . date('Y') . '-' . str_pad($user->id, 4, '0', STR_PAD_LEFT);
+
+                $batch = Batch::where('course_id', $app->course_id)->first();
                 
                 Student::create([
                     'user_id' => $user->id,
                     'student_id_card_no' => $studentId,
                     'admission_id' => $app->id,
+                    'current_batch_id' => $batch?->id,
                     'guardian_phone' => $app->father_mobile ?? $app->phone,
                     'admission_date' => now(),
 
@@ -177,6 +186,8 @@ class AdmissionManagerController extends Controller
     private function sendEmail($app, $status, $loginEmail, $password = null)
     {
         try {
+            SiteSetting::applySmtpConfig();
+
             $details = [
                 'name' => $app->full_name,
                 'email' => $app->email,

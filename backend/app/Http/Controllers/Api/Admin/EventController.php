@@ -7,20 +7,21 @@ use Illuminate\Http\Request;
 
 class EventController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return AcademicEvent::orderBy('date', 'asc')->get();
+        $perPage = max(5, min((int) $request->input('per_page', 15), 100));
+        return AcademicEvent::orderBy('date', 'asc')->paginate($perPage);
     }
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'title' => 'required',
             'date' => 'required|date',
             'type' => 'required|in:holiday,exam,event',
         ]);
 
-        AcademicEvent::create($request->all());
+        AcademicEvent::create($validated);
         return response()->json(['message' => 'Event Added Successfully']);
     }
 

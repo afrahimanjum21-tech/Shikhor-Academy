@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 class ExamResult extends Model
 {
     use HasFactory;
-    protected $fillable = ['exam_id', 'student_id', 'marks_details', 'total_obtained', 'grade', 'gpa'];
+    protected $fillable = ['exam_id', 'student_id', 'marks_details', 'total_obtained', 'grade', 'gpa', 'position', 'teacher_comment'];
 
     protected $casts = [
         'marks_details' => 'array',

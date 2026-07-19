@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import { Award, BarChart3, FileText, Loader2, Search } from "lucide-react";
+import { useNotificationCounts } from "../../context/NotificationContext";
+import logger from '../../services/logger';
 
 const percent = (obtained, total) => {
     if (!total) return 0;
@@ -8,15 +10,20 @@ const percent = (obtained, total) => {
 };
 
 export default function StudentResults() {
+    const { markViewed } = useNotificationCounts();
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeType, setActiveType] = useState("monthly");
 
     useEffect(() => {
+        markViewed('exam_results');
+    }, [markViewed]);
+
+    useEffect(() => {
         api.get("/student/results")
             .then((res) => setResults(res.data))
-            .catch((err) => console.error(err))
+            .catch((err) => logger.error(err))
             .finally(() => setLoading(false));
     }, []);
 
@@ -124,6 +131,7 @@ function ResultSheet({ result }) {
     const subjects = exam.subjects || Object.keys(result.marks_details || {});
     const subjectMarks = exam.subject_marks || {};
     const percentage = percent(result.total_obtained, exam.total_marks);
+    const passFail = result.pass_fail || (percentage >= 33 ? 'Pass' : 'Fail');
 
     return (
         <div className="p-4 md:p-5">
@@ -137,13 +145,42 @@ function ResultSheet({ result }) {
                     </div>
                     <p className="text-sm text-gray-500 mt-1">{exam.course?.title} - {exam.date}</p>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-center min-w-72">
-                    <MiniStat label="Total" value={`${result.total_obtained}/${exam.total_marks}`} />
-                    <MiniStat label="Percent" value={`${percentage}%`} />
+                <div className="flex flex-wrap gap-2">
                     <MiniStat label="Grade" value={result.grade || "-"} tone={result.grade === "F" ? "text-red-600" : "text-green-700"} />
+                    <MiniStat label="GPA" value={result.gpa || "-"} tone="text-[#1F4E79]" />
+                    <MiniStat label="Status" value={passFail} tone={passFail === "Pass" ? "text-green-700" : "text-red-600"} />
                 </div>
             </div>
 
+            {/* Summary Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+                    <p className="text-xs text-gray-500 font-medium">Total Marks</p>
+                    <p className="text-lg font-bold text-gray-900">{exam.total_marks || 0}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+                    <p className="text-xs text-gray-500 font-medium">Obtained</p>
+                    <p className="text-lg font-bold text-[#1F4E79]">{result.total_obtained}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+                    <p className="text-xs text-gray-500 font-medium">Position</p>
+                    <p className="text-lg font-bold text-gray-900">{result.position || 'N/A'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+                    <p className="text-xs text-gray-500 font-medium">Percentage</p>
+                    <p className="text-lg font-bold text-gray-900">{percentage}%</p>
+                </div>
+            </div>
+
+            {/* Teacher Comment */}
+            {result.teacher_comment && (
+                <div className="bg-blue-50 rounded-lg p-3 mb-4 border border-blue-100">
+                    <p className="text-xs text-gray-500 font-medium mb-1">Teacher Comment</p>
+                    <p className="text-sm text-gray-700">{result.teacher_comment}</p>
+                </div>
+            )}
+
+            {/* Subject-wise Marks */}
             <div className="overflow-x-auto rounded-lg border border-gray-200">
                 <table className="w-full text-sm">
                     <thead className="bg-gray-50 text-xs uppercase text-gray-500">
@@ -151,6 +188,7 @@ function ResultSheet({ result }) {
                             <th className="px-4 py-3 text-left">Subject</th>
                             <th className="px-4 py-3 text-center">Marks</th>
                             <th className="px-4 py-3 text-center">Full Marks</th>
+                            <th className="px-4 py-3 text-center">Grade</th>
                             <th className="px-4 py-3 text-center">Percentage</th>
                         </tr>
                     </thead>
@@ -159,11 +197,23 @@ function ResultSheet({ result }) {
                             const obtained = Number(result.marks_details?.[subject] || 0);
                             const full = Number(subjectMarks[subject] || 100);
                             const subjectPercent = percent(obtained, full);
+                            const subjectGrade = subjectPercent >= 80 ? 'A+' :
+                                subjectPercent >= 70 ? 'A' :
+                                subjectPercent >= 60 ? 'A-' :
+                                subjectPercent >= 50 ? 'B' :
+                                subjectPercent >= 40 ? 'C' :
+                                subjectPercent >= 33 ? 'D' : 'F';
+                            const gradeColor = subjectGrade === 'A+' ? 'text-green-600' :
+                                subjectGrade === 'A' || subjectGrade === 'A-' ? 'text-blue-600' :
+                                subjectGrade === 'B' ? 'text-yellow-600' :
+                                subjectGrade === 'C' || subjectGrade === 'D' ? 'text-orange-600' :
+                                'text-red-600';
                             return (
                                 <tr key={subject} className="hover:bg-gray-50">
                                     <td className="px-4 py-3 font-medium text-gray-800">{subject}</td>
                                     <td className="px-4 py-3 text-center font-bold text-[#1F4E79]">{obtained}</td>
                                     <td className="px-4 py-3 text-center text-gray-600">{full}</td>
+                                    <td className={`px-4 py-3 text-center font-bold ${gradeColor}`}>{subjectGrade}</td>
                                     <td className="px-4 py-3 text-center">
                                         <span className={`font-bold ${subjectPercent < 33 ? "text-red-600" : "text-gray-700"}`}>
                                             {subjectPercent}%

@@ -15,9 +15,10 @@
     </style>
 </head>
 <body>
+    @php($siteSettings = \App\Models\SiteSetting::instance())
     <div class="container">
         <div class="header">
-            <h2>Uttoron Coaching Center</h2>
+            <h2>{{ $siteSettings->site_name ?: 'Uttoron Coaching Center' }}</h2>
             <p style="margin:5px 0 0 0; font-size:14px; opacity:0.9;">New Admission Application Received</p>
         </div>
         <div class="content">
@@ -34,12 +35,18 @@
 
             <p>Please log in to the Admin Panel to review and process this application.</p>
             <center>
-                <a href="{{ $details['admin_url'] }}/admin/admissions" class="btn">Go to Admin Panel</a>
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:10px auto 0;">
+                    <tr>
+                        <td style="border-radius:6px;background-color:#1F4F78;text-align:center;">
+                            <a href="{{ $details['admin_url'] }}/admin/admissions" style="display:inline-block;background-color:#1F4F78;color:#ffffff;padding:12px 24px;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;font-family:Arial,sans-serif;mso-line-height-rule:exactly;">Go to Admin Panel</a>
+                        </td>
+                    </tr>
+                </table>
             </center>
         </div>
         <div class="footer">
-            <p>&copy; {{ date('Y') }} Uttoron Coaching Center. All rights reserved.</p>
-            <p>Mirpur-10, Dhaka, Bangladesh</p>
+            <p>&copy; {{ date('Y') }} {{ $siteSettings->site_name ?: 'Uttoron Coaching Center' }}. All rights reserved.</p>
+            <p>{{ $siteSettings->address ?: \App\Models\SiteSetting::DEFAULT_ADDRESS }}</p>
         </div>
     </div>
 </body>

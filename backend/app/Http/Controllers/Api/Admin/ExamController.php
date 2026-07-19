@@ -6,12 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamResult;
 use App\Models\Student;
+use App\Services\GradeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class ExamController extends Controller
 {
+    public function __construct(
+        private readonly GradeService $gradeService,
+    ) {}
+
     public function index()
     {
         return Exam::with('course')->latest()->get();
@@ -86,16 +91,18 @@ class ExamController extends Controller
                 $marksDetails[$subject] = min(max((float) $raw, 0), $fullMark);
             }
 
-            $totalObtained = array_sum($marksDetails);
-            $percentage = $exam->total_marks > 0 ? ($totalObtained / $exam->total_marks) * 100 : 0;
+            $gradeData = $this->gradeService->calculate(
+                $marksDetails,
+                (float) ($exam->total_marks ?? array_sum($subjectMarks))
+            );
 
             ExamResult::updateOrCreate(
                 ['exam_id' => $exam->id, 'student_id' => $data['student_id']],
                 [
-                    'marks_details' => $marksDetails,
-                    'total_obtained' => $totalObtained,
-                    'gpa' => number_format($this->gpaFromPercentage($percentage), 2),
-                    'grade' => $this->gradeFromPercentage($percentage),
+                    'marks_details' => $gradeData['marks_details'],
+                    'total_obtained' => $gradeData['total_obtained'],
+                    'grade' => $gradeData['grade'],
+                    'gpa' => $gradeData['gpa'],
                 ]
             );
         }
@@ -131,7 +138,15 @@ class ExamController extends Controller
             ->whereHas('exam', fn ($query) => $query->where('is_published', true))
             ->with('exam.course')
             ->latest()
-            ->get();
+            ->get()
+            ->map(function ($result) {
+                $result->subject_marks = $result->exam->subject_marks ?? [];
+                $percentage = $result->exam->total_marks > 0
+                    ? ($result->total_obtained / $result->exam->total_marks) * 100
+                    : 0;
+                $result->pass_fail = $this->gradeService->passFailStatus($percentage);
+                return $result;
+            });
     }
 
     private function studentsForCourse($courseId)
@@ -152,27 +167,4 @@ class ExamController extends Controller
         return $normalized;
     }
 
-    private function gradeFromPercentage(float $percentage): string
-    {
-        if ($percentage >= 80) return 'A+';
-        if ($percentage >= 70) return 'A';
-        if ($percentage >= 60) return 'A-';
-        if ($percentage >= 50) return 'B';
-        if ($percentage >= 40) return 'C';
-        if ($percentage >= 33) return 'D';
-
-        return 'F';
-    }
-
-    private function gpaFromPercentage(float $percentage): float
-    {
-        if ($percentage >= 80) return 5.00;
-        if ($percentage >= 70) return 4.00;
-        if ($percentage >= 60) return 3.50;
-        if ($percentage >= 50) return 3.00;
-        if ($percentage >= 40) return 2.00;
-        if ($percentage >= 33) return 1.00;
-
-        return 0.00;
-    }
 }

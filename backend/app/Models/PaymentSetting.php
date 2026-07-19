@@ -38,7 +38,7 @@ class PaymentSetting extends Model
             ['provider' => 'sslcommerz'],
             [
                 'is_active' => false,
-                'mode' => 'sandbox',
+                'mode' => config('services.sslcommerz.mode', 'sandbox'),
                 'enabled_methods' => ['sslcommerz'],
             ]
         );

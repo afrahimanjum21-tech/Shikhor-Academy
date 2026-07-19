@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { Plus, Save, ArrowLeft, Grid, FileText, CheckCircle2, Eye, EyeOff, Trash2, BookOpen, Award, Megaphone } from "lucide-react";
+import notify from "../../services/notification";
+import { useConfirm } from "../../components/common/ConfirmDialog";
+import logger from '../../services/logger';
 
 const BD_SUBJECTS = [
     "Bangla 1st", "Bangla 2nd", "English 1st", "English 2nd",
@@ -9,6 +12,7 @@ const BD_SUBJECTS = [
 ];
 
 export default function ExamManager() {
+    const confirm = useConfirm();
     const [exams, setExams] = useState([]);
     const [courses, setCourses] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -25,7 +29,7 @@ export default function ExamManager() {
             ]);
             setExams(examRes.data);
             setCourses(courseRes.data);
-        } catch (err) { console.error(err); }
+        } catch (err) { logger.error(err); }
     };
 
     useEffect(() => { fetchData(); }, []);
@@ -44,8 +48,8 @@ export default function ExamManager() {
             });
             setMarksInput(existing);
         } catch (err) {
-            console.error(err);
-            alert("Failed to load exam data");
+            logger.error(err);
+            notify.error("Failed to load exam data");
         }
     };
 
@@ -67,12 +71,12 @@ export default function ExamManager() {
             student_id: stdId,
             details: marksInput[stdId]
         }));
-        if (payload.length === 0) return alert("No marks entered!");
+        if (payload.length === 0) return notify.warning("No marks entered!");
 
         try {
             await api.post('/admin/exams/marks', { exam_id: selectedExam.id, marks_data: payload });
-            alert("Results Saved! Remember to Publish so students can see them.");
-        } catch (err) { alert("Failed to save marks"); }
+            notify.success("Results Saved! Remember to Publish so students can see them.");
+        } catch (err) { notify.error("Failed to save marks"); }
     };
 
     const togglePublish = async (exam) => {
@@ -82,15 +86,15 @@ export default function ExamManager() {
             if (selectedExam?.id === exam.id) {
                 setSelectedExam({ ...exam, is_published: !exam.is_published });
             }
-        } catch (err) { alert("Failed to toggle publish"); }
+        } catch (err) { notify.error("Failed to toggle publish"); }
     };
 
     const deleteExam = async (exam) => {
-        if (!confirm(`Delete "${exam.name}"? All its results will also be deleted.`)) return;
+        const ok = await confirm({ title: "Delete Exam?", message: `Delete "${exam.name}"? All its results will also be deleted.`, confirmText: "Delete", variant: "destructive" }); if (!ok) return;
         try {
             await api.delete(`/admin/exams/${exam.id}`);
             fetchData();
-        } catch (err) { alert("Failed to delete exam"); }
+        } catch (err) { notify.error("Failed to delete exam"); }
     };
 
     const subjectMarksMap = examData?.subject_marks || {};
@@ -105,36 +109,36 @@ export default function ExamManager() {
 
         return (
             <div className="bg-white rounded-lg shadow flex flex-col" style={{ height: 'calc(100vh - 100px)' }}>
-                <div className="bg-gray-100 border-b p-3 flex justify-between items-center flex-wrap gap-2">
-                    <div className="flex items-center gap-3">
+                <div className="bg-gray-100 border-b p-2 md:p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                         <button onClick={() => { setSelectedExam(null); setExamData(null); }}
-                            className="flex items-center gap-1 text-gray-700 hover:text-blue-600 font-bold text-sm px-2 py-1 hover:bg-gray-200 rounded">
-                            <ArrowLeft size={16} /> Back
+                            className="flex items-center gap-1 text-gray-700 hover:text-blue-600 font-bold text-xs sm:text-sm px-1.5 sm:px-2 py-1 hover:bg-gray-200 rounded">
+                            <ArrowLeft size={14} className="sm:size-4" /> <span className="hidden xs:inline">Back</span><span className="xs:hidden">Back</span>
                         </button>
-                        <span className="text-sm font-bold text-gray-700 border-l pl-3">
+                        <span className="text-xs sm:text-sm font-bold text-gray-700 border-l pl-2 sm:pl-3">
                             {selectedExam.name}
-                            <span className="ml-2 text-xs text-gray-500">
-                                ({selectedExam.type === 'mcq' ? 'Weekly MCQ' : 'Monthly Exam'})
+                            <span className="ml-1 sm:ml-2 text-[10px] sm:text-xs text-gray-500">
+                                ({selectedExam.type === 'mcq' ? 'Weekly MCQ' : 'Monthly'})
                             </span>
                         </span>
                         {selectedExam.is_published ? (
-                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                                <Eye size={12} /> Published
+                            <span className="text-[10px] sm:text-xs bg-green-100 text-green-700 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full font-bold flex items-center gap-1">
+                                <Eye size={10} className="sm:size-3" /> <span className="hidden xs:inline">Published</span>
                             </span>
                         ) : (
-                            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                                <EyeOff size={12} /> Draft
+                            <span className="text-[10px] sm:text-xs bg-yellow-100 text-yellow-700 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full font-bold flex items-center gap-1">
+                                <EyeOff size={10} className="sm:size-3" /> <span className="hidden xs:inline">Draft</span>
                             </span>
                         )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5 sm:gap-2 w-full sm:w-auto">
                         <button onClick={submitMarks}
-                            className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm font-bold hover:bg-blue-700 flex items-center gap-2">
-                            <Save size={16} /> Save Marks
+                            className="flex-1 sm:flex-none bg-blue-600 text-white px-2 sm:px-4 py-1 sm:py-1.5 rounded text-[11px] sm:text-sm font-bold hover:bg-blue-700 flex items-center justify-center gap-1 sm:gap-2">
+                            <Save size={14} className="sm:size-4" /> Save
                         </button>
                         <button onClick={() => togglePublish(selectedExam)}
-                            className={`px-4 py-1.5 rounded text-sm font-bold flex items-center gap-2 ${selectedExam.is_published ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' : 'bg-green-600 text-white hover:bg-green-700'}`}>
-                            {selectedExam.is_published ? <><EyeOff size={16}/> Unpublish</> : <><Megaphone size={16}/> Publish</>}
+                            className={`flex-1 sm:flex-none px-2 sm:px-4 py-1 sm:py-1.5 rounded text-[11px] sm:text-sm font-bold flex items-center justify-center gap-1 sm:gap-2 ${selectedExam.is_published ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' : 'bg-green-600 text-white hover:bg-green-700'}`}>
+                            {selectedExam.is_published ? <><EyeOff size={14} className="sm:size-4"/> <span className="hidden xs:inline">Unpublish</span></> : <><Megaphone size={14} className="sm:size-4"/> <span className="hidden xs:inline">Publish</span></>}
                         </button>
                     </div>
                 </div>
@@ -199,20 +203,20 @@ export default function ExamManager() {
     // ---------- EXAM LIST VIEW ----------
     return (
         <div className="space-y-4">
-            <div className="bg-white rounded-lg shadow p-4 flex justify-between items-center flex-wrap gap-3">
-                <div className="flex gap-2">
+            <div className="bg-white rounded-lg shadow p-3 md:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="flex gap-2 flex-wrap">
                     <button onClick={() => setActiveTab('monthly')}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${activeTab === 'monthly' ? 'bg-[#1F4E79] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                        <FileText size={16}/> Monthly Exams
+                        className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-1.5 ${activeTab === 'monthly' ? 'bg-[#1F4E79] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                        <FileText size={14} className="md:size-4"/> Monthly
                     </button>
                     <button onClick={() => setActiveTab('mcq')}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${activeTab === 'mcq' ? 'bg-[#1F4E79] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                        <Award size={16}/> Weekly MCQ
+                        className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-1.5 ${activeTab === 'mcq' ? 'bg-[#1F4E79] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                        <Award size={14} className="md:size-4"/> Weekly MCQ
                     </button>
                 </div>
                 <button onClick={() => setIsModalOpen(true)}
-                    className="bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-green-700 shadow-sm">
-                    <Plus size={18} /> New {activeTab === 'mcq' ? 'MCQ Exam' : 'Exam'}
+                    className="bg-green-600 text-white px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-1.5 hover:bg-green-700 shadow-sm w-full sm:w-auto justify-center">
+                    <Plus size={16} /> New Exam
                 </button>
             </div>
 
@@ -224,9 +228,9 @@ export default function ExamManager() {
                         <p className="text-sm">Click "New Exam" to create one.</p>
                     </div>
                 ) : filteredExams.map(exam => (
-                    <div key={exam.id} className="border border-gray-300 rounded-lg shadow-sm bg-white p-4 hover:shadow-md transition flex flex-col">
+                    <div key={exam.id} className="border border-gray-300 rounded-lg shadow-sm bg-white p-3 md:p-4 hover:shadow-md transition flex flex-col">
                         <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-bold text-lg text-gray-800">{exam.name}</h3>
+                            <h3 className="font-bold text-sm md:text-lg text-gray-800">{exam.name}</h3>
                             {exam.is_published ? (
                                 <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
                                     <Eye size={12}/> Published
@@ -301,19 +305,19 @@ function NewExamModal({ courses, defaultType, onClose, onCreated }) {
 
     const submit = async (e) => {
         e.preventDefault();
-        if (!form.name || !form.course_id || !form.date) return alert("Fill all fields");
-        if (selected.length === 0) return alert("Select at least one subject");
+        if (!form.name || !form.course_id || !form.date) return notify.warning("Fill all fields");
+        if (selected.length === 0) return notify.warning("Select at least one subject");
         setSaving(true);
         try {
             await api.post('/admin/exams', { ...form, subjects: selected, subject_marks: marks });
             onCreated();
         } catch (err) {
-            alert(err.response?.data?.message || "Failed to create exam");
+            notify.error(err.response?.data?.message || "Failed to create exam");
         } finally { setSaving(false); }
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto responsive-modal">
             <div className="bg-white p-6 rounded-lg w-full max-w-xl shadow-2xl">
                 <h3 className="font-bold text-lg mb-4 border-b pb-2 text-gray-800">Create New Exam</h3>
                 <form onSubmit={submit} className="space-y-4">

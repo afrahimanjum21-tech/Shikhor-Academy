@@ -1,59 +1,208 @@
-import { CheckCircle, Users, Award } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Award, TrendingUp, Users } from "lucide-react";
+import { motion } from "framer-motion";
+import api from "../services/api";
+import HERO_IMAGE from "../images/hero-background.jpg";
 
 export default function About() {
+    const [settings, setSettings] = useState(null);
+
+    useEffect(() => {
+        api.get("/public/site-settings")
+            .then(({ data }) => setSettings(data))
+            .catch(() => {});
+    }, []);
+
+    const content = settings?.about_content || "";
+    const { title, subtitle, body } = useMemo(() => splitIntro(content), [content]);
+
+    const stats = [
+        { icon: Users, value: settings?.student_count ?? 0, label: "Happy Students", className: "bg-blue-50 border-blue-100 text-blue-700" },
+        { icon: Award, value: settings?.years_experience ?? 0, label: "Years Experience", className: "bg-emerald-50 border-emerald-100 text-emerald-700" },
+        { icon: TrendingUp, value: settings?.success_rate || "0%", label: "Success Rate", className: "bg-amber-50 border-amber-100 text-amber-700" },
+    ];
+
     return (
-        <div className="bg-white font-sans">
-            {/* Header */}
-            <div className="bg-blue-600 text-white py-16 text-center px-4">
-                <h1 className="text-4xl font-bold mb-4">About Uttoron</h1>
-                <p className="text-lg opacity-90 max-w-2xl mx-auto">
-                    We are dedicated to shaping the future of students through quality education and moral values.
-                </p>
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white font-sans">
+            {/* Hero Header */}
+            <div className="relative overflow-hidden">
+                <img src={HERO_IMAGE} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-br from-[#1F4E79]/90 via-[#1F4E79]/85 to-[#1F4E79]/90"></div>
+                <div className="max-w-7xl mx-auto px-4 py-16 md:py-20 relative z-10 text-center text-white">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium mb-5 border border-white/20">
+                            <Users size={16} /> About Us
+                        </div>
+                        <h1 className="text-4xl md:text-5xl font-bold mb-4">{title || "About Uttoron Coaching Centre"}</h1>
+                        <p className="text-lg text-blue-100 max-w-2xl mx-auto">
+                            {subtitle || "Inspiring Excellence. Building Confidence. Shaping the Future."}
+                        </p>
+                    </motion.div>
+                </div>
             </div>
 
-            {/* Content */}
-            <div className="max-w-7xl mx-auto px-4 py-16">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-                    <div>
-                        <h2 className="text-3xl font-bold text-gray-800 mb-6">Our Mission & Vision</h2>
-                        <p className="text-gray-600 mb-4 leading-relaxed">
-                            Established in 2010, Uttoron Coaching Center has been a beacon of light for students aspiring to achieve academic excellence. Our mission is not just to help students pass exams, but to instill a deep understanding of subjects.
-                        </p>
-                        <p className="text-gray-600 mb-6 leading-relaxed">
-                            We believe in a holistic approach to education where discipline, punctuality, and hard work are given equal importance alongside academic curriculum.
-                        </p>
-                        
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                                <CheckCircle className="text-green-500" /> <span className="font-medium text-gray-700">Experienced Faculty Members</span>
+            {/* Stats + Content */}
+            <div className="max-w-6xl mx-auto px-4 -mt-10 relative z-20 pb-16">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                    {stats.map((stat, idx) => (
+                        <motion.div key={stat.label}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            initial={{ opacity: 0, y: 30 }}
+                            viewport={{ once: true, margin: "-40px" }}
+                            transition={{ duration: 0.45, delay: Math.min(idx * 0.1, 0.3) }}
+                            className="bg-white rounded-xl shadow-sm border border-gray-200 p-7 text-center">
+                            <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl ${stat.className} mb-4 mx-auto`}>
+                                <stat.icon size={28} />
                             </div>
-                            <div className="flex items-center gap-3">
-                                <CheckCircle className="text-green-500" /> <span className="font-medium text-gray-700">Modern Classrooms & Lab</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <CheckCircle className="text-green-500" /> <span className="font-medium text-gray-700">Weekly Model Tests</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-blue-50 p-6 rounded-xl text-center">
-                            <Users className="mx-auto text-blue-600 mb-2" size={40} />
-                            <h3 className="text-2xl font-bold text-gray-800">5000+</h3>
-                            <p className="text-sm text-gray-500">Happy Students</p>
-                        </div>
-                        <div className="bg-emerald-50 p-6 rounded-xl text-center">
-                            <Award className="mx-auto text-emerald-600 mb-2" size={40} />
-                            <h3 className="text-2xl font-bold text-gray-800">12+</h3>
-                            <p className="text-sm text-gray-500">Years Experience</p>
-                        </div>
-                        <div className="bg-orange-50 p-6 rounded-xl text-center col-span-2">
-                            <h3 className="text-2xl font-bold text-gray-800">100%</h3>
-                            <p className="text-sm text-gray-500">Success Rate in Last Batch</p>
-                        </div>
-                    </div>
+                            <h3 className="text-3xl font-bold text-gray-800 mb-1">{stat.value}</h3>
+                            <p className="text-gray-500 font-medium">{stat.label}</p>
+                        </motion.div>
+                    ))}
                 </div>
+
+                <motion.div
+                    whileInView={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 30 }}
+                    viewport={{ once: true, margin: "-40px" }}
+                    transition={{ duration: 0.45 }}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-10">
+                    <MarkdownContent content={body || content} />
+                </motion.div>
             </div>
         </div>
     );
+}
+
+function splitIntro(content) {
+    const lines = content.split(/\r?\n/);
+    const titleIndex = lines.findIndex((line) => line.startsWith("# "));
+    const subtitleIndex = lines.findIndex((line, index) => index > titleIndex && line.startsWith("## "));
+
+    const title = titleIndex >= 0 ? lines[titleIndex].replace(/^#\s+/, "").trim() : "";
+    const subtitle = subtitleIndex >= 0 ? lines[subtitleIndex].replace(/^##\s+/, "").trim() : "";
+    const body = lines
+        .filter((_, index) => index !== titleIndex && index !== subtitleIndex)
+        .join("\n")
+        .trim();
+
+    return { title, subtitle, body };
+}
+
+function MarkdownContent({ content }) {
+    const blocks = parseBlocks(content);
+
+    return (
+        <div className="space-y-6 text-gray-700">
+            {blocks.map((block, index) => {
+                if (block.type === "hr") {
+                    return <hr key={index} className="border-gray-200" />;
+                }
+
+                if (block.type === "h1") {
+                    return <h2 key={index} className="text-3xl font-bold text-[#1F4E79] pt-4">{block.text}</h2>;
+                }
+
+                if (block.type === "h2") {
+                    return <h3 key={index} className="text-2xl font-bold text-gray-800 pt-2">{block.text}</h3>;
+                }
+
+                if (block.type === "ul") {
+                    return (
+                        <ul key={index} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {block.items.map((item, itemIndex) => (
+                                <li key={itemIndex} className="flex gap-3 rounded-lg bg-slate-50 border border-slate-100 px-4 py-3">
+                                    <span className="mt-2 h-2 w-2 rounded-full bg-[#1F4E79] flex-shrink-0" />
+                                    <span className="leading-relaxed">{renderInline(item)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    );
+                }
+
+                return (
+                    <p key={index} className="text-base md:text-lg leading-relaxed">
+                        {renderInline(block.text)}
+                    </p>
+                );
+            })}
+        </div>
+    );
+}
+
+function parseBlocks(content) {
+    const blocks = [];
+    const lines = content.split(/\r?\n/);
+    let paragraph = [];
+    let list = [];
+
+    const flushParagraph = () => {
+        if (paragraph.length) {
+            blocks.push({ type: "p", text: paragraph.join(" ") });
+            paragraph = [];
+        }
+    };
+
+    const flushList = () => {
+        if (list.length) {
+            blocks.push({ type: "ul", items: list });
+            list = [];
+        }
+    };
+
+    lines.forEach((rawLine) => {
+        const line = rawLine.trim();
+
+        if (!line) {
+            flushParagraph();
+            flushList();
+            return;
+        }
+
+        if (line === "---") {
+            flushParagraph();
+            flushList();
+            blocks.push({ type: "hr" });
+            return;
+        }
+
+        if (line.startsWith("# ")) {
+            flushParagraph();
+            flushList();
+            blocks.push({ type: "h1", text: line.replace(/^#\s+/, "") });
+            return;
+        }
+
+        if (line.startsWith("## ")) {
+            flushParagraph();
+            flushList();
+            blocks.push({ type: "h2", text: line.replace(/^##\s+/, "") });
+            return;
+        }
+
+        if (line.startsWith("* ")) {
+            flushParagraph();
+            list.push(line.replace(/^\*\s+/, ""));
+            return;
+        }
+
+        flushList();
+        paragraph.push(line);
+    });
+
+    flushParagraph();
+    flushList();
+
+    return blocks;
+}
+
+function renderInline(text) {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+
+    return parts.map((part, index) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+            return <strong key={index}>{part.slice(2, -2)}</strong>;
+        }
+
+        return <span key={index}>{part}</span>;
+    });
 }

@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { ArrowRight, CalendarDays, Gamepad2, Loader2, Music, Palette, Trophy, Users } from "lucide-react";
+import { useNotificationCounts } from "../../context/NotificationContext";
+import { useLocation } from "react-router-dom";
 
 const iconMap = [Trophy, Music, Palette, Users];
 
 export default function ExtraCurricular() {
+    const { markViewed } = useNotificationCounts();
+    const pathname = useLocation().pathname;
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+
+    useEffect(() => {
+        markViewed(pathname.includes('attitude') ? 'attitude' : 'extra_curricular');
+    }, [markViewed, pathname]);
 
     useEffect(() => {
         api.get("/public/events")

@@ -29,7 +29,7 @@ class AuthController extends Controller
             return response()->json(['message' => 'Account is inactive.'], 403);
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $token = $user->createToken('auth_token', ['*'], now()->addDays(30))->plainTextToken;
 
         // 🔥 ফিক্স: লগইনের সময় 'admission' রিলেশনটি লোড করা হচ্ছে (ছবির জন্য)
         $user->load([

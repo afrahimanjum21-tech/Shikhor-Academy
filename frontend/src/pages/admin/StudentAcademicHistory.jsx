@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../../services/api";
-import { ArrowLeft, GraduationCap, School, Award, BarChart3, BookOpen, Calendar, User, Briefcase } from "lucide-react";
-
+import { School, Award, BarChart3, BookOpen, User, Phone, Calendar, GraduationCap, Building2, Clock } from "lucide-react";
+import notify from "../../services/notification";
+import logger from '../../services/logger';
+ 
 export default function StudentAcademicHistory() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -26,8 +28,8 @@ export default function StudentAcademicHistory() {
                 setAttendanceData(attendRes.data);
                 setPaymentData(payRes.data);
             } catch (err) {
-                console.error(err);
-                alert("Failed to load academic history.");
+                logger.error(err);
+                notify.error("Failed to load academic history.");
             } finally {
                 setLoading(false);
             }
@@ -35,8 +37,8 @@ export default function StudentAcademicHistory() {
         fetchData();
     }, [id]);
 
-    if (loading) return <div className="p-10 text-center text-gray-500">Loading academic history...</div>;
-    if (!student) return <div className="p-10 text-center text-gray-500">Student not found.</div>;
+    if (loading) return <div className="p-10 text-center text-gray-400">Loading academic history...</div>;
+    if (!student) return <div className="p-10 text-center text-gray-400">Student not found.</div>;
 
     const prof = student.student_profile || {};
     const course = prof.batch?.course || prof.admission?.course || null;
@@ -49,165 +51,81 @@ export default function StudentAcademicHistory() {
         return 'bg-red-100 text-red-700 border-red-200';
     };
 
-    return (
-        <div className="max-w-6xl mx-auto space-y-6 pb-10 px-4">
-            {/* Header */}
-            <div className="flex justify-between items-center bg-white p-4 rounded shadow-sm border border-gray-200">
-                <button onClick={() => navigate(`/admin/students/${id}/profile`)} className="flex items-center gap-2 text-gray-600 hover:text-[#1F4E79] font-bold">
-                    <ArrowLeft size={20}/> Back to Profile
-                </button>
-                <h1 className="text-lg font-bold text-[#1F4E79]">Academic History</h1>
-            </div>
+    const gpaColor = (gpa) => {
+        if (!gpa) return 'text-gray-400';
+        const g = parseFloat(gpa);
+        if (g >= 4) return 'text-green-600';
+        if (g >= 3) return 'text-blue-600';
+        if (g >= 2) return 'text-yellow-600';
+        return 'text-red-600';
+    };
 
-            {/* Student Profile Card */}
-            <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-                <div className="h-24 bg-gradient-to-r from-[#1F4E79] to-[#2d6a9f]"></div>
-                <div className="px-8 pb-6 flex flex-col md:flex-row items-center md:items-end -mt-12 gap-6">
-                    <div className="w-24 h-24 bg-white p-1 rounded-full shadow-lg border-4 border-white overflow-hidden flex-shrink-0 flex items-center justify-center bg-gray-100">
-                        <span className="text-4xl font-bold text-[#1F4E79]">{student.name.charAt(0)}</span>
-                    </div>
-                    <div className="flex-1 text-center md:text-left">
-                        <h1 className="text-2xl font-bold text-gray-900">{student.name}</h1>
-                        <p className="text-gray-500">ID: {prof.student_id_card_no || 'N/A'}</p>
-                    </div>
-                    <div className="flex gap-3 text-center">
-                        <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">
-                            <p className="text-xs text-gray-500">Batch</p>
-                            <p className="font-bold text-blue-700 text-sm">{prof.batch?.name || 'N/A'}</p>
-                        </div>
-                        <div className="bg-green-50 px-4 py-2 rounded-lg border border-green-100">
-                            <p className="text-xs text-gray-500">Course</p>
-                            <p className="font-bold text-green-700 text-sm">{course?.title || 'N/A'}</p>
-                        </div>
-                    </div>
+    return (
+        <div className="space-y-6">
+            {/* Page title */}
+            <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 px-6 md:px-7 py-4">
+                <div>
+                    <h2 className="text-base md:text-lg font-bold text-gray-900">Academic History</h2>
+                    <p className="text-xs md:text-sm text-gray-400 mt-0.5">Educational background, results, attendance & payments</p>
                 </div>
             </div>
 
             {/* Quick Stats Overview */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white p-4 rounded-lg shadow border border-gray-200 text-center cursor-pointer hover:shadow-md transition"
-                    onClick={() => navigate(`/admin/students/${id}/exam-results`)}>
-                    <Award className="mx-auto text-purple-500 mb-2" size={24} />
-                    <p className="text-2xl font-bold text-gray-900">{examData?.summary.total_exams || 0}</p>
-                    <p className="text-xs text-gray-500 font-medium">Total Exams</p>
-                    <p className="text-xs text-purple-500 mt-1">Avg GPA: {examData?.summary.average_gpa || 0}</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow border border-gray-200 text-center cursor-pointer hover:shadow-md transition"
-                    onClick={() => navigate(`/admin/students/${id}/attendance`)}>
-                    <GraduationCap className="mx-auto text-green-500 mb-2" size={24} />
-                    <p className="text-2xl font-bold text-gray-900">{attendanceData?.summary.percentage || 0}%</p>
-                    <p className="text-xs text-gray-500 font-medium">Attendance Rate</p>
-                    <p className="text-xs text-green-500 mt-1">{attendanceData?.summary.present || 0}/{attendanceData?.summary.total_classes || 0} classes</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow border border-gray-200 text-center cursor-pointer hover:shadow-md transition"
-                    onClick={() => navigate(`/admin/students/${id}/payment-history`)}>
-                    <BookOpen className="mx-auto text-blue-500 mb-2" size={24} />
-                    <p className="text-2xl font-bold text-gray-900">&#2547;{paymentData?.total_paid || 0}</p>
-                    <p className="text-xs text-gray-500 font-medium">Total Paid</p>
-                    <p className="text-xs text-red-500 mt-1">Due: &#2547;{paymentData?.total_due || 0}</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow border border-gray-200 text-center">
-                    <Calendar className="mx-auto text-orange-500 mb-2" size={24} />
-                    <p className="text-2xl font-bold text-gray-900">{prof.admission_date || 'N/A'}</p>
-                    <p className="text-xs text-gray-500 font-medium">Admission Date</p>
-                    <p className="text-xs text-orange-500 mt-1">{paymentData?.due_months?.length || 0} months due</p>
-                </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                <StatBox icon={Award} label="Total Exams" value={examData?.summary?.total_exams || 0} sub={`Avg GPA: ${examData?.summary?.average_gpa || 0}`} subColor="text-purple-500" onClick={() => navigate(`/admin/students/${id}/exam-results`)} />
+                <StatBox icon={GraduationCap} label="Attendance Rate" value={attendanceData?.summary?.percentage ? `${attendanceData.summary.percentage}%` : '0%'} sub={`${attendanceData?.summary?.present || 0}/${attendanceData?.summary?.total_classes || 0} classes`} subColor="text-green-500" onClick={() => navigate(`/admin/students/${id}/attendance`)} />
+                <StatBox icon={BookOpen} label="Total Paid" value={`৳${paymentData?.total_paid || 0}`} sub={`Due: ৳${paymentData?.total_due || 0}`} subColor="text-red-500" onClick={() => navigate(`/admin/students/${id}/payment-history`)} />
+                <StatBox icon={Calendar} label="Admission" value={prof.admission_date || 'N/A'} sub={`${paymentData?.due_months?.length || 0} months due`} subColor="text-orange-500" />
             </div>
 
-            {/* Academic Background */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
-                    <h3 className="text-lg font-bold text-[#1F4E79] border-b pb-2 mb-4 flex items-center gap-2">
-                        <School size={20}/> Educational Background
-                    </h3>
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center gap-2 text-gray-600">
-                                <School size={16} />
-                                <span className="text-sm font-medium">Last School</span>
-                            </div>
-                            <span className="font-bold text-gray-900">{prof.last_school || 'N/A'}</span>
+            {/* Educational Background + Guardian */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-gray-200">
+                    <div className="px-6 md:px-7 py-4 md:py-5 border-b border-gray-50 flex items-center gap-2.5">
+                        <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-[#F0F4F8] flex items-center justify-center"><School size={16} className="text-[#1F4E79]" /></div>
+                        <h3 className="text-sm md:text-base font-bold text-gray-900">Educational Background</h3>
+                    </div>
+                    <div className="px-6 md:px-7 py-5 md:py-6 space-y-4">
+                        <DetailRow label="Last School" value={prof.last_school || 'N/A'} />
+                        <div className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+                            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">SSC GPA</span>
+                            <span className={`font-bold text-sm ${gpaColor(prof.ssc_gpa)}`}>{prof.ssc_gpa || 'N/A'}</span>
                         </div>
-                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center gap-2 text-gray-600">
-                                <Award size={16} />
-                                <span className="text-sm font-medium">SSC GPA</span>
-                            </div>
-                            <span className={`font-bold px-3 py-1 rounded-full text-sm ${
-                                (prof.ssc_gpa >= 4) ? 'bg-green-100 text-green-700' :
-                                (prof.ssc_gpa >= 3) ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-gray-100 text-gray-700'
-                            }`}>
-                                {prof.ssc_gpa || 'N/A'} {prof.ssc_gpa ? 'out of 5.00' : ''}
-                            </span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center gap-2 text-gray-600">
-                                <Award size={16} />
-                                <span className="text-sm font-medium">JSC GPA</span>
-                            </div>
-                            <span className={`font-bold px-3 py-1 rounded-full text-sm ${
-                                (prof.jsc_gpa >= 4) ? 'bg-green-100 text-green-700' :
-                                (prof.jsc_gpa >= 3) ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-gray-100 text-gray-700'
-                            }`}>
-                                {prof.jsc_gpa || 'N/A'} {prof.jsc_gpa ? 'out of 5.00' : ''}
-                            </span>
+                        <div className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+                            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">JSC GPA</span>
+                            <span className={`font-bold text-sm ${gpaColor(prof.jsc_gpa)}`}>{prof.jsc_gpa || 'N/A'}</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
-                    <h3 className="text-lg font-bold text-[#1F4E79] border-b pb-2 mb-4 flex items-center gap-2">
-                        <User size={20}/> Personal & Guardian Info
-                    </h3>
-                    <div className="space-y-3 text-sm">
-                        <div className="flex justify-between">
-                            <span className="text-gray-500">Father</span>
-                            <span className="font-medium text-gray-900">{prof.father_name || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-gray-500">Father Mobile</span>
-                            <span className="font-medium text-gray-900">{prof.father_mobile || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-gray-500">Mother</span>
-                            <span className="font-medium text-gray-900">{prof.mother_name || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-gray-500">Mother Mobile</span>
-                            <span className="font-medium text-gray-900">{prof.mother_mobile || 'N/A'}</span>
-                        </div>
-                        <div className="border-t border-dashed my-2"></div>
-                        <div className="flex justify-between">
-                            <span className="text-gray-500">Date of Birth</span>
-                            <span className="font-medium text-gray-900">{prof.dob || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-gray-500">Gender</span>
-                            <span className="font-medium text-gray-900">{prof.gender || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-gray-500">Blood Group</span>
-                            <span className="font-medium text-gray-900">{prof.blood_group || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-gray-500">Religion</span>
-                            <span className="font-medium text-gray-900">{prof.religion || 'N/A'}</span>
-                        </div>
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-gray-200">
+                    <div className="px-6 md:px-7 py-4 md:py-5 border-b border-gray-50 flex items-center gap-2.5">
+                        <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-[#F0F4F8] flex items-center justify-center"><User size={16} className="text-[#1F4E79]" /></div>
+                        <h3 className="text-sm md:text-base font-bold text-gray-900">Personal & Guardian</h3>
+                    </div>
+                    <div className="px-6 md:px-7 py-5 md:py-6 space-y-0 divide-y divide-gray-50">
+                        <DetailRow label="Father" value={prof.father_name || 'N/A'} />
+                        <DetailRow label="Father Mobile" value={prof.father_mobile || 'N/A'} />
+                        <DetailRow label="Mother" value={prof.mother_name || 'N/A'} />
+                        <DetailRow label="Mother Mobile" value={prof.mother_mobile || 'N/A'} />
+                        <DetailRow label="Date of Birth" value={prof.dob || 'N/A'} />
+                        <DetailRow label="Gender" value={prof.gender || 'N/A'} />
+                        <DetailRow label="Blood Group" value={prof.blood_group || 'N/A'} />
+                        <DetailRow label="Religion" value={prof.religion || 'N/A'} />
                     </div>
                 </div>
             </div>
 
             {/* Recent Exam Results */}
-            <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-                <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-[#1F4E79] flex items-center gap-2">
-                        <BarChart3 size={20}/> Recent Exam Results
-                    </h3>
-                    <button onClick={() => navigate(`/admin/students/${id}/exam-results`)} className="text-sm text-[#1F4E79] font-bold hover:underline">View All →</button>
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-gray-200">
+                <div className="px-6 md:px-7 py-4 md:py-5 border-b border-gray-50 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-[#F0F4F8] flex items-center justify-center"><BarChart3 size={16} className="text-[#1F4E79]" /></div>
+                        <h3 className="text-sm md:text-base font-bold text-gray-900">Recent Exam Results</h3>
+                    </div>
+                    <button onClick={() => navigate(`/admin/students/${id}/exam-results`)} className="text-xs font-semibold text-[#1F4E79] hover:underline">View All →</button>
                 </div>
-                {examData && examData.results.length > 0 ? (
+                {examData && examData.results?.length > 0 ? (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead className="bg-gray-50 border-b text-gray-500 uppercase text-xs">
@@ -224,9 +142,7 @@ export default function StudentAcademicHistory() {
                                     <tr key={result.id} className="hover:bg-gray-50">
                                         <td className="p-4 font-bold text-gray-900">{result.exam?.name}</td>
                                         <td className="p-4 hidden md:table-cell text-gray-600">{result.exam?.course?.title || 'N/A'}</td>
-                                        <td className="p-4 text-center">
-                                            <span className="font-bold">{result.total_obtained}</span>/{result.exam?.total_marks || 0}
-                                        </td>
+                                        <td className="p-4 text-center font-bold">{result.total_obtained}/{result.exam?.total_marks || 0}</td>
                                         <td className="p-4 text-center font-bold">{result.gpa}</td>
                                         <td className="p-4 text-center">
                                             <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getGradeColor(result.grade)}`}>{result.grade}</span>
@@ -244,30 +160,52 @@ export default function StudentAcademicHistory() {
                 )}
             </div>
 
-            {/* Monthly Attendance Overview */}
-            <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-                <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-[#1F4E79] flex items-center gap-2">
-                        <GraduationCap size={20}/> Monthly Attendance
-                    </h3>
-                    <button onClick={() => navigate(`/admin/students/${id}/attendance`)} className="text-sm text-[#1F4E79] font-bold hover:underline">View All →</button>
+            {/* Monthly Attendance */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-gray-200">
+                <div className="px-6 md:px-7 py-4 md:py-5 border-b border-gray-50 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-[#F0F4F8] flex items-center justify-center"><GraduationCap size={16} className="text-[#1F4E79]" /></div>
+                        <h3 className="text-sm md:text-base font-bold text-gray-900">Monthly Attendance</h3>
+                    </div>
+                    <button onClick={() => navigate(`/admin/students/${id}/attendance`)} className="text-xs font-semibold text-[#1F4E79] hover:underline">View All →</button>
                 </div>
-                {attendanceData && Object.keys(attendanceData.monthly_stats).length > 0 ? (
-                    <div className="p-5 space-y-3">
-                        {Object.entries(attendanceData.monthly_stats).slice(0, 6).map(([month, stats]) => (
-                            <div key={month} className="flex items-center gap-4">
-                                <span className="text-sm font-medium text-gray-600 w-32 flex-shrink-0">{month}</span>
-                                <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden flex">
-                                    <div className="h-full bg-green-500" style={{ width: `${stats.percentage}%` }}></div>
+                {attendanceData && Object.keys(attendanceData.monthly_stats || {}).length > 0 ? (
+                    <div className="px-6 md:px-7 py-5 md:py-6 space-y-4">
+                        {Object.entries(attendanceData.monthly_stats).slice(0, 6).map(([month, stats]) => {
+                            const barColor = stats.percentage >= 75
+                                ? 'from-emerald-400 to-emerald-600'
+                                : stats.percentage >= 50
+                                    ? 'from-amber-400 to-amber-600'
+                                    : 'from-rose-400 to-rose-600';
+                            const statusLabel = stats.percentage >= 75 ? 'Good'
+                                : stats.percentage >= 50 ? 'Average' : 'Low';
+                            const statusColor = stats.percentage >= 75
+                                ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                                : stats.percentage >= 50
+                                    ? 'bg-amber-100 text-amber-700 border-amber-200'
+                                    : 'bg-rose-100 text-rose-700 border-rose-200';
+                            return (
+                                <div key={month}>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-bold text-gray-800">{month}</span>
+                                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${statusColor}`}>{statusLabel}</span>
+                                        </div>
+                                        <span className="text-sm font-bold text-gray-900">{stats.percentage}%</span>
+                                    </div>
+                                    <div className="relative h-6 bg-gray-100 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full bg-gradient-to-r ${barColor} transition-all duration-700 ease-out`}
+                                            style={{ width: `${stats.percentage}%` }}
+                                        />
+                                        <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                            <span className="text-[11px] font-bold text-white drop-shadow-sm" style={{ opacity: stats.percentage > 15 ? 1 : 0 }}>
+                                                {stats.present}/{stats.total}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-3 flex-shrink-0">
-                                    <span className="text-xs text-green-600 font-medium">{stats.present}/{stats.total}</span>
-                                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${stats.percentage >= 75 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                        {stats.percentage}%
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 ) : (
                     <div className="p-8 text-center text-gray-400">
@@ -278,44 +216,71 @@ export default function StudentAcademicHistory() {
             </div>
 
             {/* Payment Overview */}
-            <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-                <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-[#1F4E79] flex items-center gap-2">
-                        <BookOpen size={20}/> Payment Overview
-                    </h3>
-                    <button onClick={() => navigate(`/admin/students/${id}/payment-history`)} className="text-sm text-[#1F4E79] font-bold hover:underline">View All →</button>
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-gray-200">
+                <div className="px-6 md:px-7 py-4 md:py-5 border-b border-gray-50 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-[#F0F4F8] flex items-center justify-center"><BookOpen size={16} className="text-[#1F4E79]" /></div>
+                        <h3 className="text-sm md:text-base font-bold text-gray-900">Payment Overview</h3>
+                    </div>
+                    <button onClick={() => navigate(`/admin/students/${id}/payment-history`)} className="text-xs font-semibold text-[#1F4E79] hover:underline">View All →</button>
                 </div>
-                <div className="p-5">
-                    {paymentData && (
-                        <>
-                            <div className="grid grid-cols-3 gap-4 mb-4">
-                                <div className="bg-green-50 p-4 rounded-lg border border-green-100 text-center">
-                                    <p className="text-xs text-green-600 font-medium">Total Paid</p>
-                                    <p className="text-xl font-bold text-green-700">&#2547;{paymentData.total_paid}</p>
-                                </div>
-                                <div className="bg-red-50 p-4 rounded-lg border border-red-100 text-center">
-                                    <p className="text-xs text-red-600 font-medium">Total Due</p>
-                                    <p className="text-xl font-bold text-red-700">&#2547;{paymentData.total_due}</p>
-                                </div>
-                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center">
-                                    <p className="text-xs text-blue-600 font-medium">Monthly Fee</p>
-                                    <p className="text-xl font-bold text-blue-700">&#2547;{paymentData.course_fee}</p>
+                {paymentData ? (
+                    <div className="px-6 md:px-7 py-5 md:py-6">
+                        <div className="grid grid-cols-3 gap-4 mb-4">
+                            <div className="bg-green-50 rounded-xl p-4 text-center border border-green-100">
+                                <p className="text-[11px] font-semibold text-green-600 uppercase tracking-wider">Total Paid</p>
+                                <p className="text-lg font-bold text-green-700 mt-1">৳{paymentData.total_paid}</p>
+                            </div>
+                            <div className="bg-red-50 rounded-xl p-4 text-center border border-red-100">
+                                <p className="text-[11px] font-semibold text-red-600 uppercase tracking-wider">Total Due</p>
+                                <p className="text-lg font-bold text-red-700 mt-1">৳{paymentData.total_due}</p>
+                            </div>
+                            <div className="bg-blue-50 rounded-xl p-4 text-center border border-blue-100">
+                                <p className="text-[11px] font-semibold text-blue-600 uppercase tracking-wider">Monthly Fee</p>
+                                <p className="text-lg font-bold text-blue-700 mt-1">৳{paymentData.course_fee}</p>
+                            </div>
+                        </div>
+                        {paymentData.due_months?.length > 0 && (
+                            <div>
+                                <p className="text-xs font-bold text-red-600 mb-2">Unpaid Months ({paymentData.due_months.length})</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {paymentData.due_months.map(month => (
+                                        <span key={month} className="bg-red-100 text-red-700 px-2.5 py-1 rounded-full text-[11px] font-bold border border-red-200">{month}</span>
+                                    ))}
                                 </div>
                             </div>
-                            {paymentData.due_months.length > 0 && (
-                                <div className="mt-4">
-                                    <p className="text-sm font-bold text-red-600 mb-2">Unpaid Months:</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {paymentData.due_months.map(month => (
-                                            <span key={month} className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold border border-red-200">{month}</span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="p-8 text-center text-gray-400">
+                        <BookOpen size={36} className="mx-auto mb-2 opacity-30" />
+                        <p>No payment data yet</p>
+                    </div>
+                )}
             </div>
+        </div>
+    );
+}
+
+function DetailRow({ label, value }) {
+    return (
+        <div className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{label}</span>
+            <span className="text-sm font-medium text-gray-800">{value || 'N/A'}</span>
+        </div>
+    );
+}
+
+function StatBox({ icon: Icon, label, value, sub, subColor, onClick }) {
+    return (
+        <div className={`bg-white rounded-2xl border border-gray-100 p-5 md:p-6 text-center transition-all duration-300 hover:shadow-lg hover:border-gray-200 ${onClick ? 'cursor-pointer hover:-translate-y-0.5' : ''}`}
+            onClick={onClick}>
+            <div className="w-10 h-10 rounded-xl bg-[#F0F4F8] flex items-center justify-center mx-auto mb-3">
+                <Icon size={18} className="text-[#1F4E79]" />
+            </div>
+            <p className="text-xl md:text-2xl font-bold text-gray-900">{value}</p>
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mt-1">{label}</p>
+            {sub && <p className={`text-[11px] font-medium mt-1 ${subColor || 'text-gray-400'}`}>{sub}</p>}
         </div>
     );
 }

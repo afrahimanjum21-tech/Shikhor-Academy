@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { useUpload } from "../../context/UploadContext";
 import { Plus, MoreVertical, Trash2, Link as LinkIcon, FileText, X } from "lucide-react";
+import { useConfirm } from "../../components/common/ConfirmDialog";
+import logger from '../../services/logger';
 
 export default function LibraryManager() {
+    const confirm = useConfirm();
     const [materials, setMaterials] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [type, setType] = useState('file');
@@ -17,7 +20,7 @@ export default function LibraryManager() {
         try {
             const res = await api.get('/public/materials');
             setMaterials(res.data);
-        } catch (err) { console.error(err); }
+        } catch (err) { logger.error(err); }
     };
 
     useEffect(() => {
@@ -51,7 +54,7 @@ export default function LibraryManager() {
     };
 
     const handleDelete = async (id) => {
-        if (confirm("Delete?")) {
+        const ok = await confirm({ title: "Delete Material?", message: "Delete?", confirmText: "Delete", variant: "destructive" }); if (ok) {
             await api.delete(`/admin/materials/${id}`);
             fetchMaterials();
         }
@@ -66,17 +69,15 @@ export default function LibraryManager() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-[#1F4E79]">Library</h1>
-                    <p className="text-sm text-gray-500">Study materials & links</p>
-                </div>
-                <button onClick={() => setIsModalOpen(true)} className="bg-[#1F4E79] text-white px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 hover:bg-[#163859]">
-                    <Plus size={16} /> Add Material
-                </button>
+            <div className="section-header">
+              <div>
+                <h1 className="text-lg md:text-2xl font-bold text-[#1F4E79]">Library</h1>
+                <p className="text-xs md:text-sm text-gray-500">Study materials & links</p>
+              </div>
+              <button onClick={() => setIsModalOpen(true)} className="bg-[#1F4E79] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 w-full sm:w-auto hover:bg-[#163859]"><Plus size={16} /> Add Material</button>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 <table className="w-full text-left border-collapse">
                     <thead className="bg-gray-50 text-xs text-gray-500 uppercase font-bold tracking-wider">
                         <tr>
@@ -115,9 +116,27 @@ export default function LibraryManager() {
                 </table>
             </div>
 
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-2">
+              {materials.map(item => (
+                <div key={item.id} className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded flex-shrink-0 ${item.type === 'link' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>
+                      {item.type === 'link' ? <LinkIcon size={18} /> : <FileText size={18} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-gray-800 text-sm">{item.title}</p>
+                      <p className="text-xs text-gray-500 uppercase mt-0.5">{item.type}</p>
+                    </div>
+                    <button onClick={() => handleDelete(item.id)} className="text-red-400 hover:text-red-600 p-1 flex-shrink-0"><Trash2 size={16}/></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {/* Upload Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50 responsive-modal">
                     <div className="bg-white rounded-xl w-full max-w-md shadow-2xl overflow-hidden">
                         <div className="flex items-center justify-between px-6 py-4 bg-[#1F4E79] text-white">
                             <h3 className="font-bold text-lg">Add Material</h3>

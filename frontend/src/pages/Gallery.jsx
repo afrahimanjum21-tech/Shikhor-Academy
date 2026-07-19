@@ -1,19 +1,25 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import api from "../services/api";
+import { buildAssetUrl } from "../services/config";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Image } from "lucide-react";
+import { useNotificationCounts } from "../context/NotificationContext";
+import HERO_IMAGE from "../images/hero-background.jpg";
 
 export default function Gallery() {
+    const { markViewed } = useNotificationCounts();
     const [albums, setAlbums] = useState([]);
     const [selectedAlbum, setSelectedAlbum] = useState(null);
     const [lightboxIndex, setLightboxIndex] = useState(null);
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
     useEffect(() => {
-        api.get('/public/gallery').then(res => setAlbums(res.data));
+        api.get('/public/gallery').then(res => setAlbums(res.data)).catch(() => {});
     }, []);
 
-    const getUrl = (path) => path ? `http://localhost:8000/storage/${path}` : "https://placehold.co/600x400?text=No+Image";
+    useEffect(() => { markViewed('gallery'); }, [markViewed]);
+
+    const getUrl = (path) => path ? buildAssetUrl(path) : "https://placehold.co/600x400?text=No+Image";
 
     const openLightbox = (idx) => {
         setLightboxIndex(idx);
@@ -37,7 +43,6 @@ export default function Gallery() {
         setLightboxIndex(prev => (prev - 1 + selectedAlbum.images.length) % selectedAlbum.images.length);
     }, [selectedAlbum]);
 
-    // কীবোর্ড নেভিগেশন
     useEffect(() => {
         const handleKey = (e) => {
             if (!isLightboxOpen) return;
@@ -49,7 +54,6 @@ export default function Gallery() {
         return () => window.removeEventListener('keydown', handleKey);
     }, [isLightboxOpen, goNext, goPrev]);
 
-    // সোয়াইপ সাপোর্ট
     const touchStartX = useRef(null);
     const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
     const handleTouchEnd = (e) => {
@@ -63,67 +67,113 @@ export default function Gallery() {
     };
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-[#F8FAFC] py-12 px-4 font-sans">
-            <div className="max-w-6xl mx-auto">
-                <h1 className="text-4xl font-bold text-center mb-10 text-[#1F4E79]">
-                    {selectedAlbum ? selectedAlbum.name : 'Campus Gallery'}
-                </h1>
-
-                <AnimatePresence mode="wait">
-                {!selectedAlbum ? (
-                    <motion.div
-                        key="albums"
-                        initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
-                        className="grid grid-cols-1 md:grid-cols-3 gap-8"
-                    >
-                        {albums.map((album, idx) => (
-                            <motion.div
-                                key={album.id}
-                                onClick={() => setSelectedAlbum(album)}
-                                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}
-                                whileHover={{ scale: 1.03 }}
-                                className="cursor-pointer group relative rounded-xl overflow-hidden shadow-lg h-64 border border-gray-200"
-                            >
-                                <img src={getUrl(album.thumbnail || album.images?.[0]?.image_path)} className="w-full h-full object-cover transition duration-500 group-hover:scale-110" />
-                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/50 transition">
-                                    <h3 className="text-white text-2xl font-bold tracking-wider">{album.name}</h3>
-                                </div>
-                            </motion.div>
-                        ))}
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+            {/* Hero Header */}
+            <div className="relative overflow-hidden">
+                <img src={HERO_IMAGE} alt=""
+                    className="absolute inset-0 w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-br from-[#1F4E79]/90 via-[#1F4E79]/85 to-[#1F4E79]/90"></div>
+                <div className="max-w-7xl mx-auto px-4 py-16 md:py-20 relative z-10 text-center text-white">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium mb-5 border border-white/20">
+                            <Image size={16} /> Campus Gallery
+                        </div>
+                        <h1 className="text-4xl md:text-5xl font-bold mb-4">Campus Gallery</h1>
+                        <p className="text-lg text-blue-100 max-w-2xl mx-auto">Moments captured at Uttoron Coaching Center</p>
                     </motion.div>
-                ) : (
-                    <motion.div
-                        key="photos"
-                        initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                    >
-                        <button onClick={() => setSelectedAlbum(null)} className="mb-6 text-[#1F4E79] hover:underline font-bold flex items-center gap-2">← Back to Albums</button>
+                </div>
+            </div>
 
-                        {/* ফুল সাইজ ছবি - উপর থেকে নিচ সাজানো, scroll fade-in */}
-                        <div className="flex flex-col gap-4">
-                            {selectedAlbum.images.map((img, idx) => (
+            <div className="max-w-7xl mx-auto px-4 -mt-10 relative z-20 pb-16">
+                <AnimatePresence mode="wait">
+                    {!selectedAlbum ? (
+                        <motion.div
+                            key="albums"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
+                        >
+                            {albums.map((album, idx) => (
                                 <motion.div
-                                    key={img.id}
-                                    initial={{ opacity: 0, y: 50 }}
+                                    key={album.id}
+                                    onClick={() => setSelectedAlbum(album)}
                                     whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true, margin: "-30px" }}
-                                    transition={{ duration: 0.6, ease: "easeOut" }}
-                                    onClick={() => openLightbox(idx)}
-                                    className="cursor-pointer group relative rounded-xl overflow-hidden shadow-lg bg-gray-100"
+                                    initial={{ opacity: 0, y: 30 }}
+                                    viewport={{ once: true, margin: "-40px" }}
+                                    transition={{ duration: 0.45, delay: Math.min(idx * 0.08, 0.4) }}
+                                    whileHover={{ scale: 1.03 }}
+                                    className="cursor-pointer group relative rounded-xl overflow-hidden shadow-sm border border-gray-200 h-64"
                                 >
-                                    <img 
-                                        src={getUrl(img.image_path)} 
-                                        className="w-full h-auto object-contain block"
-                                        alt={img.caption || `Photo ${idx + 1}`}
+                                    <img
+                                        src={getUrl(album.thumbnail || album.images?.[0]?.image_path)}
+                                        alt={album.name}
+                                        className="w-full h-full object-cover transition duration-500 group-hover:scale-110"
                                     />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex flex-col justify-end p-5">
+                                        <h3 className="text-white text-xl font-bold">{album.name}</h3>
+                                        {album.images && (
+                                            <p className="text-white/80 text-sm mt-1">{album.images.length} photo{album.images.length !== 1 ? 's' : ''}</p>
+                                        )}
+                                    </div>
                                 </motion.div>
                             ))}
-                        </div>
-                    </motion.div>
-                )}
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            key="photos"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                        >
+                            <button
+                                onClick={() => setSelectedAlbum(null)}
+                                className="mb-6 text-[#1F4E79] hover:underline font-bold flex items-center gap-2"
+                            >
+                                ← Back to Albums
+                            </button>
+
+                            <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 [column-fill:_balance]">
+                                {selectedAlbum.images.map((img, idx) => (
+                                    <motion.div
+                                        key={img.id}
+                                        initial={{ opacity: 0, y: 40 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true, margin: "-30px" }}
+                                        transition={{ duration: 0.5, ease: "easeOut", delay: (idx % 3) * 0.08 }}
+                                        onClick={() => openLightbox(idx)}
+                                        className="cursor-pointer group relative rounded-xl overflow-hidden shadow-sm border border-gray-200 mb-4 break-inside-avoid bg-gray-100"
+                                    >
+                                        <img
+                                            src={getUrl(img.image_path)}
+                                            className="w-full h-auto object-cover block transition duration-700 group-hover:scale-105"
+                                            alt={img.caption || `Photo ${idx + 1}`}
+                                            loading="lazy"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                                            <div className="flex items-center justify-between gap-2 translate-y-3 group-hover:translate-y-0 transition-transform duration-300">
+                                                <span className="text-white text-sm font-medium drop-shadow line-clamp-2">
+                                                    {img.caption || `Photo ${idx + 1}`}
+                                                </span>
+                                                <span className="shrink-0 text-white/90 bg-white/15 backdrop-blur-sm rounded-full p-1.5">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+                                                    </svg>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span className="absolute top-3 left-3 text-[11px] font-mono text-white/90 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                                            {idx + 1}
+                                        </span>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
                 </AnimatePresence>
             </div>
 
-            {/* ========== FULL SCREEN LIGHTBOX ========== */}
+            {/* Lightbox */}
             <AnimatePresence>
                 {isLightboxOpen && selectedAlbum?.images?.[lightboxIndex] && (
                     <motion.div
@@ -189,6 +239,6 @@ export default function Gallery() {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </motion.div>
+        </div>
     );
 }

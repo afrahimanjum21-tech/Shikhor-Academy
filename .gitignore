@@ -14,7 +14,13 @@ backend/storage/*.key
 # -------------------------
 # Environment
 # -------------------------
+.env
 frontend/.env
+
+# -------------------------
+# SSL certificates (generated locally)
+# -------------------------
+frontend/certs/
 
 # -------------------------
 # Logs
@@ -26,6 +32,21 @@ frontend/.env
 # -------------------------
 .vscode/
 .idea/
+
+# -------------------------
+# Code assistant config
+# -------------------------
+.zcode/
+
+# -------------------------
+# Temp / misc
+# -------------------------
+YUsHNLF!uY165.txt
+
+# -------------------------
+# Backend node_modules
+# -------------------------
+backend/node_modules/
 
 # -------------------------
 # OS

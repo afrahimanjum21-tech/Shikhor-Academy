@@ -9,9 +9,10 @@ use Illuminate\Support\Facades\File;
 
 class GalleryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return Album::with('images')->latest()->get();
+        $perPage = max(5, min((int) $request->input('per_page', 15), 100));
+        return Album::with('images')->latest()->paginate($perPage);
     }
 
     public function storeAlbum(Request $request)
@@ -29,7 +30,7 @@ class GalleryController extends Controller
             // ২. ফোল্ডার আছে কিনা চেক করা, না থাকলে বানানো
             $destinationPath = storage_path('app/public/gallery');
             if (!File::exists($destinationPath)) {
-                File::makeDirectory($destinationPath, 0777, true, true);
+                File::makeDirectory($destinationPath, 0755, true, true);
             }
 
             // ৩. ফাইলটি সরাসরি মুভ করা (Force Move)
@@ -53,7 +54,7 @@ class GalleryController extends Controller
             $destinationPath = storage_path('app/public/gallery');
             
             if (!File::exists($destinationPath)) {
-                File::makeDirectory($destinationPath, 0777, true, true);
+                File::makeDirectory($destinationPath, 0755, true, true);
             }
 
             $file->move($destinationPath, $filename);
@@ -65,7 +66,28 @@ class GalleryController extends Controller
     }
     
     public function destroyAlbum($id) {
-        Album::findOrFail($id)->delete();
+        $album = Album::findOrFail($id);
+        
+        // Delete thumbnail file
+        if ($album->thumbnail) {
+            $thumbnailPath = storage_path('app/public/' . $album->thumbnail);
+            if (File::exists($thumbnailPath)) {
+                File::delete($thumbnailPath);
+            }
+        }
+        
+        // Delete all images and their files
+        foreach ($album->images as $image) {
+            if ($image->image_path) {
+                $imagePath = storage_path('app/public/' . $image->image_path);
+                if (File::exists($imagePath)) {
+                    File::delete($imagePath);
+                }
+            }
+            $image->delete();
+        }
+        
+        $album->delete();
         return response()->json(['message' => 'Album deleted']);
     }
 

@@ -15,9 +15,10 @@
     </style>
 </head>
 <body>
+    @php($siteSettings = \App\Models\SiteSetting::instance())
     <div class="container">
         <div class="header">
-            <h2>Uttoron Coaching Center</h2>
+            <h2>{{ $siteSettings->site_name ?: 'Uttoron Coaching Center' }}</h2>
         </div>
         <div class="content">
             <p>Dear <strong>{{ $details['name'] }}</strong>,</p>
@@ -43,8 +44,8 @@
             @endif
         </div>
         <div class="footer">
-            <p>&copy; {{ date('Y') }} Uttoron Coaching Center. All rights reserved.</p>
-            <p>Mirpur-10, Dhaka, Bangladesh</p>
+            <p>&copy; {{ date('Y') }} {{ $siteSettings->site_name ?: 'Uttoron Coaching Center' }}. All rights reserved.</p>
+            <p>{{ $siteSettings->address ?: \App\Models\SiteSetting::DEFAULT_ADDRESS }}</p>
         </div>
     </div>
 </body>

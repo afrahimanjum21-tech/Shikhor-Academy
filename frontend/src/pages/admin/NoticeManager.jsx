@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { Plus, MoreVertical, Trash2, Bell, Calendar } from "lucide-react";
-
+import notify from "../../services/notification";
+import { useConfirm } from "../../components/common/ConfirmDialog";
+import logger from '../../services/logger';
+ 
 export default function NoticeManager() {
+    const confirm = useConfirm();
     const [notices, setNotices] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState({ title: '', description: '', type: 'general', date: '' });
@@ -12,7 +16,7 @@ export default function NoticeManager() {
         try {
             const res = await api.get('/public/notices');
             setNotices(res.data);
-        } catch (err) { console.error(err); }
+        } catch (err) { logger.error(err); }
     };
 
     useEffect(() => {
@@ -26,15 +30,15 @@ export default function NoticeManager() {
         e.preventDefault();
         try {
             await api.post('/admin/notices', formData);
-            alert("Posted!");
+            notify.success("Posted!");
             setIsModalOpen(false);
             setFormData({ title: '', description: '', type: 'general', date: '' });
             fetchNotices();
-        } catch (error) { alert("Failed"); }
+        } catch (error) { notify.error("Failed"); }
     };
 
     const handleDelete = async (id) => {
-        if(confirm("Delete notice?")) {
+        const ok = await confirm({ title: "Delete Notice?", message: "Delete notice?", confirmText: "Delete", variant: "destructive" }); if (ok) {
             await api.delete(`/admin/notices/${id}`);
             fetchNotices();
         }
@@ -42,17 +46,15 @@ export default function NoticeManager() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-[#1F4E79]">Notice Board</h1>
-                    <p className="text-sm text-gray-500">Announcements & Updates</p>
-                </div>
-                <button onClick={() => setIsModalOpen(true)} className="bg-[#1F4E79] text-white px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 hover:bg-[#163859]">
-                    <Plus size={16} /> Post
-                </button>
+            <div className="section-header">
+              <div>
+                <h1 className="text-lg md:text-2xl font-bold text-[#1F4E79]">Notice Board</h1>
+                <p className="text-xs md:text-sm text-gray-500">Announcements & Updates</p>
+              </div>
+              <button onClick={() => setIsModalOpen(true)} className="bg-[#1F4E79] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 w-full sm:w-auto hover:bg-[#163859]"><Plus size={16} /> Post</button>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 <table className="w-full text-left border-collapse">
                     <thead className="bg-gray-50 text-xs text-gray-500 uppercase font-bold tracking-wider">
                         <tr>
@@ -98,8 +100,26 @@ export default function NoticeManager() {
                 </table>
             </div>
 
+            <div className="md:hidden space-y-2">
+              {notices.map(notice => (
+                <div key={notice.id} className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-gray-800 text-sm">{notice.title}</p>
+                      <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{notice.description}</p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${notice.type === 'holiday' ? 'bg-green-100 text-green-700' : notice.type === 'urgent' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{notice.type}</span>
+                        <span className="text-xs text-gray-500 flex items-center gap-1"><Calendar size={12}/> {notice.date}</span>
+                      </div>
+                    </div>
+                    <button onClick={() => handleDelete(notice.id)} className="text-red-400 hover:text-red-600 p-1 flex-shrink-0"><Trash2 size={15}/></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50 responsive-modal">
                     <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-xl">
                         <h3 className="font-bold text-lg mb-4 text-[#1F4E79] border-b pb-2">Post Notice</h3>
                         <form onSubmit={handleSubmit} className="space-y-3">

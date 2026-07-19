@@ -8,22 +8,23 @@ use Illuminate\Http\Request;
 class NoticeController extends Controller
 {
     // পাবলিক: সব নোটিশ দেখাও
-    public function index()
+    public function index(Request $request)
     {
-        return Notice::orderBy('date', 'desc')->get();
+        $perPage = max(5, min((int) $request->input('per_page', 15), 100));
+        return Notice::orderBy('date', 'desc')->paginate($perPage);
     }
 
     // অ্যাডমিন: নোটিশ তৈরি
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'title' => 'required',
             'description' => 'required',
             'type' => 'required',
             'date' => 'required|date'
         ]);
 
-        Notice::create($request->all());
+        Notice::create($validated);
         return response()->json(['message' => 'Notice posted successfully']);
     }
 

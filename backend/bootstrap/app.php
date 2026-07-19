@@ -18,5 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (\Symfony\Component\Mime\Exception\InvalidArgumentException $e) {
+            if (str_contains($e->getMessage(), 'does not exist or is not readable')) {
+                return response()->json(['message' => 'Uploaded file could not be processed. Please try again with a different file.'], 422);
+            }
+        });
     })->create();

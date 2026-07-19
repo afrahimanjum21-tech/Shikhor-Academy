@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, Link, useLocation } from "react-router-dom";
+import { LogIn } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function Login() {
     const [email, setEmail] = useState("");
@@ -15,35 +17,52 @@ export default function Login() {
         e.preventDefault();
         setError(null);
         setLoading(true);
-        
-        const result = await login({ email, password });
-        
-        if (result.success) {
-            const storedUser = JSON.parse(localStorage.getItem('USER'));
-            if (storedUser.role === 'admin' || storedUser.role === 'super_admin') navigate("/admin/dashboard");
-            else if (storedUser.role === 'student') navigate(location.state?.from || "/student/dashboard");
-            else navigate("/");
-        } else {
-            setError(result.error);
+
+        try {
+            const result = await login({ email, password });
+
+            if (result.success) {
+                const storedUser = JSON.parse(localStorage.getItem('USER'));
+                if (storedUser.role === 'admin' || storedUser.role === 'super_admin') navigate("/admin/dashboard");
+                else if (storedUser.role === 'student') navigate(location.state?.from || "/student/dashboard");
+                else navigate("/");
+            } else {
+                setError(result.error);
+            }
+        } catch (err) {
+            setError("An unexpected error occurred. Please try again.");
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 font-sans flex items-center justify-center p-4">
-            <div className="bg-white p-8 md:p-10 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
-                <h2 className="text-3xl font-bold text-center mb-2" style={{ color: '#1F4F78' }}>Welcome Back</h2>
-                <p className="text-center text-gray-500 mb-8">Login to access your dashboard</p>
-                
-                {error && <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm text-center border border-red-100">{error}</div>}
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center p-4">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 md:p-10 max-w-md w-full"
+            >
+                <div className="text-center mb-8">
+                    <div className="w-16 h-16 rounded-full bg-[#E6EEF5] flex items-center justify-center mx-auto mb-4 text-[#1F4E79]">
+                        <LogIn size={28} />
+                    </div>
+                    <h2 className="text-3xl font-bold text-[#1F4E79]">Welcome Back</h2>
+                    <p className="text-gray-500 mt-1">Login to access your dashboard</p>
+                </div>
+
+                {error && (
+                    <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-6 text-sm text-center border border-red-100">
+                        {error}
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Email Address</label>
-                        <input 
-                            type="email" 
-                            className="w-full border p-3 rounded-lg focus:outline-none focus:ring-2 transition"
-                            style={{ '--tw-ring-color': '#1F4F78', borderColor: '#e5e7eb' }}
+                        <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase">Email Address</label>
+                        <input
+                            type="email"
+                            className="w-full border-b border-gray-200 focus:border-[#1F4E79] transition-all outline-none bg-transparent text-sm py-2.5"
                             placeholder="example@uttoron.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
@@ -51,32 +70,33 @@ export default function Login() {
                         />
                     </div>
                     <div>
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Password</label>
-                        <input 
-                            type="password" 
-                            className="w-full border p-3 rounded-lg focus:outline-none focus:ring-2 transition"
-                            style={{ '--tw-ring-color': '#1F4F78', borderColor: '#e5e7eb' }}
+                        <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase">Password</label>
+                        <input
+                            type="password"
+                            className="w-full border-b border-gray-200 focus:border-[#1F4E79] transition-all outline-none bg-transparent text-sm py-2.5"
                             placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
                         />
                     </div>
-                    
-                    <button 
-                        type="submit" 
+
+                    <button
+                        type="submit"
                         disabled={loading}
-                        className="w-full text-white font-bold py-3.5 rounded-lg transition transform hover:-translate-y-0.5 shadow-md disabled:opacity-70"
-                        style={{ backgroundColor: '#1F4F78' }}
+                        className="w-full rounded-full px-6 py-3 bg-[#1F4E79] text-white font-semibold hover:bg-[#1a3d66] transition-colors disabled:opacity-60"
                     >
                         {loading ? 'Logging in...' : 'Login'}
                     </button>
                 </form>
 
                 <div className="mt-8 text-center text-sm text-gray-500">
-                    Don't have an account? <Link to="/admission" className="font-bold hover:underline" style={{ color: '#1F4F78' }}>Apply for Admission</Link>
+                    Don't have an account?{' '}
+                    <Link to="/admission" className="font-semibold text-[#1F4E79] hover:underline">
+                        Apply for Admission
+                    </Link>
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 }

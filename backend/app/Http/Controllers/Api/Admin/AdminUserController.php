@@ -5,18 +5,114 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
+
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class AdminUserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $perPage = max(5, min((int) $request->input('per_page', 15), 100));
         return User::where('role', 'student')
-                   ->with(['student_profile.batch.course', 'student_profile.admission.course'])
-                   ->latest()
-                   ->get();
+            ->with('student_profile', 'student_profile.batch', 'student_profile.batch.course')
+            ->latest()
+            ->paginate($perPage);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|unique:users,email',
+            'password' => 'nullable|string|min:8',
+            'phone' => 'nullable|string|max:20',
+            'dob' => 'nullable|date',
+            'gender' => 'nullable|string|in:male,female,other',
+            'religion' => 'nullable|string|max:50',
+            'blood_group' => 'nullable|string|max:10',
+            'nationality' => 'nullable|string|max:50',
+
+            'father_name' => 'nullable|string|max:255',
+            'father_mobile' => 'nullable|string|max:20',
+            'father_occupation' => 'nullable|string|max:255',
+            'mother_name' => 'nullable|string|max:255',
+            'mother_mobile' => 'nullable|string|max:20',
+            'mother_occupation' => 'nullable|string|max:255',
+
+            'present_address' => 'nullable|string',
+            'permanent_address' => 'nullable|string',
+
+            'emergency_name' => 'nullable|string|max:255',
+            'emergency_mobile' => 'nullable|string|max:20',
+
+            'last_school' => 'nullable|string|max:255',
+            'jsc_gpa' => 'nullable|string|max:10',
+            'ssc_gpa' => 'nullable|string|max:10',
+
+            'student_id_card_no' => 'nullable|string|unique:students,student_id_card_no',
+            'current_batch_id' => 'nullable|exists:batches,id',
+            'guardian_phone' => 'nullable|string|max:20',
+
+            'photo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:51200',
+        ]);
+
+        $user = DB::transaction(function () use ($request, $validated) {
+            // Handle photo upload
+            $photoPath = null;
+            if ($request->hasFile('photo')) {
+                $file = $request->file('photo');
+                $filename = 'student_' . time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
+                $destinationPath = public_path('uploads/admission_photos');
+                if (!File::exists($destinationPath)) {
+                    File::makeDirectory($destinationPath, 0755, true, true);
+                }
+                $file->move($destinationPath, $filename);
+                $photoPath = 'uploads/admission_photos/' . $filename;
+            }
+
+            $email = $validated['email'] ?? ('student_' . Str::random(8) . '@uttoron.edu.bd');
+            $password = $validated['password'] ?? Str::random(10);
+
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $email,
+                'password' => $password,
+                'phone' => $validated['phone'] ?? null,
+                'role' => 'student',
+                'is_active' => true,
+                'profile_photo_path' => $photoPath,
+            ]);
+
+            $user->student_profile()->create([
+                'student_id_card_no' => $validated['student_id_card_no'] ?? null,
+                'current_batch_id' => $validated['current_batch_id'] ?? null,
+                'guardian_phone' => $validated['guardian_phone'] ?? null,
+                'gender' => $validated['gender'] ?? null,
+                'blood_group' => $validated['blood_group'] ?? null,
+                'religion' => $validated['religion'] ?? null,
+                'dob' => $validated['dob'] ?? null,
+                'nationality' => $validated['nationality'] ?? null,
+                'present_address' => $validated['present_address'] ?? null,
+                'permanent_address' => $validated['permanent_address'] ?? null,
+                'father_name' => $validated['father_name'] ?? null,
+                'father_mobile' => $validated['father_mobile'] ?? null,
+                'father_occupation' => $validated['father_occupation'] ?? null,
+                'mother_name' => $validated['mother_name'] ?? null,
+                'mother_mobile' => $validated['mother_mobile'] ?? null,
+                'mother_occupation' => $validated['mother_occupation'] ?? null,
+                'emergency_name' => $validated['emergency_name'] ?? null,
+                'emergency_mobile' => $validated['emergency_mobile'] ?? null,
+                'last_school' => $validated['last_school'] ?? null,
+                'ssc_gpa' => $validated['ssc_gpa'] ?? null,
+                'jsc_gpa' => $validated['jsc_gpa'] ?? null,
+            ]);
+
+            return $user;
+        });
+
+        return response()->json($user->load('student_profile.batch.course'), 201);
     }
 
     // 🔥 ফিক্স: সিঙ্গেল স্টুডেন্ট দেখার সময় 'admission.course' লোড করা
@@ -40,7 +136,7 @@ class AdminUserController extends Controller
                 ]);
 
                 if ($request->filled('password')) {
-                    $user->update(['password' => Hash::make($request->password)]);
+                    $user->update(['password' => $request->password]);
                 }
 
                 if ($request->hasFile('photo')) {
@@ -49,7 +145,7 @@ class AdminUserController extends Controller
 
                     $destinationPath = public_path('uploads/admission_photos');
                     if (!File::exists($destinationPath)) {
-                        File::makeDirectory($destinationPath, 0777, true, true);
+                        File::makeDirectory($destinationPath, 0755, true, true);
                     }
 
                     $file->move($destinationPath, $filename);
@@ -102,6 +198,10 @@ class AdminUserController extends Controller
                         'last_school'        => $request->input('last_school', $prof->last_school),
                         'ssc_gpa'            => $request->input('ssc_gpa', $prof->ssc_gpa),
                         'jsc_gpa'            => $request->input('jsc_gpa', $prof->jsc_gpa),
+                        'shift'              => $request->input('shift', $prof->shift),
+                        'section'            => $request->input('section', $prof->section),
+                        'group_name'         => $request->input('group_name', $prof->group_name),
+                        'subject'            => $request->input('subject', $prof->subject),
                     ]);
                 }
             });

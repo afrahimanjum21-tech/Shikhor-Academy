@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { useNotificationCounts } from "../../context/NotificationContext";
 import { useNavigate } from "react-router-dom";
 import { Plus, Trash2, Banknote, Search, CheckCircle, FileText, Settings } from "lucide-react";
-
+import notify from "../../services/notification";
+import { useConfirm } from "../../components/common/ConfirmDialog";
+import logger from '../../services/logger';
+ 
 export default function PaymentManager() {
+    const confirm = useConfirm();
     const navigate = useNavigate();
     const [payments, setPayments] = useState([]);
     const [students, setStudents] = useState([]);
@@ -14,6 +19,8 @@ export default function PaymentManager() {
         student_id: '', month: '', amount: '', method: 'Cash', date: '', trx_id: ''
     });
 
+    const { markViewed } = useNotificationCounts();
+
     const fetchData = async () => {
         try {
             const [payRes, stdRes] = await Promise.all([
@@ -22,24 +29,24 @@ export default function PaymentManager() {
             ]);
             setPayments(payRes.data);
             setStudents(stdRes.data);
-        } catch (err) { console.error(err); }
+        } catch (err) { logger.error(err); }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => { fetchData(); markViewed('payments'); }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
             await api.post('/admin/payments', formData);
-            alert("Payment Recorded!");
+            notify.success("Payment Recorded!");
             setIsModalOpen(false);
             setFormData({ student_id: '', month: '', amount: '', method: 'Cash', date: '', trx_id: '' });
             fetchData();
-        } catch (err) { alert(err.response?.data?.message || "Failed to record payment"); }
+        } catch (err) { notify.error(err.response?.data?.message || "Failed to record payment"); }
     };
 
     const handleDelete = async (id) => {
-        if(confirm("Delete this record?")) {
+        const ok = await confirm({ title: "Delete Record?", message: "Delete this record?", confirmText: "Delete", variant: "destructive" }); if (ok) {
             await api.delete(`/admin/payments/${id}`);
             fetchData();
         }
@@ -51,64 +58,72 @@ export default function PaymentManager() {
     );
 
     return (
-        <div className="bg-white p-6 rounded shadow border border-gray-200">
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div className="mobile-card">
+            <div className="section-header">
                 <div>
-                    <h1 className="text-xl font-bold text-[#1F4E79]">Payment History</h1>
-                    <p className="text-sm text-gray-500">Track student tuition fees</p>
+                    <h1 className="text-lg md:text-xl font-bold text-[#1F4E79]">Payment History</h1>
+                    <p className="text-xs md:text-sm text-gray-500">Track student tuition fees</p>
                 </div>
-                <div className="flex gap-3 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-64">
-                        <input type="text" placeholder="Search..." className="w-full pl-9 pr-4 py-2 border rounded text-sm focus:border-[#1F4E79] outline-none" onChange={e => setSearchTerm(e.target.value)} />
-                        <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <div className="relative flex-1 sm:w-56">
+                        <input type="text" placeholder="Search..." className="w-full pl-8 pr-4 py-2 border rounded-lg text-sm focus:border-[#1F4E79] outline-none" onChange={e => setSearchTerm(e.target.value)} />
+                        <Search className="absolute left-2.5 top-2.5 text-gray-400" size={16} />
                     </div>
-                    <button onClick={() => navigate('/admin/payment-settings')} className="border border-gray-300 text-gray-600 px-4 py-2 rounded text-sm font-bold flex items-center gap-2 hover:bg-gray-50" title="Configure SSLCommerz Gateway">
-                        <Settings size={16} /> <span className="hidden sm:inline">Settings</span>
-                    </button>
-                    <button onClick={() => setIsModalOpen(true)} className="bg-[#1F4E79] text-white px-4 py-2 rounded text-sm font-bold flex items-center gap-2 hover:bg-[#163859]">
-                        <Plus size={16} /> Add Payment
-                    </button>
+                    <div className="flex gap-2">
+                        <button onClick={() => navigate('/admin/payment-settings')} className="border border-gray-300 text-gray-600 px-3 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-gray-50"><Settings size={15} /></button>
+                        <button onClick={() => setIsModalOpen(true)} className="bg-[#1F4E79] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-[#163859] flex-1 sm:flex-none"><Plus size={16} /> Add</button>
+                    </div>
                 </div>
             </div>
 
-            <div className="overflow-x-auto min-h-[400px]">
+            <div className="hidden md:block overflow-x-auto min-h-[400px]">
                 <table className="w-full text-left border-collapse text-sm">
                     <thead className="bg-gray-50 border-b text-gray-500 uppercase text-xs">
-                        <tr><th className="p-3">Student</th><th className="p-3">Month</th><th className="p-3">Amount</th><th className="p-3 hidden md:table-cell">Method</th><th className="p-3 hidden md:table-cell">Status</th><th className="p-3 hidden md:table-cell">Date</th><th className="p-3 text-right">Action</th></tr>
+                        <tr><th className="p-3">Student</th><th className="p-3">Month</th><th className="p-3">Amount</th><th className="p-3">Method</th><th className="p-3">Status</th><th className="p-3">Date</th><th className="p-3 text-right">Action</th></tr>
                     </thead>
                     <tbody className="divide-y">
                         {filteredPayments.map(pay => (
                             <tr key={pay.id} className="hover:bg-gray-50 transition">
-                                <td className="p-3">
-                                    <p className="font-bold text-gray-800">{pay.student?.user?.name}</p>
-                                    <p className="text-xs text-gray-500 font-mono">{pay.student?.student_id_card_no}</p>
-                                </td>
+                                <td className="p-3"><p className="font-bold text-gray-800">{pay.student?.user?.name}</p><p className="text-xs text-gray-500 font-mono">{pay.student?.student_id_card_no}</p></td>
                                 <td className="p-3">{pay.month}</td>
                                 <td className="p-3 font-bold text-[#1F4E79]">BDT {Number(pay.amount || 0).toLocaleString("en-BD")}</td>
-                                <td className="p-3 hidden md:table-cell"><span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs border border-blue-100">{pay.method}</span></td>
-                                <td className="p-3 hidden md:table-cell">
-                                    <span className={`px-2 py-0.5 rounded text-xs border font-bold uppercase ${
-                                        pay.status === 'paid'
-                                            ? 'bg-green-50 text-green-700 border-green-100'
-                                            : pay.status === 'pending'
-                                                ? 'bg-blue-50 text-blue-700 border-blue-100'
-                                                : 'bg-red-50 text-red-700 border-red-100'
-                                    }`}>
-                                        {pay.status}
-                                    </span>
-                                </td>
-                                <td className="p-3 hidden md:table-cell text-gray-500">{pay.date}</td>
-                                <td className="p-3 text-right">
-                                    <button onClick={() => handleDelete(pay.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded"><Trash2 size={16}/></button>
-                                </td>
+                                <td className="p-3"><span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs border border-blue-100">{pay.method}</span></td>
+                                <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs border font-bold uppercase ${pay.status === 'paid' ? 'bg-green-50 text-green-700 border-green-100' : pay.status === 'pending' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-red-50 text-red-700 border-red-100'}`}>{pay.status}</span></td>
+                                <td className="p-3 text-gray-500">{pay.date}</td>
+                                <td className="p-3 text-right"><button onClick={() => handleDelete(pay.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded"><Trash2 size={16}/></button></td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
 
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-2 mt-2">
+                {filteredPayments.map(pay => (
+                    <div key={pay.id} className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
+                        <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                                <p className="font-bold text-gray-800 text-sm truncate">{pay.student?.user?.name}</p>
+                                <p className="text-[10px] text-gray-500 font-mono">{pay.student?.student_id_card_no}</p>
+                            </div>
+                            <button onClick={() => handleDelete(pay.id)} className="text-red-400 hover:text-red-600 p-1 flex-shrink-0"><Trash2 size={15}/></button>
+                        </div>
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+                            <div>
+                                <p className="text-xs text-gray-500">{pay.month}</p>
+                                <p className="font-bold text-[#1F4E79] text-sm">BDT {Number(pay.amount || 0).toLocaleString("en-BD")}</p>
+                            </div>
+                            <div className="text-right">
+                                <span className={`px-2 py-0.5 rounded text-[10px] border font-bold uppercase ${pay.status === 'paid' ? 'bg-green-50 text-green-700 border-green-100' : pay.status === 'pending' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-red-50 text-red-700 border-red-100'}`}>{pay.status}</span>
+                                <p className="text-[10px] text-gray-400 mt-1">{pay.date} • {pay.method}</p>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50 responsive-modal">
                     <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-xl">
                         <h3 className="font-bold text-lg mb-4 text-[#1F4E79] border-b pb-2">Record New Payment</h3>
                         <form onSubmit={handleSubmit} className="space-y-3">

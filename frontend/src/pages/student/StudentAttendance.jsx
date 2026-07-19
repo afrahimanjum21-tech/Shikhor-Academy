@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 import { CalendarCheck, Clock, Loader2, Send } from "lucide-react";
+import { useNotificationCounts } from "../../context/NotificationContext";
 
 export default function StudentAttendance() {
+    const { markViewed } = useNotificationCounts();
     const { user } = useAuth();
     const [stats, setStats] = useState({ total: 0, present: 0, absent: 0, late: 0, leave: 0, percentage: 0 });
     const [loading, setLoading] = useState(true);
@@ -27,6 +29,8 @@ export default function StudentAttendance() {
     useEffect(() => {
         setForm((prev) => ({ ...prev, course_id: courseId }));
     }, [courseId]);
+
+    useEffect(() => { markViewed('attendance'); }, [markViewed]);
 
     useEffect(() => {
         api.get("/student/attendance/stats")

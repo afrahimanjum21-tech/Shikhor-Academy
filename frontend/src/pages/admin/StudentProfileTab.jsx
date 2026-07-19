@@ -1,162 +1,196 @@
 import { useOutletContext } from "react-router-dom";
-import { Edit, Save, Upload } from "lucide-react";
 
 export default function StudentProfileTab() {
     const ctx = useOutletContext();
+    if (!ctx) return <div className="p-10 text-center text-red-500">Context not available</div>;
 
     const { student, formData, isEditing, setIsEditing, photoFile, setPhotoFile,
-            photoUrl, timestamp, batches, courses, handleUpdate, handleChange,
-            setFormData, prof } = ctx;
+            photoUrl, batches, courses, handleUpdate, handleChange } = ctx;
 
     return (
         <div className="space-y-6">
-            {/* Edit/Save Buttons */}
-            <div className="flex justify-end gap-3">
-                {isEditing ? (
-                    <>
-                        <button onClick={() => {setIsEditing(false); setPhotoFile(null);}} className="px-4 py-2 bg-gray-200 rounded text-gray-700 font-bold text-sm">Cancel</button>
-                        <button onClick={handleUpdate} className="px-4 py-2 bg-[#1F4E79] text-white rounded font-bold text-sm flex items-center gap-2">
-                            <Save size={16}/> Save
+            {/* Edit/Save Bar */}
+            <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 px-6 md:px-7 py-4">
+                <div>
+                    <h2 className="text-base md:text-lg font-bold text-gray-900">Profile Information</h2>
+                    <p className="text-xs md:text-sm text-gray-400 mt-0.5">Manage student's personal and academic details</p>
+                </div>
+                <div className="flex gap-2">
+                    {isEditing ? (
+                        <>
+                            <button onClick={() => { setIsEditing(false); setPhotoFile?.(null); }}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-bold text-sm transition-all">
+                                Cancel
+                            </button>
+                            <button onClick={handleUpdate}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1F4E79] text-white hover:bg-[#163859] font-bold text-sm transition-all shadow-sm">
+                                Save Changes
+                            </button>
+                        </>
+                    ) : (
+                        <button onClick={() => setIsEditing(true)}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1F4E79] text-white hover:bg-[#163859] font-bold text-sm transition-all shadow-sm">
+                            Edit Profile
                         </button>
-                    </>
-                ) : (
-                    <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm flex items-center gap-2 hover:bg-blue-700">
-                        <Edit size={16}/> Edit Profile
-                    </button>
-                )}
+                    )}
+                </div>
             </div>
 
-            {/* Profile Card */}
-            <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-                <div className="h-32 bg-[#1F4E79]"></div>
-                <div className="px-8 pb-6 flex flex-col md:flex-row items-center md:items-end -mt-16 gap-6">
-                    <div className="w-32 h-32 bg-white p-1 rounded-full shadow-lg border-4 border-white relative group overflow-hidden flex-shrink-0">
-                        {photoFile ? (
-                            <img src={URL.createObjectURL(photoFile)} className="w-full h-full object-cover rounded-full" />
-                        ) : photoUrl ? (
-                            <img src={photoUrl} className="w-full h-full object-cover rounded-full" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}/>
-                        ) : (
-                            <div className="w-full h-full bg-gray-200 flex items-center justify-center text-4xl font-bold text-gray-500 rounded-full">{student.name.charAt(0)}</div>
-                        )}
-
-                        {isEditing && (
-                            <label className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center cursor-pointer text-white opacity-0 group-hover:opacity-100 transition rounded-full z-10">
-                                <Upload size={24}/>
-                                <span className="text-xs">Change</span>
+            {/* Photo Upload Card (only when editing) */}
+            {isEditing && (
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 md:p-7 transition-all duration-300 hover:shadow-lg hover:border-gray-200">
+                    <div className="flex items-center gap-6">
+                        <div className="relative w-20 h-20 rounded-full overflow-hidden bg-gray-100 ring-2 ring-gray-200 shrink-0">
+                            {photoFile ? (
+                                <img src={URL.createObjectURL(photoFile)} className="w-full h-full object-cover" alt="" />
+                            ) : photoUrl ? (
+                                <img src={photoUrl} className="w-full h-full object-cover" alt="" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-gray-100 text-2xl font-bold text-gray-400">
+                                    {student?.name?.charAt(0).toUpperCase()}
+                                </div>
+                            )}
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold text-gray-700">Profile Photo</p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">Upload a new photo for this student</p>
+                            <label className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1F4E79]/10 text-[#1F4E79] rounded-lg text-xs font-bold cursor-pointer hover:bg-[#1F4E79]/20 transition-all">
                                 <input type="file" className="hidden" accept="image/*" onChange={e => setPhotoFile(e.target.files[0])} />
+                                Choose Photo
                             </label>
-                        )}
-                    </div>
-                    <div className="flex-1 text-center md:text-left mb-2 w-full">
-                        {isEditing ? (
-                            <input name="name" value={formData.name} onChange={handleChange} className="text-2xl font-bold border p-2 rounded w-full md:w-1/2 border-blue-300 outline-none" />
-                        ) : (
-                            <h1 className="text-3xl font-bold text-gray-900 break-words">{student.name}</h1>
-                        )}
-                        <p className="text-gray-500 font-medium">ID: {formData.student_id_card_no}</p>
+                        </div>
                     </div>
                 </div>
+            )}
+
+            {/* Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                <InfoCard title="Personal Information" rows={getPersonalRows(ctx, isEditing)} isEditing={isEditing} onChange={handleChange} formData={formData} />
+                <InfoCard title="Academic Information" rows={getAcademicRows(ctx, isEditing)} isEditing={isEditing} onChange={handleChange} formData={formData} />
             </div>
-
-            {/* Details Form Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <h3 className="text-lg font-bold text-[#1F4E79] border-b pb-2 mb-4">Account & Personal</h3>
-                    <div className="space-y-4">
-                        <Field label="Login Email" name="email" value={formData.email} isEditing={isEditing} onChange={handleChange} />
-                        {isEditing && <Field label="New Password" name="password" value={formData.password} isEditing={isEditing} onChange={handleChange} placeholder="Leave blank to keep same" />}
-                        <Field label="Phone" name="phone" value={formData.phone} isEditing={isEditing} onChange={handleChange} />
-                        <Field label="Date of Birth" name="dob" value={formData.dob} isEditing={isEditing} onChange={handleChange} type="date" />
-                        <div className="grid grid-cols-2 gap-4">
-                            <Field label="Gender" name="gender" value={formData.gender} isEditing={isEditing} onChange={handleChange} />
-                            <Field label="Blood Group" name="blood_group" value={formData.blood_group} isEditing={isEditing} onChange={handleChange} />
-                        </div>
-                        <Field label="Religion" name="religion" value={formData.religion} isEditing={isEditing} onChange={handleChange} />
-                        <Field label="Nationality" name="nationality" value={formData.nationality} isEditing={isEditing} onChange={handleChange} />
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <h3 className="text-lg font-bold text-[#1F4E79] border-b pb-2 mb-4">Guardian Info</h3>
-                    <div className="space-y-4">
-                        <Field label="Father Name" name="father_name" value={formData.father_name} isEditing={isEditing} onChange={handleChange} />
-                        <div className="grid grid-cols-2 gap-4">
-                            <Field label="Father Mobile" name="father_mobile" value={formData.father_mobile} isEditing={isEditing} onChange={handleChange} />
-                            <Field label="Occupation" name="father_occupation" value={formData.father_occupation} isEditing={isEditing} onChange={handleChange} />
-                        </div>
-                        <div className="border-t border-dashed my-2"></div>
-                        <Field label="Mother Name" name="mother_name" value={formData.mother_name} isEditing={isEditing} onChange={handleChange} />
-                        <div className="grid grid-cols-2 gap-4">
-                            <Field label="Mother Mobile" name="mother_mobile" value={formData.mother_mobile} isEditing={isEditing} onChange={handleChange} />
-                            <Field label="Occupation" name="mother_occupation" value={formData.mother_occupation} isEditing={isEditing} onChange={handleChange} />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 md:col-span-2">
-                    <h3 className="text-lg font-bold text-[#1F4E79] border-b pb-2 mb-4">Other Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                            <Field label="Student ID" name="student_id_card_no" value={formData.student_id_card_no} isEditing={isEditing} onChange={handleChange} />
-
-                            <div className="flex flex-col w-full">
-                                <span className="text-xs font-bold text-gray-500 uppercase">Course</span>
-                                {isEditing ? (
-                                    <select name="course_id" value={formData.course_id || ''} onChange={handleChange} className="border border-gray-300 p-2 rounded text-sm mt-1 bg-white outline-none w-full">
-                                        <option value="">Select Course</option>
-                                        {courses.map(c => (<option key={c.id} value={c.id}>{c.title}</option>))}
-                                    </select>
-                                ) : (
-                                    <span className="text-gray-900 font-medium text-sm mt-1 border-b border-gray-50 pb-1 w-full break-words">
-                                        {formData.course_name || 'Not Assigned'}
-                                    </span>
-                                )}
-                            </div>
-
-                            <div className="flex flex-col w-full">
-                                <span className="text-xs font-bold text-gray-500 uppercase">Batch</span>
-                                {isEditing ? (
-                                    <select name="current_batch_id" value={formData.current_batch_id || ''} onChange={handleChange} className="border border-gray-300 p-2 rounded text-sm mt-1 bg-white outline-none w-full">
-                                        <option value="">Select Batch</option>
-                                        {batches.map(b => (<option key={b.id} value={b.id}>{b.course?.title} - {b.name}</option>))}
-                                    </select>
-                                ) : (
-                                    <span className="text-gray-900 font-medium text-sm mt-1 border-b border-gray-50 pb-1 w-full break-words">
-                                        {formData.batch_name || 'Not Assigned'}
-                                    </span>
-                                )}
-                            </div>
-                            <Field label="Last School" name="last_school" value={formData.last_school} isEditing={isEditing} onChange={handleChange} />
-                        </div>
-                        <div className="space-y-4">
-                            <Field label="Present Address" name="present_address" value={formData.present_address} isEditing={isEditing} onChange={handleChange} />
-                            <Field label="Permanent Address" name="permanent_address" value={formData.permanent_address} isEditing={isEditing} onChange={handleChange} />
-                            <div className="grid grid-cols-2 gap-4">
-                                <Field label="SSC GPA" name="ssc_gpa" value={formData.ssc_gpa} isEditing={isEditing} onChange={handleChange} />
-                                <Field label="JSC GPA" name="jsc_gpa" value={formData.jsc_gpa} isEditing={isEditing} onChange={handleChange} />
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                <InfoCard title="Guardian Information" rows={getGuardianRows(ctx, isEditing)} isEditing={isEditing} onChange={handleChange} formData={formData} />
+                <InfoCard title="Address" rows={getAddressRows(ctx, isEditing)} isEditing={isEditing} onChange={handleChange} formData={formData} />
             </div>
         </div>
     );
 }
 
-function Field({ label, name, value, isEditing, onChange, type = "text", placeholder }) {
+/* ─── ROW DATA ─── */
+
+function getPersonalRows(ctx, isEditing) {
+    const { student, formData } = ctx;
+    return [
+        { label: "Full Name", name: "name", value: student?.name, type: "text" },
+        { label: "Email", name: "email", value: formData?.email, type: "email" },
+        { label: "Phone", name: "phone", value: formData?.phone, type: "text" },
+        { label: "Date of Birth", name: "dob", value: formData?.dob, type: "date" },
+        { label: "Gender", name: "gender", value: formData?.gender, type: "text" },
+        { label: "Blood Group", name: "blood_group", value: formData?.blood_group, type: "text" },
+        { label: "Religion", name: "religion", value: formData?.religion, type: "text" },
+        { label: "Nationality", name: "nationality", value: formData?.nationality, type: "text" },
+        ...(isEditing ? [{ label: "New Password", name: "password", value: formData?.password, type: "password", placeholder: "Leave blank to keep same" }] : []),
+    ];
+}
+
+function getAcademicRows(ctx, isEditing) {
+    const { formData, prof, batches, courses } = ctx;
+    const rows = [
+        { label: "Student ID", name: "student_id_card_no", value: formData?.student_id_card_no, type: "text" },
+    ];
+    if (isEditing) {
+        rows.push(
+            { label: "Course", name: "course_id", value: formData?.course_id, type: "select", options: (courses || []).map(c => ({ value: c.id, label: c.title })) },
+            { label: "Batch", name: "current_batch_id", value: formData?.current_batch_id, type: "select", options: (batches || []).map(b => ({ value: b.id, label: `${b.course?.title || ''} - ${b.name}` })) },
+        );
+    } else {
+        rows.push(
+            { label: "Course", name: "course_id", value: formData?.course_name || prof?.batch?.course?.title || 'Not Assigned' },
+            { label: "Batch", name: "current_batch_id", value: formData?.batch_name || 'Not Assigned' },
+        );
+    }
+    rows.push(
+        { label: "Shift", name: "shift", value: formData?.shift, type: "text" },
+        { label: "Section", name: "section", value: formData?.section, type: "text" },
+        { label: "Group", name: "group_name", value: formData?.group_name, type: "text" },
+        { label: "Subject", name: "subject", value: formData?.subject, type: "text" },
+        { label: "Last School", name: "last_school", value: formData?.last_school, type: "text" },
+        { label: "SSC GPA", name: "ssc_gpa", value: formData?.ssc_gpa, type: "text" },
+        { label: "JSC GPA", name: "jsc_gpa", value: formData?.jsc_gpa, type: "text" },
+    );
+    return rows;
+}
+
+function getGuardianRows(ctx) {
+    const { formData } = ctx;
+    return [
+        { label: "Father's Name", name: "father_name", value: formData?.father_name, type: "text" },
+        { label: "Father's Occupation", name: "father_occupation", value: formData?.father_occupation, type: "text" },
+        { label: "Father's Mobile", name: "father_mobile", value: formData?.father_mobile, type: "text" },
+        { label: "Mother's Name", name: "mother_name", value: formData?.mother_name, type: "text" },
+        { label: "Mother's Occupation", name: "mother_occupation", value: formData?.mother_occupation, type: "text" },
+        { label: "Mother's Mobile", name: "mother_mobile", value: formData?.mother_mobile, type: "text" },
+    ];
+}
+
+function getAddressRows(ctx) {
+    const { formData } = ctx;
+    return [
+        { label: "Present Address", name: "present_address", value: formData?.present_address, type: "text" },
+        { label: "Permanent Address", name: "permanent_address", value: formData?.permanent_address, type: "text" },
+    ];
+}
+
+/* ─── INFOCARD COMPONENT ─── */
+
+function InfoCard({ title, rows, isEditing, onChange, formData }) {
+    if (!rows || !rows.length) return null;
     return (
-        <div className="flex flex-col w-full">
-            <span className="text-xs font-bold text-gray-500 uppercase">{label}</span>
-            {isEditing ? (
-                <input
-                    name={name} type={type} value={value || ''} onChange={onChange} placeholder={placeholder}
-                    className="border border-gray-300 p-2 rounded text-sm focus:border-[#1F4E79] focus:ring-1 focus:ring-[#1F4E79] outline-none mt-1 w-full"
-                />
-            ) : (
-                <span className="text-gray-900 font-medium text-sm mt-1 border-b border-gray-50 pb-1 w-full break-words whitespace-normal">
-                    {value || 'N/A'}
-                </span>
-            )}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-gray-200">
+            <div className="px-6 md:px-7 py-4 md:py-5 border-b border-gray-50">
+                <h3 className="text-sm md:text-base font-bold text-gray-900">{title}</h3>
+            </div>
+            <div className="px-6 md:px-7 py-5 md:py-6">
+                <div className="space-y-0 divide-y divide-gray-50">
+                    {rows.map((row, i) => (
+                        <div key={i} className="flex items-start gap-3 py-2.5 md:py-3 first:pt-0 last:pb-0">
+                            <div className="min-w-0 flex-1">
+                                <p className="text-[11px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0.5">
+                                    {row.label}
+                                </p>
+                                {isEditing ? (
+                                    row.type === "select" ? (
+                                        <select
+                                            name={row.name}
+                                            value={formData?.[row.name] || ''}
+                                            onChange={onChange}
+                                            className="w-full border border-gray-300 p-1.5 rounded text-sm bg-white outline-none focus:border-[#1F4E79] focus:ring-1 focus:ring-[#1F4E79]"
+                                        >
+                                            <option value="">Select {row.label}</option>
+                                            {(row.options || []).map(opt => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <input
+                                            name={row.name}
+                                            type={row.type || "text"}
+                                            value={formData?.[row.name] || ''}
+                                            onChange={onChange}
+                                            placeholder={row.placeholder || ""}
+                                            className="w-full border border-gray-300 p-1.5 rounded text-sm outline-none focus:border-[#1F4E79] focus:ring-1 focus:ring-[#1F4E79]"
+                                        />
+                                    )
+                                ) : (
+                                    <p className="text-sm md:text-[15px] text-gray-800 font-medium leading-snug break-words">
+                                        {row.value || "Not Available"}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Student;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\PaymentSetting;
+use App\Models\SiteSetting;
 use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -98,7 +99,7 @@ class SslCommerzController extends Controller
                 'detail' => $body['failedreason'] ?? 'Unknown error from SSLCommerz',
             ], 400);
         } catch (\Throwable $e) {
-            Log::error('SSLCommerz HTTP error: ' . $e->getMessage(), ['payment_id' => $payment->id]);
+            Log::error('SSLCommerz initiate request failed', ['payment_id' => $payment->id]);
             $payment->update(['status' => 'due']);
 
             return response()->json(['message' => 'Cannot connect to payment gateway'], 500);
@@ -259,6 +260,16 @@ class SslCommerzController extends Controller
         return true;
     }
 
+    /**
+     * Validate a transaction with SSLCommerz.
+     *
+     * NOTE: The SSLCommerz Order Validation API requires a GET request with
+     * store_id and store_passwd as query parameters. This is the official API
+     * specification — there is no POST or header-based alternative. Credentials
+     * are transmitted over HTTPS (encrypted in transit). The exposure risk is
+     * limited to server-side logging, which we mitigate by never logging the
+     * full URL or exception messages that could contain query parameters.
+     */
     private function validateWithSsl(array $data): ?array
     {
         $valId = $data['val_id'] ?? null;
@@ -282,7 +293,6 @@ class SslCommerzController extends Controller
             if (!$response->ok()) {
                 Log::warning('SSLCommerz validation returned non-OK response', [
                     'status' => $response->status(),
-                    'body' => $response->body(),
                 ]);
 
                 return null;
@@ -290,7 +300,7 @@ class SslCommerzController extends Controller
 
             return $response->json();
         } catch (\Throwable $e) {
-            Log::error('SSLCommerz validation HTTP error: ' . $e->getMessage());
+            Log::error('SSLCommerz validation request failed');
 
             return null;
         }
@@ -299,8 +309,9 @@ class SslCommerzController extends Controller
     private function gatewayPayload(Payment $payment, Student $student, array $config): array
     {
         $user = $student->user;
+        $siteSettings = SiteSetting::instance();
         $phone = $user->phone ?: $student->guardian_phone ?: '01700000000';
-        $address = $student->present_address ?: 'Dhaka, Bangladesh';
+        $address = $student->present_address ?: ($siteSettings->address ?: SiteSetting::DEFAULT_ADDRESS);
 
         return [
             'store_id' => $config['store_id'],
@@ -315,16 +326,16 @@ class SslCommerzController extends Controller
             'cus_name' => $user->name,
             'cus_email' => $user->email ?: 'student@uttoron.local',
             'cus_add1' => $address,
-            'cus_city' => 'Dhaka',
-            'cus_state' => 'Dhaka',
-            'cus_postcode' => '1207',
+            'cus_city' => 'Gangni',
+            'cus_state' => 'Meherpur',
+            'cus_postcode' => '7110',
             'cus_country' => 'Bangladesh',
             'cus_phone' => $phone,
             'ship_name' => $user->name,
             'ship_add1' => $address,
-            'ship_city' => 'Dhaka',
-            'ship_state' => 'Dhaka',
-            'ship_postcode' => '1207',
+            'ship_city' => 'Gangni',
+            'ship_state' => 'Meherpur',
+            'ship_postcode' => '7110',
             'ship_country' => 'Bangladesh',
             'product_name' => 'Tuition Fee - ' . $payment->month,
             'product_category' => 'Education',

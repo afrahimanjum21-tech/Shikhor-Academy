@@ -7,29 +7,39 @@ use Illuminate\Http\Request;
 
 class BatchController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return Batch::with('course')->latest()->get();
+        $perPage = max(5, min((int) $request->input('per_page', 15), 100));
+        return Batch::with('course')->latest()->paginate($perPage);
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required', // যেমন: Batch-A
+        $validated = $request->validate([
+            'name' => 'required',
             'course_id' => 'required|exists:courses,id',
             'start_time' => 'nullable',
             'end_time' => 'nullable',
             'capacity' => 'nullable|integer'
         ]);
 
-        Batch::create($request->all());
+        Batch::create($validated);
         return response()->json(['message' => 'Batch created successfully']);
     }
 
     public function update(Request $request, $id)
     {
         $batch = Batch::findOrFail($id);
-        $batch->update($request->all());
+
+        $validated = $request->validate([
+            'name' => 'required',
+            'course_id' => 'required|exists:courses,id',
+            'start_time' => 'nullable',
+            'end_time' => 'nullable',
+            'capacity' => 'nullable|integer'
+        ]);
+
+        $batch->update($validated);
         return response()->json(['message' => 'Batch updated successfully']);
     }
 

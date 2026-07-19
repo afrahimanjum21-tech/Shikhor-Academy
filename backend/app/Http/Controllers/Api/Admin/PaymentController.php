@@ -7,15 +7,21 @@ use App\Models\Attendance;
 use App\Models\ExamResult;
 use App\Models\Payment;
 use App\Models\Student;
+use App\Services\GradeService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class PaymentController extends Controller
 {
-    public function index()
+    public function __construct(
+        private readonly GradeService $gradeService,
+    ) {}
+
+    public function index(Request $request)
     {
-        return Payment::with('student.user')->latest()->get();
+        $perPage = max(5, min((int) $request->input('per_page', 15), 100));
+        return Payment::with('student.user')->latest()->paginate($perPage);
     }
 
     public function store(Request $request)
@@ -165,7 +171,16 @@ class PaymentController extends Controller
         $results = ExamResult::where('student_id', $student->id)
             ->with('exam.course')
             ->latest()
-            ->get();
+            ->get()
+            ->map(function ($result) {
+                // Add subject_marks to each result for frontend display
+                $result->subject_marks = $result->exam->subject_marks ?? [];
+                $percentage = $result->exam->total_marks > 0
+                    ? ($result->total_obtained / $result->exam->total_marks) * 100
+                    : 0;
+                $result->pass_fail = $this->gradeService->passFailStatus($percentage);
+                return $result;
+            });
 
         $summary = [
             'total_exams' => $results->count(),

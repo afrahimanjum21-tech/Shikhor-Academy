@@ -5,7 +5,7 @@ namespace Database\Seeders;
 use App\Models\Course;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
+
 use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
@@ -13,10 +13,10 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         User::updateOrCreate(
-            ['email' => 'admin@uttoron.com'],
+            ['email' => 'afrahimanjum21@gmail.com'],
             [
                 'name' => 'Uttoron Admin',
-                'password' => Hash::make('password123'),
+                'password' => 'password123',
                 'role' => 'super_admin',
                 'phone' => '01700000000',
                 'is_active' => true,
@@ -48,5 +48,14 @@ class DatabaseSeeder extends Seeder
                 ]
             );
         }
+
+        $this->call([
+            DepartmentSeeder::class,
+            FacultyCategorySeeder::class,
+            SubjectSeeder::class,
+            StudentSeeder::class,
+            TeacherSeeder::class,
+            FacultySeeder::class,
+        ]);
     }
 }

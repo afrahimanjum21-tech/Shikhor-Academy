@@ -1,24 +1,22 @@
 /**
- * 🔥 শেয়ার্ড কনফিগ — Backend URL স্বয়ংক্রিয়ভাবে নির্ধারণ করে
+ * 🔥 শেয়ার্ড কনফিগ — Backend URL (Vite proxy ব্যবহার করে)
  *
- * এটি যেকোনো নেটওয়ার্ক/IP-তে কাজ করে (localhost, LAN IP, production domain)।
- * ব্রাউজার যে হোস্ট থেকে সাইট খোলে, সেই হোস্টের সাথে port 8000 যুক্ত করে।
+ * ডিফল্টভাবে API কল ও ফাইল `/api` ও `/storage` পাথে যায়,
+ * আর Vite proxy সেগুলোকে ব্যাকএন্ডে (port 8000) ফরোয়ার্ড করে।
+ * এর ফলে শুধু port 5173 ওপেন থাকলেই সব ডিভাইস থেকে কাজ করে।
  *
- * উদাহরণ:
- *   - http://localhost:5173     → http://localhost:8000
- *   - http://192.168.0.101:5173 → http://192.168.0.101:8000
- *   - https://mysite.com        → https://mysite.com
+ * প্রোডাকশনে VITE_API_URL ও VITE_BACKEND_URL এনভ ভেরিয়েবল সেট করলেই হবে।
  */
 
 // ১) পূর্ণ API বেস URL (api.js-এর জন্য)
 export const API_BASE_URL =
     import.meta.env.VITE_API_URL ||
-    `${window.location.protocol}//${window.location.hostname}:8000/api`;
+    '/api';
 
 // ২) Backend এর রুট URL (ছবি/ফাইল পাথের জন্য, "/api" ছাড়া)
 export const BACKEND_URL =
     import.meta.env.VITE_BACKEND_URL ||
-    `${window.location.protocol}//${window.location.hostname}:8000`;
+    '';
 
 /**
  * রিলেটিভ পাথকে সম্পূর্ণ URL-এ রূপান্তর করে।
@@ -29,8 +27,22 @@ export const BACKEND_URL =
  */
 export const buildAssetUrl = (path) => {
     if (!path) return null;
+
+    // Strip localhost / 127.0.0.1 prefix from backend URLs so they become
+    // relative and go through the Vite proxy.  This avoids mixed-content
+    // warnings when the frontend is served over HTTPS, and also fixes
+    // broken images on network devices (where localhost wouldn't resolve).
+    const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?\//;
+    if (isLocal.test(path)) {
+        path = path.replace(isLocal, '');
+    }
+
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
     // ডবল স্ল্যাশ এড়াতে leading slash কেটে দেওয়া
     const cleanPath = path.replace(/^\/+/, '');
+    // storage/app/public/ এ থাকা ফাইলগুলোর জন্য /storage/ prefix দরকার (symlink)
+    if (cleanPath.startsWith('faculty/') || cleanPath.startsWith('teacher_photos/') || cleanPath.startsWith('gallery/') || cleanPath.startsWith('elearning/') || cleanPath.startsWith('assignments/') || cleanPath.startsWith('assignment_submissions/') || cleanPath.startsWith('study_materials/')) {
+        return `${BACKEND_URL}/storage/${cleanPath}`;
+    }
     return `${BACKEND_URL}/${cleanPath}`;
 };

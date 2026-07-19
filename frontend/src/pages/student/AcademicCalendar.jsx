@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { Calendar, Flag, BookOpen, Star, Clock } from "lucide-react";
+import { useNotificationCounts } from "../../context/NotificationContext";
+import logger from '../../services/logger';
 
 export default function AcademicCalendar() {
+    const { markViewed } = useNotificationCounts();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => { markViewed('calendar'); }, [markViewed]);
 
     useEffect(() => {
         api.get('/public/events')
            .then(res => setEvents(res.data))
-           .catch(err => console.error(err))
+           .catch(err => logger.error(err))
            .finally(() => setLoading(false));
     }, []);
 

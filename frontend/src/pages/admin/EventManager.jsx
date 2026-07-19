@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { Plus, Trash2, Calendar, Flag, BookOpen } from "lucide-react";
-
+import notify from "../../services/notification";
+import { useConfirm } from "../../components/common/ConfirmDialog";
+import logger from '../../services/logger';
+ 
 export default function EventManager() {
+    const confirm = useConfirm();
     const [events, setEvents] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState({ title: '', date: '', type: 'event', description: '' });
@@ -11,7 +15,7 @@ export default function EventManager() {
         try {
             const res = await api.get('/admin/events');
             setEvents(res.data);
-        } catch (err) { console.error(err); }
+        } catch (err) { logger.error(err); }
     };
 
     useEffect(() => { fetchEvents(); }, []);
@@ -20,15 +24,15 @@ export default function EventManager() {
         e.preventDefault();
         try {
             await api.post('/admin/events', formData);
-            alert("Event Added!");
+            notify.success("Event Added!");
             setIsModalOpen(false);
             setFormData({ title: '', date: '', type: 'event', description: '' });
             fetchEvents();
-        } catch (error) { alert("Failed"); }
+        } catch (error) { notify.error("Failed"); }
     };
 
     const handleDelete = async (id) => {
-        if(confirm("Delete event?")) {
+        const ok = await confirm({ title: "Delete Event?", message: "Delete event?", confirmText: "Delete", variant: "destructive" }); if (ok) {
             await api.delete(`/admin/events/${id}`);
             fetchEvents();
         }
@@ -42,17 +46,15 @@ export default function EventManager() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-[#1F4E79]">Academic Calendar</h1>
-                    <p className="text-sm text-gray-500">Manage holidays & events</p>
-                </div>
-                <button onClick={() => setIsModalOpen(true)} className="bg-[#1F4E79] text-white px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2">
-                    <Plus size={16} /> Add Event
-                </button>
+            <div className="section-header">
+              <div>
+                <h1 className="text-lg md:text-2xl font-bold text-[#1F4E79]">Academic Calendar</h1>
+                <p className="text-xs md:text-sm text-gray-500">Manage holidays & events</p>
+              </div>
+              <button onClick={() => setIsModalOpen(true)} className="bg-[#1F4E79] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 w-full sm:w-auto"><Plus size={16} /> Add Event</button>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 <table className="w-full text-left border-collapse">
                     <thead className="bg-gray-50 text-xs text-gray-500 uppercase font-bold border-b">
                         <tr>
@@ -83,8 +85,24 @@ export default function EventManager() {
                 </table>
             </div>
 
+            <div className="md:hidden space-y-2 mt-2">
+              {events.map(ev => (
+                <div key={ev.id} className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-gray-100 rounded-full flex-shrink-0">{getIcon(ev.type)}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-gray-800 text-sm">{ev.title}</p>
+                      {ev.description && <p className="text-xs text-gray-500 truncate">{ev.description}</p>}
+                      <p className="text-xs text-gray-600 mt-1">{new Date(ev.date).toDateString()} • <span className="uppercase font-bold">{ev.type}</span></p>
+                    </div>
+                    <button onClick={() => handleDelete(ev.id)} className="text-red-400 hover:text-red-600 p-1 flex-shrink-0"><Trash2 size={16}/></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50 responsive-modal">
                     <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-xl">
                         <h3 className="font-bold text-lg mb-4 text-[#1F4E79] border-b pb-2">Add Event</h3>
                         <form onSubmit={handleSubmit} className="space-y-3">
