@@ -8,15 +8,17 @@
  * প্রোডাকশনে VITE_API_URL ও VITE_BACKEND_URL এনভ ভেরিয়েবল সেট করলেই হবে।
  */
 
+const PROD = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+
 // ১) পূর্ণ API বেস URL (api.js-এর জন্য)
 export const API_BASE_URL =
     import.meta.env.VITE_API_URL ||
-    '/api';
+    (PROD ? 'https://backend-beta-gilt-22.vercel.app/api' : '/api');
 
 // ২) Backend এর রুট URL (ছবি/ফাইল পাথের জন্য, "/api" ছাড়া)
 export const BACKEND_URL =
     import.meta.env.VITE_BACKEND_URL ||
-    '';
+    (PROD ? 'https://backend-beta-gilt-22.vercel.app' : '');
 
 /**
  * রিলেটিভ পাথকে সম্পূর্ণ URL-এ রূপান্তর করে।
