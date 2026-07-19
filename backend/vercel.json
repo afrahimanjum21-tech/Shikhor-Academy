@@ -1,13 +1,11 @@
 {
   "buildCommand": "echo 'Build complete'",
-  "outputDirectory": ".",
   "functions": {
-    "api/**/*.js": {
-      "memory": 512,
+    "api/index.js": {
       "maxDuration": 30
     }
   },
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index.js" }
+    { "source": "/(.*)", "destination": "/api/index" }
   ]
 }
