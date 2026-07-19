@@ -1,0 +1,154 @@
+import models from '../../models/index.js';
+import { Op } from 'sequelize';
+
+export const index = async (req, res) => {
+  try {
+    const teacherId = req.user.id;
+    const { batch_id, date, session } = req.query;
+
+    const batchIds = await models.TeacherBatchAssignment.findAll({
+      where: { teacher_id: teacherId },
+      attributes: ['batch_id'],
+    }).then(rows => rows.map(r => r.batch_id));
+
+    const whereBatch = batch_id ? { batch_id } : { batch_id: { [Op.in]: batchIds } };
+
+    const batches = await models.Batch.findAll({
+      where: whereBatch,
+      include: [{ model: models.Course, attributes: ['id', 'title'] }],
+    });
+
+    const result = await Promise.all(batches.map(async (batch) => {
+      const students = await models.Student.findAll({
+        where: { current_batch_id: batch.id },
+        include: [{ model: models.User, attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'] }],
+      });
+
+      const attendanceWhere = { student_id: { [Op.in]: students.map(s => s.id) } };
+      if (date) attendanceWhere.date = date;
+      if (session) attendanceWhere.session = session;
+
+      const records = await models.Attendance.findAll({ where: attendanceWhere });
+
+      const recordMap = {};
+      records.forEach(r => { recordMap[r.student_id] = r; });
+
+      const sheet = students.map(student => ({
+        student,
+        attendance: recordMap[student.id] || null,
+      }));
+
+      return { batch, sheet };
+    }));
+
+    res.json({ data: result });
+  } catch (error) {
+    console.error('TeacherAttendanceController.index error:', error);
+    res.status(500).json({ message: 'Failed to fetch attendance', error: error.message });
+  }
+};
+
+export const getStudentsForAttendance = async (req, res) => {
+  try {
+    const teacherId = req.user.id;
+    const { batchId } = req.params;
+
+    const assignment = await models.TeacherBatchAssignment.findOne({
+      where: { teacher_id: teacherId, batch_id: batchId },
+    });
+
+    if (!assignment) {
+      return res.status(403).json({ message: 'You are not assigned to this batch' });
+    }
+
+    const batch = await models.Batch.findByPk(batchId, {
+      include: [{ model: models.Course, attributes: ['id', 'title'] }],
+    });
+
+    if (!batch) {
+      return res.status(404).json({ message: 'Batch not found' });
+    }
+
+    const students = await models.Student.findAll({
+      where: { current_batch_id: batchId },
+      include: [{ model: models.User, attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'] }],
+      order: [['admission_date', 'ASC']],
+    });
+
+    res.json({ data: { batch, students } });
+  } catch (error) {
+    console.error('TeacherAttendanceController.getStudentsForAttendance error:', error);
+    res.status(500).json({ message: 'Failed to fetch students', error: error.message });
+  }
+};
+
+export const markAttendance = async (req, res) => {
+  try {
+    const teacherId = req.user.id;
+    const { batch_id, date, session, records } = req.body;
+
+    if (!batch_id || !date || !records || !Array.isArray(records)) {
+      return res.status(400).json({ message: 'batch_id, date, and records array are required' });
+    }
+
+    const assignment = await models.TeacherBatchAssignment.findOne({
+      where: { teacher_id: teacherId, batch_id },
+    });
+
+    if (!assignment) {
+      return res.status(403).json({ message: 'You are not assigned to this batch' });
+    }
+
+    const attendanceData = records.map(record => ({
+      student_id: record.student_id,
+      course_id: batch_id,
+      date,
+      session: session || null,
+      status: record.status || 'present',
+    }));
+
+    await models.Attendance.bulkCreate(attendanceData, {
+      updateOnDuplicate: ['status', 'session'],
+    });
+
+    res.json({ message: 'Attendance marked successfully', count: attendanceData.length });
+  } catch (error) {
+    console.error('TeacherAttendanceController.markAttendance error:', error);
+    res.status(500).json({ message: 'Failed to mark attendance', error: error.message });
+  }
+};
+
+export const updateAttendance = async (req, res) => {
+  try {
+    const teacherId = req.user.id;
+    const { attendanceId } = req.params;
+    const { status, session } = req.body;
+
+    const attendance = await models.Attendance.findByPk(attendanceId, {
+      include: [{ model: models.Student, attributes: ['id', 'current_batch_id'] }],
+    });
+
+    if (!attendance) {
+      return res.status(404).json({ message: 'Attendance record not found' });
+    }
+
+    const assignment = await models.TeacherBatchAssignment.findOne({
+      where: { teacher_id: teacherId, batch_id: attendance.Student?.current_batch_id },
+    });
+
+    if (!assignment) {
+      return res.status(403).json({ message: 'You are not assigned to this student\'s batch' });
+    }
+
+    const updates = {};
+    if (status !== undefined) updates.status = status;
+    if (session !== undefined) updates.session = session;
+
+    await attendance.update(updates);
+
+    res.json({ message: 'Attendance updated successfully', data: attendance });
+  } catch (error) {
+    console.error('TeacherAttendanceController.updateAttendance error:', error);
+    res.status(500).json({ message: 'Failed to update attendance', error: error.message });
+  }
+};
