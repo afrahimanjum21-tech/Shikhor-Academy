@@ -3,7 +3,7 @@ import models from '../../models/index.js';
 export const index = async (req, res) => {
   try {
     const notices = await models.Notice.findAll({
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
     });
     res.json({ data: notices });
   } catch (error) {

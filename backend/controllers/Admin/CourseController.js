@@ -14,7 +14,7 @@ export const index = async (req, res) => {
   try {
     const courses = await models.Course.findAll({
       include: [{ model: models.CourseCategory }],
-      order: [['sorting_order', 'ASC'], ['created_at', 'DESC']],
+      order: [['sorting_order', 'ASC'], ['createdAt', 'DESC']],
     });
     res.json({ data: courses });
   } catch (error) {

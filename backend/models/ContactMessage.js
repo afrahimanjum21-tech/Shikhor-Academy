@@ -9,7 +9,7 @@ const ContactMessage = sequelize.define('ContactMessage', {
   phone: { type: DataTypes.STRING(20) },
   message: { type: DataTypes.TEXT, allowNull: false },
   is_read: { type: DataTypes.BOOLEAN, defaultValue: false },
-  deleted_at: { type: DataTypes.DATE },
-}, { paranoid: true });
+  deletedAt: { type: DataTypes.DATE },
 
+}, { paranoid: true });
 export default ContactMessage;

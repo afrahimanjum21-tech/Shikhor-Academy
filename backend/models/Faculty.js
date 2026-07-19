@@ -32,9 +32,9 @@ const Faculty = sequelize.define('Faculty', {
   meta_description: { type: DataTypes.TEXT },
   og_image: { type: DataTypes.STRING },
   user_id: { type: DataTypes.INTEGER },
-  deleted_at: { type: DataTypes.DATE },
-}, { paranoid: true });
+  deletedAt: { type: DataTypes.DATE },
 
+}, { paranoid: true });
 Faculty.associate = (models) => {
   Faculty.belongsTo(models.User, { foreignKey: 'user_id' });
   Faculty.belongsTo(models.Department, { foreignKey: 'department_id' });

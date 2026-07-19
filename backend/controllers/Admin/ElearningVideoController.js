@@ -35,7 +35,7 @@ const parseVideoUrl = (url) => {
 export const index = async (req, res) => {
   try {
     const videos = await models.ElearningVideo.findAll({
-      order: [['sort_order', 'ASC'], ['created_at', 'DESC']],
+      order: [['sort_order', 'ASC'], ['createdAt', 'DESC']],
     });
     res.json({ data: videos });
   } catch (error) {
@@ -47,7 +47,7 @@ export const publicIndex = async (req, res) => {
   try {
     const videos = await models.ElearningVideo.findAll({
       where: { is_active: true },
-      order: [['sort_order', 'ASC'], ['created_at', 'DESC']],
+      order: [['sort_order', 'ASC'], ['createdAt', 'DESC']],
     });
     res.json({ data: videos });
   } catch (error) {

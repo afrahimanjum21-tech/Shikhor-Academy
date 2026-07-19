@@ -4,7 +4,7 @@ export const index = async (req, res) => {
   try {
     const batches = await models.Batch.findAll({
       include: [{ model: models.Course, attributes: ['id', 'title'] }],
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
     });
     res.json({ data: batches });
   } catch (error) {

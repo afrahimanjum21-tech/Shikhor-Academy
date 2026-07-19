@@ -8,7 +8,7 @@ export const index = async (req, res) => {
     const offset = (page - 1) * limit;
     const search = req.query.search || '';
 
-    const whereClause = { role: 'student', deleted_at: null };
+    const whereClause = { role: 'student', deletedAt: null };
     if (search) {
       whereClause[Op.or] = [
         { name: { [Op.like]: `%${search}%` } },
@@ -30,7 +30,7 @@ export const index = async (req, res) => {
       ],
       offset,
       limit,
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
       distinct: true,
     });
 
@@ -99,7 +99,7 @@ export const show = async (req, res) => {
     const { id } = req.params;
 
     const user = await models.User.findOne({
-      where: { id, role: 'student', deleted_at: null },
+      where: { id, role: 'student', deletedAt: null },
       include: [
         {
           model: models.Student,
@@ -128,7 +128,7 @@ export const update = async (req, res) => {
     const { id } = req.params;
 
     const user = await models.User.findOne({
-      where: { id, role: 'student', deleted_at: null },
+      where: { id, role: 'student', deletedAt: null },
       include: [{ model: models.Student }],
     });
 
@@ -207,7 +207,7 @@ export const action = async (req, res) => {
     const { action_type } = req.body;
 
     const user = await models.User.findOne({
-      where: { id, role: 'student', deleted_at: null },
+      where: { id, role: 'student', deletedAt: null },
     });
 
     if (!user) {

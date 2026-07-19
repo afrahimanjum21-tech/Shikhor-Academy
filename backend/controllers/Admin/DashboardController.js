@@ -13,8 +13,8 @@ export const stats = async (req, res) => {
       pendingLeaves,
     ] = await Promise.all([
       models.Student.count(),
-      models.User.count({ where: { role: 'teacher', deleted_at: null } }),
-      models.Faculty.count({ where: { deleted_at: null } }),
+      models.User.count({ where: { role: 'teacher', deletedAt: null } }),
+      models.Faculty.count({ where: { deletedAt: null } }),
       models.Course.count(),
       models.Batch.count(),
       models.AdmissionApplication.count({ where: { status: 'pending' } }),

@@ -12,7 +12,7 @@ export const index = async (req, res) => {
     const documents = await models.StudentDocument.findAll({
       where: whereClause,
       include: [{ model: models.Student }],
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
     });
 
     res.json({ data: documents });
@@ -87,7 +87,7 @@ export const studentDocuments = async (req, res) => {
 
     const documents = await models.StudentDocument.findAll({
       where: { student_id: student.id },
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
     });
 
     res.json({ data: documents });

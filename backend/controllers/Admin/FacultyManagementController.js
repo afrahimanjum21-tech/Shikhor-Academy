@@ -226,7 +226,7 @@ export const restore = async (req, res) => {
       return res.status(404).json({ message: 'Faculty not found' });
     }
 
-    if (!faculty.deleted_at) {
+    if (!faculty.deletedAt) {
       return res.status(400).json({ message: 'Faculty is not deleted' });
     }
 

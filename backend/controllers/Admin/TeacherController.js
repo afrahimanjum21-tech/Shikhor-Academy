@@ -3,7 +3,7 @@ import models from '../../models/index.js';
 export const index = async (req, res) => {
   try {
     const teachers = await models.User.findAll({
-      where: { role: 'teacher', deleted_at: null },
+      where: { role: 'teacher', deletedAt: null },
       include: [
         { model: models.TeacherProfile },
         {
@@ -12,7 +12,7 @@ export const index = async (req, res) => {
         },
         { model: models.Faculty },
       ],
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
     });
 
     res.json({ data: teachers });
@@ -67,7 +67,7 @@ export const store = async (req, res) => {
 export const show = async (req, res) => {
   try {
     const teacher = await models.User.findOne({
-      where: { id: req.params.id, role: 'teacher', deleted_at: null },
+      where: { id: req.params.id, role: 'teacher', deletedAt: null },
       include: [
         { model: models.TeacherProfile },
         {
@@ -91,7 +91,7 @@ export const show = async (req, res) => {
 export const update = async (req, res) => {
   try {
     const teacher = await models.User.findOne({
-      where: { id: req.params.id, role: 'teacher', deleted_at: null },
+      where: { id: req.params.id, role: 'teacher', deletedAt: null },
       include: [
         { model: models.TeacherProfile },
         { model: models.Faculty },
@@ -147,7 +147,7 @@ export const update = async (req, res) => {
 export const updatePhoto = async (req, res) => {
   try {
     const teacher = await models.User.findOne({
-      where: { id: req.params.id, role: 'teacher', deleted_at: null },
+      where: { id: req.params.id, role: 'teacher', deletedAt: null },
     });
 
     if (!teacher) {
@@ -170,7 +170,7 @@ export const updatePhoto = async (req, res) => {
 export const destroy = async (req, res) => {
   try {
     const teacher = await models.User.findOne({
-      where: { id: req.params.id, role: 'teacher', deleted_at: null },
+      where: { id: req.params.id, role: 'teacher', deletedAt: null },
     });
 
     if (!teacher) {

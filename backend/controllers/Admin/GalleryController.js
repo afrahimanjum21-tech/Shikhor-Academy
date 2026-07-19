@@ -4,7 +4,7 @@ export const index = async (req, res) => {
   try {
     const albums = await models.Album.findAll({
       include: [{ model: models.GalleryImage }],
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
     });
     res.json({ data: albums });
   } catch (error) {

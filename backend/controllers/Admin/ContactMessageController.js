@@ -20,7 +20,7 @@ export const index = async (req, res) => {
 
     const { rows, count } = await models.ContactMessage.findAndCountAll({
       where: whereClause,
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
       offset,
       limit,
     });
@@ -46,9 +46,9 @@ export const trashed = async (req, res) => {
     const offset = (page - 1) * limit;
 
     const { rows, count } = await models.ContactMessage.findAndCountAll({
-      where: { deleted_at: { [Op.ne]: null } },
+      where: { deletedAt: { [Op.ne]: null } },
       paranoid: false,
-      order: [['deleted_at', 'DESC']],
+      order: [['deletedAt', 'DESC']],
       offset,
       limit,
     });
@@ -131,7 +131,7 @@ export const restore = async (req, res) => {
       return res.status(404).json({ message: 'Message not found' });
     }
 
-    if (!message.deleted_at) {
+    if (!message.deletedAt) {
       return res.status(400).json({ message: 'Message is not deleted' });
     }
 

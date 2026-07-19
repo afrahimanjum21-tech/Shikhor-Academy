@@ -14,7 +14,7 @@ const User = sequelize.define('User', {
   phone: { type: DataTypes.STRING(20) },
   is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
   profile_photo_path: { type: DataTypes.STRING },
-  deleted_at: { type: DataTypes.DATE },
+  deletedAt: { type: DataTypes.DATE },
 }, {
   paranoid: true,
   hooks: {
