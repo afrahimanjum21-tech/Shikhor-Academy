@@ -4,10 +4,18 @@ import { authorize } from '../middleware/role.js';
 import * as AuthController from '../controllers/Auth/AuthController.js';
 import * as NotificationController from '../controllers/NotificationController.js';
 import * as NotificationCountsController from '../controllers/NotificationCountsController.js';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  message: { message: 'Too many requests, please try again later' },
+});
+
 router.use(authenticate);
+router.use(authLimiter);
 
 router.post('/logout', AuthController.logout);
 router.get('/user', AuthController.user);
@@ -52,7 +60,13 @@ admin.get('/stats', DashboardController.stats);
 admin.get('/students', AdminUserController.index);
 admin.post('/students', uploadPhoto('students').single('photo'), AdminUserController.store);
 admin.get('/student/:id', AdminUserController.show);
-admin.put('/student/:id', AdminUserController.update);
+admin.put('/student/:id', uploadPhoto('students').single('photo'), AdminUserController.update);
+admin.post('/student/:id', uploadPhoto('students').single('photo'), (req, res) => {
+  if (req.body._method === 'PUT') {
+    return AdminUserController.update(req, res);
+  }
+  res.status(405).json({ message: 'Method not allowed' });
+});
 
 admin.get('/student/:id/documents', StudentDocumentController.index);
 admin.post('/student/:id/documents', uploadFile('student_documents').single('file'), StudentDocumentController.store);
@@ -63,6 +77,7 @@ admin.post('/student/:action/:id', AdminUserController.action);
 admin.get('/admissions', AdmissionManagerController.index);
 admin.post('/admission/approve/:id', AdmissionManagerController.approve);
 admin.post('/admission/bulk-action', AdmissionManagerController.bulkAction);
+admin.post('/admission/:action/:id', AdmissionManagerController.singleAction);
 
 admin.get('/batches', BatchController.index);
 admin.post('/batches', BatchController.store);
@@ -73,7 +88,13 @@ admin.delete('/batches/:id', BatchController.destroy);
 admin.get('/courses', CourseController.index);
 admin.post('/courses', uploadPhoto('courses').single('thumbnail'), CourseController.store);
 admin.get('/courses/:id', CourseController.show);
-admin.put('/courses/:id', CourseController.update);
+admin.put('/courses/:id', uploadPhoto('courses').single('thumbnail'), CourseController.update);
+admin.post('/courses/:id', uploadPhoto('courses').single('thumbnail'), (req, res) => {
+  if (req.body._method === 'PUT') {
+    return CourseController.update(req, res);
+  }
+  res.status(405).json({ message: 'Method not allowed' });
+});
 admin.delete('/courses/:id', CourseController.destroy);
 admin.post('/courses/:id/toggle-active', CourseController.toggleActive);
 admin.post('/courses/:id/toggle-featured', CourseController.toggleFeatured);
@@ -87,19 +108,25 @@ admin.post('/course-categories/:id/toggle-active', CourseCategoryController.togg
 admin.post('/course-categories/:id/toggle-visible', CourseCategoryController.toggleVisible);
 
 admin.get('/teachers', TeacherController.index);
-admin.post('/teachers', uploadPhoto('teacher_photos').single('photo'), TeacherController.store);
+admin.post('/teachers', TeacherController.store);
 admin.put('/teachers/:id', TeacherController.update);
 admin.post('/teachers/:id/photo', uploadPhoto('teacher_photos').single('photo'), TeacherController.updatePhoto);
 admin.delete('/teachers/:id', TeacherController.destroy);
 
-admin.post('/gallery/album', GalleryController.storeAlbum);
+admin.post('/gallery/album', uploadPhoto('gallery').single('thumbnail'), GalleryController.storeAlbum);
 admin.post('/gallery/:album/upload', uploadPhoto('gallery').array('images', 20), GalleryController.uploadImages);
 admin.delete('/gallery/album/:id', GalleryController.destroyAlbum);
 admin.delete('/gallery/:albumId/image/:imageId', GalleryController.destroyImage);
 
 admin.get('/e-learning', ElearningVideoController.index);
-admin.post('/e-learning', ElearningVideoController.store);
-admin.put('/e-learning/:id', ElearningVideoController.update);
+admin.post('/e-learning', uploadPhoto('elearning').single('thumbnail'), ElearningVideoController.store);
+admin.put('/e-learning/:id', uploadPhoto('elearning').single('thumbnail'), ElearningVideoController.update);
+admin.post('/e-learning/:id', uploadPhoto('elearning').single('thumbnail'), (req, res) => {
+  if (req.body._method === 'PUT') {
+    return ElearningVideoController.update(req, res);
+  }
+  res.status(405).json({ message: 'Method not allowed' });
+});
 admin.delete('/e-learning/:id', ElearningVideoController.destroy);
 
 admin.post('/notices', NoticeController.store);
@@ -146,7 +173,7 @@ admin.get('/payment-settings', PaymentSettingController.show);
 admin.post('/payment-settings', PaymentSettingController.update);
 
 admin.get('/site-settings', SiteSettingController.show);
-admin.post('/site-settings', SiteSettingController.update);
+admin.post('/site-settings', uploadPhoto('site').single('hero_bg_image'), SiteSettingController.update);
 
 admin.get('/student/:id/exam-results', PaymentController.studentExamResults);
 admin.get('/student/:id/attendance', PaymentController.studentAttendance);
@@ -243,13 +270,13 @@ teacher.post('/exams/marks', TeacherMarksController.saveMarks);
 
 teacher.get('/materials', TeacherMaterialController.index);
 teacher.post('/materials', uploadFile('materials').single('file'), TeacherMaterialController.store);
-teacher.put('/materials/:id', TeacherMaterialController.update);
+teacher.put('/materials/:id', uploadFile('materials').single('file'), TeacherMaterialController.update);
 teacher.delete('/materials/:id', TeacherMaterialController.destroy);
 
 teacher.get('/assignments', TeacherAssignmentController.index);
 teacher.post('/assignments', uploadFile('assignments').single('attachment'), TeacherAssignmentController.store);
 teacher.get('/assignments/:id', TeacherAssignmentController.show);
-teacher.put('/assignments/:id', TeacherAssignmentController.update);
+teacher.put('/assignments/:id', uploadFile('assignments').single('attachment'), TeacherAssignmentController.update);
 teacher.delete('/assignments/:id', TeacherAssignmentController.destroy);
 teacher.post('/assignments/submissions/:submissionId/grade', TeacherAssignmentController.gradeSubmission);
 

@@ -46,7 +46,18 @@ export const index = async (req, res) => {
       include: [{ model: models.Course, attributes: ['id', 'title', 'slug'] }],
       order: [['createdAt', 'DESC']],
     });
-    res.json({ data: admissions });
+
+    const data = admissions.map(a => {
+      const json = a.toJSON();
+      const courseTitle = json.course?.title || json.Course?.title || null;
+      if (!courseTitle && json.course_id) {
+        console.warn(`Admission #${json.id}: course_id=${json.course_id} but course data is missing`);
+      }
+      json.course_title = courseTitle;
+      return json;
+    });
+
+    res.json({ data });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch admissions', error: error.message });
   }
@@ -179,5 +190,35 @@ export const bulkAction = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Bulk action failed', error: error.message });
+  }
+};
+
+export const singleAction = async (req, res) => {
+  try {
+    const { id, action } = req.params;
+
+    const statusMap = { reject: 'rejected', hold: 'hold' };
+    const status = statusMap[action];
+
+    if (!status) {
+      return res.status(400).json({ message: 'Invalid action. Use: reject, hold' });
+    }
+
+    const admission = await models.AdmissionApplication.findByPk(id);
+    if (!admission) {
+      return res.status(404).json({ message: 'Admission application not found' });
+    }
+
+    if (admission.status !== 'pending') {
+      return res.status(400).json({ message: `Admission is already ${admission.status}` });
+    }
+
+    await admission.update({ status });
+
+    res.json({
+      message: `Admission ${status === 'rejected' ? 'rejected' : 'put on hold'} successfully`,
+    });
+  } catch (error) {
+    res.status(500).json({ message: `Failed to ${req.params.action} admission`, error: error.message });
   }
 };
