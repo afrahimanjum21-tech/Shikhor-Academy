@@ -72,7 +72,7 @@ export const approve = async (req, res) => {
       return res.status(404).json({ message: 'Admission application not found' });
     }
 
-    if (admission.status !== 'pending') {
+    if (!['pending', 'hold'].includes(admission.status)) {
       return res.status(400).json({ message: `Admission is already ${admission.status}` });
     }
 
@@ -209,7 +209,11 @@ export const singleAction = async (req, res) => {
       return res.status(404).json({ message: 'Admission application not found' });
     }
 
-    if (admission.status !== 'pending') {
+    if (action === 'hold' && admission.status !== 'pending') {
+      return res.status(400).json({ message: 'Can only hold pending applications' });
+    }
+
+    if (action === 'reject' && !['pending', 'hold'].includes(admission.status)) {
       return res.status(400).json({ message: `Admission is already ${admission.status}` });
     }
 
