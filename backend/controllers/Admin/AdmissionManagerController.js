@@ -135,28 +135,38 @@ export const bulkAction = async (req, res) => {
       return res.status(400).json({ message: 'ids must be a non-empty array' });
     }
 
-    if (!['approved', 'rejected', 'hold'].includes(action)) {
-      return res.status(400).json({ message: 'Invalid action. Use: approved, rejected, hold' });
+    const statusMap = { approve: 'approved', reject: 'rejected', hold: 'hold', approved: 'approved', rejected: 'rejected' };
+    const status = statusMap[action];
+
+    if (!status) {
+      return res.status(400).json({ message: 'Invalid action. Use: approve, reject, hold' });
     }
 
     const admissions = await models.AdmissionApplication.findAll({
       where: { id: { [Op.in]: ids } },
     });
 
-    const pendingAdmissions = admissions.filter(a => a.status === 'pending');
-    const pendingIds = pendingAdmissions.map(a => a.id);
+    let validStatuses;
+    if (status === 'hold') {
+      validStatuses = ['pending'];
+    } else {
+      validStatuses = ['pending', 'hold'];
+    }
 
-    if (pendingIds.length === 0) {
-      return res.status(400).json({ message: 'No pending admissions found among the provided ids' });
+    const validAdmissions = admissions.filter(a => validStatuses.includes(a.status));
+    const validIds = validAdmissions.map(a => a.id);
+
+    if (validIds.length === 0) {
+      return res.status(400).json({ message: `No applicable admissions found for ${action}` });
     }
 
     await models.AdmissionApplication.update(
-      { status: action },
-      { where: { id: { [Op.in]: pendingIds } } }
+      { status },
+      { where: { id: { [Op.in]: validIds } } }
     );
 
-    if (action === 'approved') {
-      for (const admission of pendingAdmissions) {
+    if (status === 'approved') {
+      for (const admission of validAdmissions) {
         const plainPassword = Math.random().toString(36).slice(2, 10) +
           Math.random().toString(36).toUpperCase().slice(2, 6);
         const hashedPassword = await bcrypt.hash(plainPassword, 12);
@@ -186,7 +196,7 @@ export const bulkAction = async (req, res) => {
     }
 
     res.json({
-      message: `${pendingIds.length} admission(s) updated to ${action}`,
+      message: `${validIds.length} admission(s) updated to ${status}`,
     });
   } catch (error) {
     res.status(500).json({ message: 'Bulk action failed', error: error.message });
