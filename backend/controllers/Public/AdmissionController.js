@@ -1,6 +1,7 @@
 import models from '../../models/index.js';
 import NotificationService from '../../services/NotificationService.js';
 import { sendEmail } from '../../services/mailer.js';
+import MediaService from '../../services/media/MediaService.js';
 
 export async function submit(req, res) {
   try {
@@ -17,7 +18,15 @@ export async function submit(req, res) {
       return res.status(400).json({ message: 'Full name and phone are required' });
     }
 
-    const photo_path = req.file ? req.file.path : null;
+    let photo_path = null;
+    if (req.file) {
+      try {
+        const uploadResult = await MediaService.upload(req.file, { folder: 'admission' });
+        photo_path = uploadResult.url;
+      } catch (uploadError) {
+        console.error('Photo upload failed (continuing without photo):', uploadError);
+      }
+    }
 
     const application = await models.AdmissionApplication.create({
       full_name, father_name, mother_name, phone, email, dob, address,
@@ -82,6 +91,6 @@ export async function submit(req, res) {
     });
   } catch (error) {
     console.error('Admission submit error:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: error.message || 'Internal server error' });
   }
 }
