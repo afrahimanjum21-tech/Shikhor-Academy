@@ -210,8 +210,7 @@ export const update = async (req, res) => {
 
 export const action = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { action_type } = req.body;
+    const { action: action_type, id } = req.params;
 
     const user = await models.User.findOne({
       where: { id, role: 'student', deletedAt: null },
