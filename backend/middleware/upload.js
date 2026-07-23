@@ -9,10 +9,17 @@ const ensureDir = (dir) => {
   }
 };
 
+const getUploadDir = (subDir) => {
+  return path.join('uploads', subDir);
+};
+
 const createStorage = (subDir) => {
+  if (process.env.VERCEL === '1') {
+    return multer.memoryStorage();
+  }
   return multer.diskStorage({
     destination: (req, file, cb) => {
-      const dir = path.join('uploads', subDir);
+      const dir = getUploadDir(subDir);
       ensureDir(dir);
       cb(null, dir);
     },
@@ -39,10 +46,10 @@ const fileFilter = (req, file, cb) => {
   else cb(new Error('File type not allowed'), false);
 };
 
-export const uploadPhoto = (subDir) => multer({
+export const uploadPhoto = (subDir, maxMB = 5) => multer({
   storage: createStorage(subDir),
   fileFilter: imageFilter,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: maxMB * 1024 * 1024 },
 });
 
 export const uploadFile = (subDir) => multer({

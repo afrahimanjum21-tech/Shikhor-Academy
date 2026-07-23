@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import api from "../services/api";
 import { Bell, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
-import HERO_IMAGE from "../images/hero-background.jpg";
+import PageBackground from "../components/common/PageBackground";
+
 
 export default function Notices() {
     const [notices, setNotices] = useState([]);
@@ -12,24 +13,18 @@ export default function Notices() {
     }, []);
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white font-sans">
-            {/* Hero Header */}
-            <div className="relative overflow-hidden">
-                <img src={HERO_IMAGE} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-br from-[#1F4E79]/90 via-[#1F4E79]/85 to-[#1F4E79]/90"></div>
-                <div className="max-w-7xl mx-auto px-4 py-16 md:py-20 relative z-10 text-center text-white">
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium mb-5 border border-white/20">
-                            <Bell size={16} /> Announcements
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-bold mb-4">Notice Board</h1>
-                        <p className="text-lg text-blue-100 max-w-2xl mx-auto">Latest updates and announcements from Uttoron Coaching Center</p>
-                    </motion.div>
-                </div>
+        <div className="min-h-screen font-sans relative overflow-hidden">
+            <PageBackground />
+            {/* Page Header */}
+            <div className="max-w-6xl mx-auto px-4 pt-12 pb-6 text-center">
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+                    <h1 className="text-4xl md:text-5xl font-bold text-[#1F4E79] mb-4">Notice Board</h1>
+                    <p className="text-lg text-gray-500 max-w-2xl mx-auto">Latest updates and announcements from Uttoron Coaching Center</p>
+                </motion.div>
             </div>
 
             {/* Content */}
-            <div className="max-w-6xl mx-auto px-4 -mt-10 relative z-20 pb-16">
+            <div className="max-w-6xl mx-auto px-4 pb-16">
                 {notices.length === 0 ? (
                     <div className="text-center py-20">
                         <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-4">

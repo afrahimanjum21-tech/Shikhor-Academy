@@ -15,7 +15,6 @@ api.interceptors.request.use((config) => {
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
-    // Let the browser set the correct Content-Type (with boundary) for file uploads
     if (config.data instanceof FormData) {
         if (typeof config.headers.delete === 'function') {
             config.headers.delete('Content-Type');
@@ -26,9 +25,6 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-// Endpoints whose `{ data: [...] }` wrapper should auto-unwrap to bare array.
-// __IMPORTANT__: Do NOT add `/admin/contact-messages` or similar paginated
-// endpoints here — those components need the pagination metadata at the top level.
 const UNWRAP_ENDPOINTS = [
     '/admin/students',
     '/admin/batches',
@@ -53,22 +49,31 @@ const UNWRAP_ENDPOINTS = [
     '/admin/student/',
 ];
 
-api.interceptors.response.use((response) => {
-    try {
-        if (
-            response.data &&
-            Array.isArray(response.data.data)
-        ) {
-            const url = (response.config && response.config.url) || '';
-            if (UNWRAP_ENDPOINTS.some(ep => url.includes(ep))) {
-                response.data = response.data.data;
+api.interceptors.response.use(
+    (response) => {
+        try {
+            if (
+                response.data &&
+                Array.isArray(response.data.data)
+            ) {
+                const url = (response.config && response.config.url) || '';
+                if (UNWRAP_ENDPOINTS.some(ep => url.includes(ep))) {
+                    response.data = response.data.data;
+                }
             }
+        } catch (e) {
+            // Silently ignore interceptor errors
         }
-    } catch (e) {
-        // Silently ignore interceptor errors — never let the interceptor
-        // break a valid response from reaching the caller.
+        return response;
+    },
+    (error) => {
+        if (error.response?.status === 401) {
+            localStorage.removeItem('ACCESS_TOKEN');
+            localStorage.removeItem('USER');
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
     }
-    return response;
-});
+);
 
 export default api;

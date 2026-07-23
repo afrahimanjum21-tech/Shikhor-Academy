@@ -1,4 +1,6 @@
 import models from '../../models/index.js';
+import MediaService from '../../services/media/MediaService.js';
+import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
 export const publicIndex = async (req, res) => {
   try {
@@ -33,13 +35,21 @@ export const uploadMaterial = async (req, res) => {
       return res.status(400).json({ message: 'title is required' });
     }
 
+    let file_path = null;
+    let file_type = null;
+    if (req.file) {
+      const uploadResult = await MediaService.upload(req.file, { bucket: 'materials', folder: 'general' });
+      file_path = uploadResult.url;
+      file_type = req.file.mimetype;
+    }
+
     const material = await models.StudyMaterial.create({
       title,
       description: description || null,
       batch_id: batch_id || null,
       subject: subject || null,
-      file_path: req.file ? req.file.path.replace(/\\/g, '/') : null,
-      file_type: req.file ? req.file.mimetype : null,
+      file_path,
+      file_type,
       uploaded_by: req.user.id,
       type: type || null,
       url: url || null,
@@ -69,6 +79,9 @@ export const destroy = async (req, res) => {
       return res.status(404).json({ message: 'Material not found' });
     }
 
+    if (material.file_path) {
+      await MediaDeleteService.deleteByUrl(material.file_path).catch(err => console.warn('Media cleanup:', err.message));
+    }
     await material.destroy();
 
     res.json({ message: 'Material deleted successfully' });

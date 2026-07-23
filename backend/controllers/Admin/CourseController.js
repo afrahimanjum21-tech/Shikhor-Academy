@@ -1,5 +1,7 @@
 import models from '../../models/index.js';
 import { Op } from 'sequelize';
+import MediaService from '../../services/media/MediaService.js';
+import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
 const makeSlug = (text) => {
   return text
@@ -8,6 +10,18 @@ const makeSlug = (text) => {
     .replace(/[\s_]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .trim();
+};
+
+const parseFeatures = (features) => {
+  if (!features) return null;
+  if (typeof features === 'string') {
+    try {
+      return JSON.parse(features);
+    } catch {
+      return features.split('\n').filter(f => f.trim()).map(f => f.trim());
+    }
+  }
+  return features;
 };
 
 export const index = async (req, res) => {
@@ -30,10 +44,7 @@ export const store = async (req, res) => {
       is_featured, is_active,
     } = req.body;
 
-    let thumbnail = null;
-    if (req.file) {
-      thumbnail = req.file.path.replace(/\\/g, '/');
-    }
+    const thumbnail = req.file ? (await MediaService.upload(req.file, { folder: 'courses' })).url : null;
 
     let slug = makeSlug(title);
     const existing = await models.Course.findOne({ where: { slug } });
@@ -50,7 +61,7 @@ export const store = async (req, res) => {
       fee,
       discount_price,
       thumbnail,
-      features: features ? (typeof features === 'string' ? JSON.parse(features) : features) : null,
+      features: parseFeatures(features),
       duration,
       seats,
       teacher_name,
@@ -114,7 +125,7 @@ export const update = async (req, res) => {
     if (category_id !== undefined) updateData.category_id = category_id;
     if (fee !== undefined) updateData.fee = fee;
     if (discount_price !== undefined) updateData.discount_price = discount_price;
-    if (features !== undefined) updateData.features = typeof features === 'string' ? JSON.parse(features) : features;
+    if (features !== undefined) updateData.features = parseFeatures(features);
     if (duration !== undefined) updateData.duration = duration;
     if (seats !== undefined) updateData.seats = seats;
     if (teacher_name !== undefined) updateData.teacher_name = teacher_name;
@@ -124,7 +135,11 @@ export const update = async (req, res) => {
     if (is_active !== undefined) updateData.is_active = is_active === true || is_active === 'true';
 
     if (req.file) {
-      updateData.thumbnail = req.file.path.replace(/\\/g, '/');
+      const result = await MediaService.upload(req.file, { folder: 'courses' });
+      if (course.thumbnail) {
+        await MediaDeleteService.deleteByUrl(course.thumbnail).catch(err => console.warn('Media cleanup:', err.message));
+      }
+      updateData.thumbnail = result.url;
     }
 
     await course.update(updateData);
@@ -156,6 +171,24 @@ export const destroy = async (req, res) => {
 
     const batchIds = course.Batches ? course.Batches.map(b => b.id) : [];
     if (batchIds.length > 0) {
+      const assignments = await models.Assignment.findAll({ where: { batch_id: { [Op.in]: batchIds } } });
+      for (const a of assignments) {
+        if (a.attachment_path) {
+          await MediaDeleteService.deleteByUrl(a.attachment_path).catch(err => console.warn('Media cleanup:', err.message));
+        }
+        const submissions = await models.AssignmentSubmission.findAll({ where: { assignment_id: a.id } });
+        for (const s of submissions) {
+          if (s.submission_file_path) {
+            await MediaDeleteService.deleteByUrl(s.submission_file_path).catch(err => console.warn('Media cleanup:', err.message));
+          }
+        }
+      }
+      const materials = await models.StudyMaterial.findAll({ where: { batch_id: { [Op.in]: batchIds } } });
+      for (const m of materials) {
+        if (m.file_path) {
+          await MediaDeleteService.deleteByUrl(m.file_path).catch(err => console.warn('Media cleanup:', err.message));
+        }
+      }
       await models.TeacherBatchAssignment.destroy({ where: { batch_id: { [Op.in]: batchIds } } });
       await models.Routine.destroy({ where: { batch_id: { [Op.in]: batchIds } } });
       await models.Assignment.destroy({ where: { batch_id: { [Op.in]: batchIds } } });
@@ -165,6 +198,10 @@ export const destroy = async (req, res) => {
     }
 
     await models.AdmissionApplication.update({ course_id: null }, { where: { course_id: course.id } });
+
+    if (course.thumbnail) {
+      await MediaDeleteService.deleteByUrl(course.thumbnail).catch(err => console.warn('Media cleanup:', err.message));
+    }
 
     await course.destroy();
 

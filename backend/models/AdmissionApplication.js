@@ -11,7 +11,7 @@ const AdmissionApplication = sequelize.define('AdmissionApplication', {
   dob: { type: DataTypes.DATEONLY },
   address: { type: DataTypes.TEXT },
   course_id: { type: DataTypes.INTEGER },
-  photo_path: { type: DataTypes.STRING },
+  photo_path: { type: DataTypes.TEXT },
   status: {
     type: DataTypes.ENUM('pending', 'approved', 'rejected', 'hold'),
     defaultValue: 'pending',

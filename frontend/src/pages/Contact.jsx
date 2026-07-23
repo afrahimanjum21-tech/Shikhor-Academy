@@ -3,6 +3,7 @@ import api from "../services/api";
 import { Loader2, Mail, MapPin, Phone, Clock, Send, ArrowUpRight, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import HERO_IMAGE from "../images/hero-background.jpg";
+import PageBackground from "../components/common/PageBackground";
 
 export default function Contact() {
     const [form, setForm] = useState({ name: "", email: "", subject: "", phone: "", message: "" });
@@ -52,41 +53,29 @@ export default function Contact() {
     };
 
     return (
-        <div className="min-h-screen" style={{ backgroundColor: "#F8FBFF", fontFamily: "Inter, sans-serif" }}>
-            {/* ===== HERO ===== */}
-            <section className="relative min-h-[400px] md:min-h-[460px] flex items-center overflow-hidden" style={{ backgroundColor: "#F8FBFF" }}>
-                <div className="relative z-10 w-full max-w-[1200px] mx-auto px-5 md:px-10 py-10 md:py-14">
+        <div className="min-h-screen relative overflow-hidden">
+            <PageBackground />
+            {/* ===== PAGE HEADER ===== */}
+            <div className="max-w-[1200px] mx-auto px-4 md:px-10 pt-12 pb-6 text-center">
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
                     <div className="flex flex-col lg:flex-row items-center gap-6 lg:justify-between">
-                        <motion.div className="flex-1 w-full max-w-[560px] text-center lg:text-left" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-semibold tracking-[0.12em] uppercase mb-3" style={{ backgroundColor: "#D9EAF8", color: "#123F73", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                                <Mail size={10} /> Get in Touch
-                            </div>
-                            <h1 className="text-[34px] sm:text-[42px] md:text-[60px] font-extrabold leading-[1.05] tracking-[-0.02em]" style={{ color: "#123F73", fontFamily: "'Poppins', sans-serif" }}>
-                                Reach Us
-                            </h1>
-                            <p className="text-sm md:text-base mt-3 md:mt-4 leading-relaxed max-w-[480px]" style={{ color: "#6B7B8C" }}>
+                        <div className="flex-1 text-center lg:text-left">
+                            <h1 className="text-[34px] sm:text-[42px] md:text-[48px] font-bold text-[#1F4E79] mb-3">Reach Us</h1>
+                            <p className="text-base md:text-lg text-gray-500 max-w-2xl mx-auto lg:mx-0">
                                 We're here to help you build your future. Whether you have questions about admission, courses, fees, class schedules, or academic guidance, our team is ready to assist you.
                             </p>
-                            <div className="flex flex-wrap justify-center lg:justify-start gap-3 mt-5 md:mt-6">
-                                <a href="#form" className="inline-flex items-center gap-2 px-5 md:px-7 py-2.5 md:py-3 text-xs md:text-sm font-semibold text-white rounded-lg transition-all duration-300 hover:scale-[1.03] shadow-md" style={{ backgroundColor: "#123F73", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                                    Send Message <ArrowRight size={14} />
-                                </a>
-                                <a href="tel:+8801804630810" className="inline-flex items-center gap-2 px-5 md:px-7 py-2.5 md:py-3 text-xs md:text-sm font-semibold rounded-lg border-2 transition-all duration-300 hover:scale-[1.03] hover:bg-white" style={{ color: "#123F73", borderColor: "#123F73", fontFamily: "'Plus Jakarta Sans', sans-serif", backgroundColor: "rgba(255,255,255,0.8)" }}>
-                                    Call Now <Phone size={14} />
-                                </a>
-                            </div>
-                        </motion.div>
-                        <motion.div className="flex-shrink-0 lg:-mt-10" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.15 }}>
-                            <div className="w-[170px] h-[170px] sm:w-[220px] sm:h-[220px] md:w-[320px] md:h-[320px] rounded-full overflow-hidden" style={{ border: "1px solid #D9EAF8" }}>
+                        </div>
+                        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.15 }} className="flex-shrink-0">
+                            <div className="w-[130px] h-[130px] sm:w-[170px] sm:h-[170px] rounded-full overflow-hidden" style={{ border: "1px solid #D9EAF8" }}>
                                 <img src={HERO_IMAGE} alt="Uttoron Coaching Center" className="w-full h-full object-cover" />
                             </div>
                         </motion.div>
                     </div>
-                </div>
-            </section>
+                </motion.div>
+            </div>
 
             {/* ===== FLOATING CARDS ===== */}
-            <section className="relative z-20 max-w-[1200px] mx-auto px-4 md:px-10 -mt-6 md:-mt-12 mb-8 md:mb-14">
+            <section className="max-w-[1200px] mx-auto px-4 md:px-10 mb-8 md:mb-14">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                     {floatingCards.map((card, i) => (
                         <motion.div
@@ -200,42 +189,46 @@ export default function Contact() {
                             ))}
                         </div>
 
-                        {settings?.map_embed_url && (
-                            <motion.div initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: 0.15 }} className="mt-6">
-                                <div className="relative rounded-xl overflow-hidden" style={{ boxShadow: "0 2px 20px -6px rgba(18,63,115,0.05)" }}>
-                                    <iframe src={settings.map_embed_url} width="100%" height="220" style={{ border: 0, display: "block" }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Our Location" className="md:h-[350px]" />
-                                    <div className="absolute top-3 left-3 px-3 py-1 rounded-md text-[10px] font-semibold tracking-[0.1em] uppercase shadow-sm" style={{ backgroundColor: "#FFFFFF", color: "#123F73", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Our Location</div>
-                                    {settings?.map_link && (
-                                        <a href={settings.map_link} target="_blank" rel="noopener noreferrer" className="absolute bottom-3 right-3 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-md text-[10px] font-semibold shadow-sm transition-all hover:scale-[1.03]" style={{ backgroundColor: "#123F73", color: "#FFFFFF", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                                            Get Directions <ArrowUpRight size={12} />
-                                        </a>
-                                    )}
-                                </div>
-                            </motion.div>
-                        )}
                     </motion.div>
                 </div>
+
+                {(() => {
+                    if (!settings?.map_embed_url) return null;
+                    const coords = settings.map_embed_url.match(/@([-\d.]+),([-\d.]+)/);
+                    const embedSrc = settings.map_embed_url.includes('/embed')
+                        ? settings.map_embed_url
+                        : coords
+                            ? `https://www.google.com/maps?q=${coords[1]},${coords[2]}&output=embed`
+                            : settings.map_embed_url;
+                    return (
+                    <motion.div initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: 0.15 }} className="mt-8">
+                        <div className="relative rounded-xl overflow-hidden" style={{ boxShadow: "0 2px 20px -6px rgba(18,63,115,0.05)" }}>
+                            <iframe src={embedSrc} width="100%" height="220" style={{ border: 0, display: "block" }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Our Location" className="md:h-[320px]" />
+                            <div className="absolute top-3 left-3 px-3 py-1 rounded-md text-[10px] font-semibold tracking-[0.1em] uppercase shadow-sm" style={{ backgroundColor: "#FFFFFF", color: "#123F73", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Our Location</div>
+                            {settings?.map_link && (
+                                <a href={settings.map_link} target="_blank" rel="noopener noreferrer" className="absolute bottom-3 right-3 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-md text-[10px] font-semibold shadow-sm transition-all hover:scale-[1.03]" style={{ backgroundColor: "#123F73", color: "#FFFFFF", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                                    Get Directions <ArrowUpRight size={12} />
+                                </a>
+                            )}
+                        </div>
+                    </motion.div>
+                    );
+                })()}
             </section>
 
             {/* ===== CTA ===== */}
             <section className="max-w-[1200px] mx-auto px-4 md:px-10 pb-14">
-                <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4 }} className="relative rounded-xl md:rounded-2xl px-6 md:px-8 py-10 md:py-14 text-center overflow-hidden" style={{ boxShadow: "0 2px 20px -6px rgba(18,63,115,0.05)" }}>
-                    <div className="absolute inset-0">
-                        <img src={HERO_IMAGE} alt="" className="w-full h-full object-cover" style={{ objectPosition: "center 35%" }} />
-                        <div className="absolute inset-0" style={{ backgroundColor: "rgba(18,63,115,0.85)" }} />
-                    </div>
-                    <div className="relative">
-                        <p className="text-[10px] font-semibold tracking-[0.15em] uppercase mb-2" style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Next Steps</p>
-                        <h2 className="text-xl md:text-[28px] font-bold text-white mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>Ready to Begin?</h2>
-                        <p className="text-xs md:text-sm max-w-lg mx-auto mb-5" style={{ color: "rgba(255,255,255,0.7)" }}>Contact us today to start your admission process or learn more about our programs.</p>
-                        <div className="flex flex-wrap justify-center gap-3">
-                            <a href="tel:+8801804630810" className="inline-flex items-center gap-2 px-6 py-2.5 bg-white text-sm font-semibold rounded-lg hover:scale-[1.03] transition-all duration-300 shadow-sm" style={{ color: "#123F73", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                                <Phone size={14} /> Call Us
-                            </a>
-                            <a href="mailto:afrahimanjum01@gmail.com" className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-lg border-2 border-white/30 hover:bg-white/10 hover:scale-[1.03] transition-all duration-300" style={{ color: "#FFFFFF", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                                <Mail size={14} /> Email Us
-                            </a>
-                        </div>
+                <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4 }} className="rounded-xl md:rounded-2xl px-6 md:px-8 py-10 md:py-14 text-center" style={{ background: "rgba(255,255,255,0.12)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.25)", boxShadow: "0 8px 32px rgba(0,0,0,0.08)" }}>
+                    <p className="text-[10px] font-semibold tracking-[0.15em] uppercase mb-2" style={{ color: "#6B7B8C", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Next Steps</p>
+                    <h2 className="text-xl md:text-[28px] font-bold mb-2" style={{ color: "#123F73", fontFamily: "'Poppins', sans-serif" }}>Ready to Begin?</h2>
+                    <p className="text-xs md:text-sm max-w-lg mx-auto mb-5" style={{ color: "#6B7B8C" }}>Contact us today to start your admission process or learn more about our programs.</p>
+                    <div className="flex flex-wrap justify-center gap-3">
+                        <a href="tel:+8801804630810" className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-lg hover:scale-[1.03] transition-all duration-300 shadow-sm" style={{ backgroundColor: "#123F73", color: "#FFFFFF", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                            <Phone size={14} /> Call Us
+                        </a>
+                        <a href="mailto:afrahimanjum01@gmail.com" className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-lg border-2 hover:scale-[1.03] transition-all duration-300" style={{ color: "#123F73", borderColor: "#123F73", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                            <Mail size={14} /> Email Us
+                        </a>
                     </div>
                 </motion.div>
             </section>

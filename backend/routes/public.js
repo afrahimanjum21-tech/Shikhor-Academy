@@ -21,7 +21,7 @@ const admissionLimiter = rateLimit({ windowMs: 60 * 1000, max: 2, message: { mes
 const contactLimiter = rateLimit({ windowMs: 60 * 1000, max: 3, message: { message: 'Too many requests, please try again later' } });
 
 router.post('/login', AuthController.login);
-router.post('/admission/submit', admissionLimiter, uploadPhoto('admission_photos').single('photo'), AdmissionController.submit);
+router.post('/admission/submit', admissionLimiter, uploadPhoto('admission_photos', 2).single('photo'), AdmissionController.submit);
 router.post('/contact', contactLimiter, ContactController.submit);
 
 router.get('/public/courses', CourseController.index);

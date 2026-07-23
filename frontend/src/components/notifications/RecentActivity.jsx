@@ -24,10 +24,9 @@ export default function RecentActivity({ limit = 5 }) {
 
     useEffect(() => {
         api.get("/recent-activity")
-            .then(({ data }) => {
-                const items = data.items || data || [];
+            .then(({ data: res }) => {
+                const items = res.data || res || [];
                 setActivities((Array.isArray(items) ? items : []).slice(0, limit));
-                setOldestCreatedAt(data.oldest_created_at || null);
             })
             .catch(() => {})
             .finally(() => setLoading(false));

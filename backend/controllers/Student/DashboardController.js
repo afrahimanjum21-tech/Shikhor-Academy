@@ -5,7 +5,13 @@ export const summary = async (req, res) => {
   try {
     const student = await models.Student.findOne({
       where: { user_id: req.user.id },
-      include: [{ model: models.Batch, attributes: ['id', 'name'] }],
+      include: [
+        {
+          model: models.Batch,
+          attributes: ['id', 'name'],
+          include: [{ model: models.Course, attributes: ['id', 'title'] }],
+        },
+      ],
     });
 
     if (!student) {
@@ -48,7 +54,10 @@ export const summary = async (req, res) => {
         student: {
           id: student.id,
           student_id_card_no: student.student_id_card_no,
-          batch: student.Batch,
+          card_no: student.student_id_card_no,
+          batch: student.Batch?.name || null,
+          course: student.Batch?.Course?.title || null,
+          admission_date: student.admission_date,
         },
         attendance: {
           total_classes: totalClasses,

@@ -12,7 +12,9 @@
     "setup": "node migrations/run.js && node seeders/run.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.7",
     "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.1",
@@ -23,6 +25,7 @@
     "pg": "^8.22.0",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.5",
+    "streamifier": "^0.1.1",
     "uuid": "^11.0.3"
   },
   "devDependencies": {

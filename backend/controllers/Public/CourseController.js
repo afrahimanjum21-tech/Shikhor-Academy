@@ -48,11 +48,28 @@ export async function stats(req, res) {
     const totalCourses = await models.Course.count({ where: { is_active: true } });
     const totalCategories = await models.CourseCategory.count({ where: { is_active: true } });
     const totalBatches = await models.Batch.count();
+    const totalStudents = await models.Student.count({
+      include: [{
+        model: models.User,
+        as: 'User',
+        where: { is_active: true },
+      }],
+    });
+    const totalTeachers = await models.TeacherProfile.count({
+      include: [{
+        model: models.User,
+        as: 'User',
+        where: { is_active: true },
+      }],
+    });
+    const siteSetting = await models.SiteSetting.findByPk(1);
 
     res.json({
+      courses: totalCourses,
       total_courses: totalCourses,
-      total_categories: totalCategories,
-      total_batches: totalBatches,
+      students: totalStudents || 0,
+      teachers: totalTeachers || 0,
+      success_rate: siteSetting?.success_rate || 0,
     });
   } catch (error) {
     console.error('Course stats error:', error);

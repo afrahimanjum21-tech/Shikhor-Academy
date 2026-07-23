@@ -1,4 +1,6 @@
 import models from '../../models/index.js';
+import MediaService from '../../services/media/MediaService.js';
+import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
 const parseVideoUrl = (url) => {
   const result = { video_id: null, platform: null };
@@ -68,10 +70,7 @@ export const store = async (req, res) => {
 
     const { video_id, platform } = parseVideoUrl(video_url);
 
-    let thumbnail_path = null;
-    if (req.file) {
-      thumbnail_path = req.file.path.replace(/\\/g, '/');
-    }
+    const thumbnail_path = req.file ? (await MediaService.upload(req.file, { folder: 'elearning' })).url : null;
 
     const video = await models.ElearningVideo.create({
       title,
@@ -133,7 +132,11 @@ export const update = async (req, res) => {
     }
 
     if (req.file) {
-      updateData.thumbnail_path = req.file.path.replace(/\\/g, '/');
+      const result = await MediaService.upload(req.file, { folder: 'elearning' });
+      if (video.thumbnail_path) {
+        await MediaDeleteService.deleteByUrl(video.thumbnail_path).catch(err => console.warn('Media cleanup:', err.message));
+      }
+      updateData.thumbnail_path = result.url;
     }
 
     await video.update(updateData);
@@ -151,6 +154,9 @@ export const destroy = async (req, res) => {
       return res.status(404).json({ message: 'Video not found' });
     }
 
+    if (video.thumbnail_path) {
+      await MediaDeleteService.deleteByUrl(video.thumbnail_path).catch(err => console.warn('Media cleanup:', err.message));
+    }
     await video.destroy();
 
     res.json({ message: 'Video deleted successfully' });

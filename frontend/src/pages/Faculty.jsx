@@ -4,8 +4,9 @@ import { buildAssetUrl } from "../services/config";
 import { User, Search, Star, BookOpen, Award, Briefcase, GraduationCap, ArrowRight, Users2, SlidersHorizontal, X, Mail, Phone, BadgeCheck, ExternalLink, FlaskConical } from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import HERO_IMAGE from "../images/hero-background.jpg";
+
 import logger from '../services/logger';
+import PageBackground from "../components/common/PageBackground";
 
 // Brand-colored social SVG icons
 const SocialIcons = {
@@ -91,26 +92,19 @@ export default function Faculty() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-            {/* Hero Header */}
-            <div className="relative overflow-hidden">
-                <img src={HERO_IMAGE} alt=""
-                    className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-br from-[#1F4E79]/90 via-[#1F4E79]/85 to-[#1F4E79]/90"></div>
-                <div className="max-w-7xl mx-auto px-4 py-20 relative z-10 text-center text-white">
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium mb-5 border border-white/20">
-                            <Users2 size={16} /> Our Faculty Members
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-bold mb-4">Meet Our Expert Faculty</h1>
-                        <p className="text-lg text-blue-100 max-w-2xl mx-auto">
-                            Dedicated mentors with proven expertise, committed to guiding you toward academic excellence
-                        </p>
-                    </motion.div>
-                </div>
+        <div className="min-h-screen relative overflow-hidden">
+            <PageBackground />
+            {/* Page Header */}
+            <div className="max-w-6xl mx-auto px-4 pt-12 pb-6 text-center">
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+                    <h1 className="text-4xl md:text-5xl font-bold text-[#1F4E79] mb-4">Meet Our Expert Faculty</h1>
+                    <p className="text-lg text-gray-500 max-w-2xl mx-auto">
+                        Dedicated mentors with proven expertise, committed to guiding you toward academic excellence
+                    </p>
+                </motion.div>
             </div>
 
-            <div className="max-w-6xl mx-auto px-4 -mt-10 relative z-20 pb-16">
+            <div className="max-w-6xl mx-auto px-4 pb-16">
                 {/* Search & Filters */}
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
                     <div className="flex flex-wrap items-end justify-between gap-y-3">

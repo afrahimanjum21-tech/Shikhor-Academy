@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Award, TrendingUp, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import api from "../services/api";
-import HERO_IMAGE from "../images/hero-background.jpg";
-
+import PageBackground from "../components/common/PageBackground";
 export default function About() {
     const [settings, setSettings] = useState(null);
 
@@ -19,30 +18,24 @@ export default function About() {
     const stats = [
         { icon: Users, value: settings?.student_count ?? 0, label: "Happy Students", className: "bg-blue-50 border-blue-100 text-blue-700" },
         { icon: Award, value: settings?.years_experience ?? 0, label: "Years Experience", className: "bg-emerald-50 border-emerald-100 text-emerald-700" },
-        { icon: TrendingUp, value: settings?.success_rate || "0%", label: "Success Rate", className: "bg-amber-50 border-amber-100 text-amber-700" },
+        { icon: TrendingUp, value: settings?.success_rate != null ? `${settings.success_rate}%` : "0%", label: "Success Rate", className: "bg-amber-50 border-amber-100 text-amber-700" },
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white font-sans">
-            {/* Hero Header */}
-            <div className="relative overflow-hidden">
-                <img src={HERO_IMAGE} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-br from-[#1F4E79]/90 via-[#1F4E79]/85 to-[#1F4E79]/90"></div>
-                <div className="max-w-7xl mx-auto px-4 py-16 md:py-20 relative z-10 text-center text-white">
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium mb-5 border border-white/20">
-                            <Users size={16} /> About Us
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-bold mb-4">{title || "About Uttoron Coaching Centre"}</h1>
-                        <p className="text-lg text-blue-100 max-w-2xl mx-auto">
-                            {subtitle || "Inspiring Excellence. Building Confidence. Shaping the Future."}
-                        </p>
-                    </motion.div>
-                </div>
+        <div className="min-h-screen font-sans relative overflow-hidden">
+            <PageBackground />
+            {/* Page Header */}
+            <div className="max-w-6xl mx-auto px-4 pt-12 pb-6 text-center">
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+                    <h1 className="text-4xl md:text-5xl font-bold text-[#1F4E79] mb-4">{title || "About Uttoron Coaching Centre"}</h1>
+                    <p className="text-lg text-gray-500 max-w-2xl mx-auto">
+                        {subtitle || "Inspiring Excellence. Building Confidence. Shaping the Future."}
+                    </p>
+                </motion.div>
             </div>
 
             {/* Stats + Content */}
-            <div className="max-w-6xl mx-auto px-4 -mt-10 relative z-20 pb-16">
+            <div className="max-w-6xl mx-auto px-4 pb-16">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
                     {stats.map((stat, idx) => (
                         <motion.div key={stat.label}

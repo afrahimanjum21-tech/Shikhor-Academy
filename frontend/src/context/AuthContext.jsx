@@ -31,17 +31,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(data);
                 localStorage.setItem('USER', JSON.stringify(data));
             })
-            .catch((error) => {
-                // Only logout on 401 (unauthorized) errors
-                if (error.response?.status === 401) {
-                    setUser(null);
-                    setToken(null);
-                    localStorage.removeItem('ACCESS_TOKEN');
-                    localStorage.removeItem('USER');
-                }
-                // For other errors (network, server error), keep user logged in
-                logger.error('Failed to fetch user data:', error);
-            });
+            .catch(() => {});
     }, [token]);
 
     const login = async (credentials) => {

@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 
 import LOGO_IMAGE from "../../images/hero-background.jpg";
 
@@ -92,77 +92,73 @@ export default function Navbar() {
             </div>
 
             {/* Mobile Menu */}
-            <AnimatePresence>
-                {isOpen && (
-                    <>
-                        {/* Backdrop */}
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.25 }}
-                            className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-                            onClick={() => setIsOpen(false)}
-                        />
+            {isOpen && (
+                <>
+                    {/* Backdrop */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.25 }}
+                        className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+                        onClick={() => setIsOpen(false)}
+                    />
 
-                        {/* Menu Panel */}
+                    {/* Menu Panel */}
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        transition={{ duration: 0.35, ease: "easeInOut" }}
+                        className="lg:hidden bg-white border-t border-gray-100 overflow-hidden shadow-xl relative z-50"
+                    >
                         <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.35, ease: "easeInOut" }}
-                            className="lg:hidden bg-white border-t border-gray-100 overflow-hidden shadow-xl relative z-50"
+                            variants={stagger}
+                            initial="initial"
+                            animate="animate"
+                            className="px-4 py-4 space-y-1"
                         >
-                            <motion.div
-                                variants={stagger}
-                                initial="initial"
-                                animate="animate"
-                                className="px-4 py-4 space-y-1"
-                            >
-                                {navItems.map((item) => (
-                                    <motion.div key={item} variants={fadeIn}>
-                                        <Link
-                                            to={item === "Home" ? "/" : `/${item.toLowerCase()}`}
-                                            onClick={() => setIsOpen(false)}
-                                            className="block px-4 py-3 text-gray-700 hover:bg-[#1F4F78] hover:text-white rounded-lg font-medium transition-all duration-200"
-                                        >
-                                            {item}
-                                        </Link>
-                                    </motion.div>
-                                ))}
-
-                                <motion.div variants={fadeIn} className="pt-2 space-y-2">
-                                    {user ? (
-                                        <>
-                                            <Link
-                                                to="/admin/dashboard"
-                                                onClick={() => setIsOpen(false)}
-                                                className="block text-center bg-[#1F4F78] text-white py-3 rounded-lg font-bold hover:opacity-90 transition"
-                                            >
-                                                Dashboard
-                                            </Link>
-                                            <button
-                                                onClick={handleLogout}
-                                                className="block w-full text-center border border-red-300 text-red-600 py-3 rounded-lg font-bold hover:bg-red-50 transition"
-                                            >
-                                                Logout
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <Link
-                                            to="/login"
-                                            onClick={() => setIsOpen(false)}
-                                            className="block text-center border border-[#1F4F78] text-[#1F4F78] py-3 rounded-lg font-bold hover:bg-[#1F4F78] hover:text-white transition"
-                                        >
-                                            Login
-                                        </Link>
-                                    )}
+                            {navItems.map((item) => (
+                                <motion.div key={item} variants={fadeIn}>
+                                    <Link
+                                        to={item === "Home" ? "/" : `/${item.toLowerCase()}`}
+                                        onClick={() => setIsOpen(false)}
+                                        className="block px-4 py-3 text-gray-700 hover:bg-[#1F4F78] hover:text-white rounded-lg font-medium transition-all duration-200"
+                                    >
+                                        {item}
+                                    </Link>
                                 </motion.div>
+                            ))}
+
+                            <motion.div variants={fadeIn} className="pt-2 space-y-2">
+                                {user ? (
+                                    <>
+                                        <Link
+                                            to="/admin/dashboard"
+                                            onClick={() => setIsOpen(false)}
+                                            className="block text-center bg-[#1F4F78] text-white py-3 rounded-lg font-bold hover:opacity-90 transition"
+                                        >
+                                            Dashboard
+                                        </Link>
+                                        <button
+                                            onClick={handleLogout}
+                                            className="block w-full text-center border border-red-300 text-red-600 py-3 rounded-lg font-bold hover:bg-red-50 transition"
+                                        >
+                                            Logout
+                                        </button>
+                                    </>
+                                ) : (
+                                    <Link
+                                        to="/login"
+                                        onClick={() => setIsOpen(false)}
+                                        className="block text-center border border-[#1F4F78] text-[#1F4F78] py-3 rounded-lg font-bold hover:bg-[#1F4F78] hover:text-white transition"
+                                    >
+                                        Login
+                                    </Link>
+                                )}
                             </motion.div>
                         </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
+                    </motion.div>
+                </>
+            )}
         </nav>
     );
 }

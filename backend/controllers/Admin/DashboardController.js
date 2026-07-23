@@ -3,14 +3,15 @@ import models from '../../models/index.js';
 export const stats = async (req, res) => {
   try {
     const [
-      students,
-      teachers,
-      faculty,
-      courses,
-      batches,
-      pendingAdmissions,
-      pendingPayments,
-      pendingLeaves,
+      total_students,
+      total_teachers,
+      total_faculty,
+      total_courses,
+      total_batches,
+      pending_admissions,
+      pending_payments,
+      pending_leave_requests,
+      hold_admissions,
     ] = await Promise.all([
       models.Student.count(),
       models.User.count({ where: { role: 'teacher', deletedAt: null } }),
@@ -20,17 +21,19 @@ export const stats = async (req, res) => {
       models.AdmissionApplication.count({ where: { status: 'pending' } }),
       models.Payment.count({ where: { status: 'pending' } }),
       models.Attendance.count({ where: { leave_status: 'pending' } }),
+      models.AdmissionApplication.count({ where: { status: 'hold' } }),
     ]);
 
     res.json({
-      students,
-      teachers,
-      faculty,
-      courses,
-      batches,
-      pending_admissions: pendingAdmissions,
-      pending_payments: pendingPayments,
-      pending_leaves: pendingLeaves,
+      total_students,
+      total_teachers,
+      total_faculty,
+      total_courses,
+      total_batches,
+      pending_admissions,
+      pending_payments,
+      pending_leave_requests,
+      hold_admissions,
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch dashboard stats', error: error.message });

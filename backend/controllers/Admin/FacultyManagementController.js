@@ -1,5 +1,7 @@
 import models from '../../models/index.js';
 import { Op } from 'sequelize';
+import MediaService from '../../services/media/MediaService.js';
+import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
 const makeSlug = (text) => {
   return text
@@ -74,13 +76,16 @@ export const store = async (req, res) => {
     let cover_photo_path = null;
     if (req.files) {
       if (req.files.profile_photo) {
-        profile_photo_path = req.files.profile_photo[0].path.replace(/\\/g, '/');
+        const result = await MediaService.upload(req.files.profile_photo[0], { folder: 'faculty' });
+        profile_photo_path = result.url;
       }
       if (req.files.cover_photo) {
-        cover_photo_path = req.files.cover_photo[0].path.replace(/\\/g, '/');
+        const result = await MediaService.upload(req.files.cover_photo[0], { folder: 'faculty' });
+        cover_photo_path = result.url;
       }
     } else if (req.file) {
-      profile_photo_path = req.file.path.replace(/\\/g, '/');
+      const result = await MediaService.upload(req.file, { folder: 'faculty' });
+      profile_photo_path = result.url;
     }
 
     const faculty = await models.Faculty.create({
@@ -175,13 +180,25 @@ export const update = async (req, res) => {
 
     if (req.files) {
       if (req.files.profile_photo) {
-        updateData.profile_photo_path = req.files.profile_photo[0].path.replace(/\\/g, '/');
+        const result = await MediaService.upload(req.files.profile_photo[0], { folder: 'faculty' });
+        if (faculty.profile_photo_path) {
+          await MediaDeleteService.deleteByUrl(faculty.profile_photo_path).catch(err => console.warn('Media cleanup:', err.message));
+        }
+        updateData.profile_photo_path = result.url;
       }
       if (req.files.cover_photo) {
-        updateData.cover_photo_path = req.files.cover_photo[0].path.replace(/\\/g, '/');
+        const result = await MediaService.upload(req.files.cover_photo[0], { folder: 'faculty' });
+        if (faculty.cover_photo_path) {
+          await MediaDeleteService.deleteByUrl(faculty.cover_photo_path).catch(err => console.warn('Media cleanup:', err.message));
+        }
+        updateData.cover_photo_path = result.url;
       }
     } else if (req.file) {
-      updateData.profile_photo_path = req.file.path.replace(/\\/g, '/');
+      const result = await MediaService.upload(req.file, { folder: 'faculty' });
+      if (faculty.profile_photo_path) {
+        await MediaDeleteService.deleteByUrl(faculty.profile_photo_path).catch(err => console.warn('Media cleanup:', err.message));
+      }
+      updateData.profile_photo_path = result.url;
     }
 
     await faculty.update(updateData);
@@ -211,6 +228,12 @@ export const destroy = async (req, res) => {
       return res.status(404).json({ message: 'Faculty not found' });
     }
 
+    if (faculty.profile_photo_path) {
+      await MediaDeleteService.deleteByUrl(faculty.profile_photo_path).catch(err => console.warn('Media cleanup:', err.message));
+    }
+    if (faculty.cover_photo_path) {
+      await MediaDeleteService.deleteByUrl(faculty.cover_photo_path).catch(err => console.warn('Media cleanup:', err.message));
+    }
     await faculty.destroy();
 
     res.json({ message: 'Faculty deleted successfully' });
@@ -255,6 +278,12 @@ export const forceDelete = async (req, res) => {
     await models.FacultySubject.destroy({ where: { faculty_id: faculty.id }, force: true });
     await models.FacultyBatch.destroy({ where: { faculty_id: faculty.id }, force: true });
 
+    if (faculty.profile_photo_path) {
+      await MediaDeleteService.deleteByUrl(faculty.profile_photo_path).catch(err => console.warn('Media cleanup:', err.message));
+    }
+    if (faculty.cover_photo_path) {
+      await MediaDeleteService.deleteByUrl(faculty.cover_photo_path).catch(err => console.warn('Media cleanup:', err.message));
+    }
     await faculty.destroy({ force: true });
 
     res.json({ message: 'Faculty permanently deleted' });

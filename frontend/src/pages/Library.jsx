@@ -6,7 +6,8 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useNotificationCounts } from "../context/NotificationContext";
-import HERO_IMAGE from "../images/hero-background.jpg";
+import PageBackground from "../components/common/PageBackground";
+
 
 export default function Library({ requireAuth = false }) {
     const { user, token } = useAuth();
@@ -27,26 +28,19 @@ export default function Library({ requireAuth = false }) {
     const isLoggedIn = !!token;
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-            {/* Hero Header */}
-            <div className="relative overflow-hidden">
-                <img src={HERO_IMAGE} alt=""
-                    className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-br from-[#1F4E79]/90 via-[#1F4E79]/85 to-[#1F4E79]/90"></div>
-                <div className="max-w-7xl mx-auto px-4 py-16 md:py-20 relative z-10 text-center text-white">
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium mb-5 border border-white/20">
-                            <BookOpen size={16} /> Digital Library
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-bold mb-4">Digital Library</h1>
-                        <p className="text-lg text-blue-100 max-w-2xl mx-auto">
-                            Download study notes and lecture sheets to enhance your learning.
-                        </p>
-                    </motion.div>
-                </div>
+        <div className="min-h-screen relative overflow-hidden">
+            <PageBackground />
+            {/* Page Header */}
+            <div className="max-w-7xl mx-auto px-4 pt-12 pb-6 text-center">
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+                    <h1 className="text-4xl md:text-5xl font-bold text-[#1F4E79] mb-4">Digital Library</h1>
+                    <p className="text-lg text-gray-500 max-w-2xl mx-auto">
+                        Download study notes and lecture sheets to enhance your learning.
+                    </p>
+                </motion.div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 -mt-10 relative z-20 pb-16">
+            <div className="max-w-7xl mx-auto px-4 pb-16">
                 {/* Login Prompt - only for public locked page & not logged in */}
                 {isPublicLockedPage && !isLoggedIn && (
                     <motion.div

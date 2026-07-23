@@ -1,8 +1,8 @@
 {
-  "buildCommand": "echo 'Build complete'",
+  "buildCommand": "node migrations/run.js",
   "functions": {
     "api/index.js": {
-      "maxDuration": 30
+      "maxDuration": 60
     }
   },
   "rewrites": [

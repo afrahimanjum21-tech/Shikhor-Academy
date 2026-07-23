@@ -1,5 +1,6 @@
 import models from '../../models/index.js';
 import { Op } from 'sequelize';
+import MediaService from '../../services/media/MediaService.js';
 
 export const index = async (req, res) => {
   try {
@@ -63,10 +64,16 @@ export const submit = async (req, res) => {
       return res.status(400).json({ message: 'You have already submitted this assignment' });
     }
 
+    let submission_file_path = null;
+    if (req.file) {
+      const uploadResult = await MediaService.upload(req.file, { bucket: 'submissions', folder: 'assignments' });
+      submission_file_path = uploadResult.url;
+    }
+
     const submission = await models.AssignmentSubmission.create({
       assignment_id: assignmentId,
       student_id: student.id,
-      submission_file_path: req.file ? req.file.path.replace(/\\/g, '/') : null,
+      submission_file_path,
       submission_text: submission_text || null,
       status: 'submitted',
       submitted_at: new Date(),

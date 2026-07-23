@@ -6,7 +6,8 @@ async function runSeeders() {
   try {
     console.log('Running seeders...');
 
-    const password = await bcrypt.hash('password123', 12);
+    const seederPass = process.env.SEEDER_PASSWORD || 'password123';
+    const password = await bcrypt.hash(seederPass, 12);
 
     const admin = await models.User.findOrCreate({
       where: { email: 'admin@uttoron.com' },
@@ -89,6 +90,7 @@ async function runSeeders() {
         student_count: 500,
         years_experience: 10,
         success_rate: 95,
+        established_year: 2022,
         address: '123, Main Road, Dhaka, Bangladesh',
         phone: '+8801700000000',
         email: 'info@uttoron.com',

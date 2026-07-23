@@ -121,23 +121,24 @@ function CoursesSection() {
 
     const handleEdit = async (course) => {
         try {
-            const { data } = await api.get(`/admin/courses/${course.id}`);
+            const res = await api.get(`/admin/courses/${course.id}`);
+            const courseData = res.data?.data || res.data;
             setFormData({
-                title: data.title || '',
-                category_id: data.category_id || '',
-                fee: data.fee || '',
-                discount_price: data.discount_price || '',
-                description: data.description || '',
-                features: Array.isArray(data.features) ? data.features.join('\n') : (data.features || ''),
-                duration: data.duration || '',
-                seats: data.seats || '',
-                teacher_name: data.teacher_name || '',
-                class_mode: data.class_mode || '',
-                is_featured: data.is_featured ?? false,
-                is_active: data.is_active ?? true,
+                title: courseData.title || '',
+                category_id: courseData.category_id || '',
+                fee: courseData.fee || '',
+                discount_price: courseData.discount_price || '',
+                description: courseData.description || '',
+                features: Array.isArray(courseData.features) ? courseData.features.join('\n') : (courseData.features || ''),
+                duration: courseData.duration || '',
+                seats: courseData.seats || '',
+                teacher_name: courseData.teacher_name || '',
+                class_mode: courseData.class_mode || '',
+                is_featured: courseData.is_featured ?? false,
+                is_active: courseData.is_active ?? true,
             });
             setThumbnail(null);
-            setEditingId(data.id);
+            setEditingId(courseData.id);
             setShowModal(true);
         } catch (error) {
             logger.error('Failed to fetch course:', error);
@@ -246,9 +247,9 @@ function CoursesSection() {
                                         {course.teacher_name || '—'}
                                     </td>
                                     <td className="p-4 font-bold text-[#1F4E79]">
-                                        ৳{course.fee}
+                                        ৳{course.discount_price || course.fee}
                                         {course.discount_price && (
-                                            <span className="ml-1 text-xs text-gray-400 line-through">৳{course.discount_price}</span>
+                                            <span className="ml-1 text-xs text-gray-400 line-through">৳{course.fee}</span>
                                         )}
                                     </td>
                                     <td className="p-4 text-center">
@@ -294,7 +295,7 @@ function CoursesSection() {
                                 <div className="flex-1 min-w-0">
                                     <p className="font-bold text-gray-800 text-sm truncate">{course.title}</p>
                                     {course.duration && <p className="text-xs text-gray-500">{course.duration}</p>}
-                                    <p className="text-sm font-bold text-[#1F4E79] mt-1">৳{course.fee}{course.discount_price && <span className="ml-1 text-xs text-gray-400 line-through">৳{course.discount_price}</span>}</p>
+                                    <p className="text-sm font-bold text-[#1F4E79] mt-1">৳{course.discount_price || course.fee}{course.discount_price && <span className="ml-1 text-xs text-gray-400 line-through">৳{course.fee}</span>}</p>
                                 </div>
                                 <div className="flex gap-1 flex-shrink-0">
                                     <button onClick={() => handleToggleFeatured(course.id)} className={`p-1.5 rounded ${course.is_featured ? 'text-yellow-500 bg-yellow-50' : 'text-gray-300'}`}><Star size={15} fill={course.is_featured ? 'currentColor' : 'none'} /></button>

@@ -65,13 +65,37 @@ export async function user(req, res) {
     const result = { ...user.toJSON() };
 
     if (user.role === 'student') {
-      result.student = await models.Student.findOne({
+      const student = await models.Student.findOne({
         where: { user_id: user.id },
-        include: [
-          { model: models.Batch, as: 'Batch' },
-          { model: models.AdmissionApplication, as: 'AdmissionApplication' },
-        ],
       });
+
+      if (student) {
+        const [batch, admission] = await Promise.all([
+          student.current_batch_id
+            ? models.Batch.findByPk(student.current_batch_id, {
+                include: [{ model: models.Course }],
+              })
+            : null,
+          student.admission_id
+            ? models.AdmissionApplication.findByPk(student.admission_id, {
+                include: [{ model: models.Course }],
+              })
+            : null,
+        ]);
+
+        const batchJson = batch ? batch.toJSON() : null;
+        const admissionJson = admission ? admission.toJSON() : null;
+
+        result.student_profile = {
+          ...student.toJSON(),
+          batch: batchJson
+            ? { ...batchJson, course: batchJson.Course || null }
+            : null,
+          admission: admissionJson
+            ? { ...admissionJson, course: admissionJson.Course || null }
+            : null,
+        };
+      }
     } else if (user.role === 'teacher') {
       result.teacher_profile = await models.TeacherProfile.findOne({
         where: { user_id: user.id },

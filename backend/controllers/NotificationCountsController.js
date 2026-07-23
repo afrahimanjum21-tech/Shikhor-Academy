@@ -13,17 +13,19 @@ export const counts = async (req, res) => {
     counts.notifications = unreadNotifications;
 
     if (user.role === 'admin' || user.role === 'super_admin') {
-      const [pendingAdmissions, pendingPayments, pendingLeaves, unreadContacts] = await Promise.all([
+      const [pendingAdmissions, holdAdmissions, pendingPayments, pendingLeaveRequests, unreadMessages] = await Promise.all([
         models.AdmissionApplication.count({ where: { status: 'pending' } }),
+        models.AdmissionApplication.count({ where: { status: 'hold' } }),
         models.Payment.count({ where: { status: 'pending' } }),
         models.Attendance.count({ where: { leave_status: 'pending' } }),
         models.ContactMessage.count({ where: { is_read: false } }),
       ]);
 
       counts.pending_admissions = pendingAdmissions;
+      counts.hold_admissions = holdAdmissions;
       counts.pending_payments = pendingPayments;
-      counts.pending_leaves = pendingLeaves;
-      counts.unread_contacts = unreadContacts;
+      counts.pending_leave_requests = pendingLeaveRequests;
+      counts.unread_messages = unreadMessages;
     }
 
     if (user.role === 'teacher') {

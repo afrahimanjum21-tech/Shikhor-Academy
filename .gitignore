@@ -41,12 +41,16 @@ frontend/certs/
 # Temp / misc
 # -------------------------
 YUsHNLF!uY165.txt
+test_db.js
+*.txt
+
+# -------------------------
+# Local env files
+# -------------------------
+frontend/.env.local
 
 # -------------------------
 # OS
 # -------------------------
 Thumbs.db
 .DS_Store
-vercel token.txt
-
-neon connection string.txt

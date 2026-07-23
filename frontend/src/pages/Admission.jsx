@@ -1,147 +1,531 @@
 import { useState, useEffect } from "react";
-import { GraduationCap } from "lucide-react";
+import { ArrowRight, Upload } from "lucide-react";
 import { motion } from "framer-motion";
 import api from "../services/api";
-import HERO_IMAGE from "../images/hero-background.jpg";
+import PageBackground from "../components/common/PageBackground";
+
+const stagger = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.06, delayChildren: 0.15 } },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
+};
+
+const inputGlass = {
+  background: "#FFFFFF",
+  border: "1px solid #CBD5E1",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+  color: "#1E293B",
+};
+
+const glassInput =
+  "w-full h-[60px] px-5 rounded-[18px] text-sm outline-none transition-all duration-200 placeholder:text-gray-400 focus:border-[#2563EB] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)]";
+
+const glassTextarea =
+  "w-full h-[140px] px-5 py-4 rounded-[18px] text-sm outline-none transition-all duration-200 placeholder:text-gray-400 resize-none focus:border-[#2563EB] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)]";
+
+const glassSelect =
+  "w-full h-[60px] px-5 rounded-[18px] text-sm outline-none transition-all duration-200 focus:border-[#2563EB] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)] appearance-none cursor-pointer";
+
+const sectionLabel =
+  "block text-sm font-semibold text-[#174B87] mb-2";
+
+const sectionTitle =
+  "text-[28px] font-bold text-[#174B87] pb-3 mb-7 border-b border-[rgba(37,99,235,0.15)]";
 
 export default function Admission() {
-    const [courses, setCourses] = useState([]);
-    const [formData, setFormData] = useState({
-        full_name: '', email: '', phone: '', dob: '', course_id: '', photo: null,
-        gender: '', religion: 'Islam', blood_group: '', nationality: 'Bangladeshi',
-        father_name: '', father_mobile: '', father_occupation: '',
-        mother_name: '', mother_mobile: '', mother_occupation: '',
-        address: '', permanent_address: '',
-        emergency_name: '', emergency_mobile: '',
-        last_school: '', jsc_gpa: '', ssc_gpa: ''
+  const [courses, setCourses] = useState([]);
+  const [formData, setFormData] = useState({
+    full_name: "", email: "", phone: "", dob: "", course_id: "", photo: null,
+    gender: "", religion: "Islam", blood_group: "", nationality: "Bangladeshi",
+    father_name: "", father_mobile: "", father_occupation: "",
+    mother_name: "", mother_mobile: "", mother_occupation: "",
+    address: "", permanent_address: "",
+    emergency_name: "", emergency_mobile: "",
+    last_school: "", jsc_gpa: "", ssc_gpa: "",
+  });
+
+  const [message, setMessage] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    api.get("/public/courses").then((res) => setCourses(res.data));
+  }, []);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    if (formData.photo && formData.photo.size > 2 * 1024 * 1024) {
+      setMessage({ type: "error", text: "Please reduce the photo size. The Photo must be smaller than 2 MB." });
+      setLoading(false);
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    const data = new FormData();
+    Object.keys(formData).forEach((key) => {
+      if (formData[key] !== null && formData[key] !== undefined) {
+        data.append(key, formData[key]);
+      }
     });
 
-    const [message, setMessage] = useState(null);
-    const [loading, setLoading] = useState(false);
+    try {
+      const res = await api.post("/admission/submit", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setMessage({ type: "success", text: res.data.message });
+      window.scrollTo(0, 0);
+    } catch (err) {
+      setMessage({
+        type: "error",
+        text:
+          err.response?.data?.message ||
+          "Submission failed. Please ensure your photo is smaller than 2 MB.",
+      });
+      window.scrollTo(0, 0);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    useEffect(() => {
-        api.get('/public/courses').then(res => setCourses(res.data));
-    }, []);
+  return (
+    <div className="min-h-screen relative overflow-hidden">
+      <PageBackground />
+      {/* ── Page Header ── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-6 relative z-10 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <nav className="flex items-center justify-center gap-2 text-sm text-gray-400 mb-4">
+            <a href="/" className="hover:text-[#1F4E79] transition-colors">Home</a>
+            <span>/</span>
+            <span className="text-[#1F4E79] font-medium">Admission</span>
+          </nav>
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
+          <h1 className="text-[34px] sm:text-[40px] font-bold text-[#1F4E79] tracking-[-1px] leading-tight">
+            Online Admission Form
+          </h1>
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        const data = new FormData();
-        Object.keys(formData).forEach(key => data.append(key, formData[key]));
+          <p className="text-gray-500 text-base sm:text-lg max-w-xl mx-auto mt-3 leading-relaxed">
+            Complete the form below to apply for admission at Uttoron Coaching Centre.
+          </p>
+        </motion.div>
+      </div>
 
-        try {
-            const res = await api.post('/admission/submit', data, { headers: { "Content-Type": "multipart/form-data" } });
-            setMessage({ type: 'success', text: res.data.message });
-            window.scrollTo(0, 0);
-        } catch (err) {
-            setMessage({ type: 'error', text: err.response?.data?.message || 'Submission failed.' });
-            window.scrollTo(0, 0);
-        } finally { setLoading(false); }
-    };
+      {/* ── Form Section (no white card, inputs float on background) ── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 pb-20">
+        {message && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`p-4 mb-8 rounded-[18px] text-sm font-medium ${
+              message.type === "success"
+                ? "bg-green-50/80 backdrop-blur-sm text-green-700 border border-green-200/60"
+                : "bg-red-50/80 backdrop-blur-sm text-red-700 border border-red-200/60"
+            }`}
+          >
+            {message.text}
+          </motion.div>
+        )}
 
-    const sectionTitle = "text-xl font-bold text-[#1F4E79] border-b border-gray-200 pb-2 mb-4 mt-6 uppercase tracking-wide";
-    const inputClass = "w-full border-b border-gray-200 focus:border-[#1F4E79] transition-all outline-none bg-transparent text-sm py-2.5";
-    const labelClass = "block text-xs font-bold text-gray-600 mb-1 uppercase";
-
-    return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-            {/* Hero Header */}
-            <div className="relative overflow-hidden">
-                <img src={HERO_IMAGE} alt=""
-                    className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-br from-[#1F4E79]/90 via-[#1F4E79]/85 to-[#1F4E79]/90"></div>
-                <div className="max-w-7xl mx-auto px-4 py-16 md:py-20 relative z-10 text-center text-white">
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium mb-5 border border-white/20">
-                            <GraduationCap size={16} /> Admission
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-bold mb-4">Online Admission Form</h1>
-                        <p className="text-lg text-blue-100 max-w-2xl mx-auto">
-                            Fill out the form below to apply for admission at Uttoron Coaching Center.
-                        </p>
-                    </motion.div>
+        <motion.form
+          variants={stagger}
+          initial="hidden"
+          animate="visible"
+          onSubmit={handleSubmit}
+          className="space-y-6"
+        >
+          {/* ── Section 1: Student Information ── */}
+          <motion.div variants={fadeUp}>
+            <h2 className={sectionTitle}>Student Information</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="md:col-span-2">
+                <label className={sectionLabel}>Full Name *</label>
+                <input
+                  name="full_name"
+                  placeholder="Enter your full name"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label className={sectionLabel}>Mobile No *</label>
+                <input
+                  name="phone"
+                  placeholder="Enter your mobile number"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label className={sectionLabel}>Email (For Login) *</label>
+                <input
+                  name="email"
+                  type="email"
+                  placeholder="Enter your email address"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label className={sectionLabel}>Date of Birth *</label>
+                <input
+                  name="dob"
+                  type="date"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label className={sectionLabel}>Course *</label>
+                <div className="relative">
+                  <select
+                    name="course_id"
+                    className={glassSelect}
+                    style={inputGlass}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select a course</option>
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
+                    <svg
+                      className="w-4 h-4 text-[#1F4E79]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
                 </div>
+              </div>
             </div>
+          </motion.div>
 
-            <div className="max-w-5xl mx-auto px-4 -mt-10 relative z-20 pb-16">
-                {message && (
-                    <div className={`p-4 mb-6 rounded-xl text-sm font-medium ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                        {message.text}
-                    </div>
-                )}
-
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-10">
-                    <form onSubmit={handleSubmit}>
-                        {/* 1. Student Information */}
-                        <h3 className={sectionTitle}>Student Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
-                            <div className="md:col-span-2"><label className={labelClass}>Full Name *</label><input name="full_name" className={inputClass} onChange={handleChange} required /></div>
-                            <div><label className={labelClass}>Mobile No *</label><input name="phone" className={inputClass} onChange={handleChange} required /></div>
-                            <div><label className={labelClass}>Email (For Login) *</label><input name="email" type="email" className={inputClass} onChange={handleChange} required /></div>
-                            <div><label className={labelClass}>Date of Birth *</label><input name="dob" type="date" className={inputClass} onChange={handleChange} required /></div>
-                            <div><label className={labelClass}>Course *</label>
-                                <select name="course_id" className={`${inputClass} bg-white appearance-none`} onChange={handleChange} required>
-                                    <option value="">Select</option>{courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* 2. Personal Details */}
-                        <h3 className={sectionTitle}>Personal Details</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
-                            <div><label className={labelClass}>Gender *</label><select name="gender" className={`${inputClass} bg-white appearance-none`} onChange={handleChange} required><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div>
-                            <div><label className={labelClass}>Religion *</label><select name="religion" className={`${inputClass} bg-white appearance-none`} onChange={handleChange} required><option value="Islam">Islam</option><option value="Hindu">Hindu</option><option value="Christian">Christian</option></select></div>
-                            <div><label className={labelClass}>Blood Group</label><select name="blood_group" className={`${inputClass} bg-white appearance-none`} onChange={handleChange}><option value="">Select</option><option value="A+">A+</option><option value="A-">A-</option><option value="B+">B+</option><option value="B-">B-</option><option value="O+">O+</option><option value="O-">O-</option><option value="AB+">AB+</option><option value="AB-">AB-</option></select></div>
-                            <div><label className={labelClass}>Nationality</label><input name="nationality" value="Bangladeshi" className={inputClass} onChange={handleChange} /></div>
-                        </div>
-
-                        {/* 3. Guardian Information */}
-                        <h3 className={sectionTitle}>Guardian Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
-                            <div><label className={labelClass}>Father's Name *</label><input name="father_name" className={inputClass} onChange={handleChange} required /></div>
-                            <div><label className={labelClass}>Father's Mobile *</label><input name="father_mobile" className={inputClass} onChange={handleChange} required /></div>
-                            <div><label className={labelClass}>Father's Occupation</label><input name="father_occupation" className={inputClass} onChange={handleChange} /></div>
-
-                            <div className="md:col-span-2 border-t my-2"></div>
-
-                            <div><label className={labelClass}>Mother's Name *</label><input name="mother_name" className={inputClass} onChange={handleChange} required /></div>
-                            <div><label className={labelClass}>Mother's Mobile</label><input name="mother_mobile" className={inputClass} onChange={handleChange} /></div>
-                            <div><label className={labelClass}>Mother's Occupation</label><input name="mother_occupation" className={inputClass} onChange={handleChange} /></div>
-                        </div>
-
-                        {/* 4. Address */}
-                        <h3 className={sectionTitle}>Address Info</h3>
-                        <div className="grid grid-cols-1 gap-5 mb-4">
-                            <div><label className={labelClass}>Present Address *</label><textarea name="address" rows="2" className={inputClass + " resize-none"} onChange={handleChange} required></textarea></div>
-                            <div><label className={labelClass}>Permanent Address</label><textarea name="permanent_address" rows="2" className={inputClass + " resize-none"} onChange={handleChange}></textarea></div>
-                        </div>
-
-                        {/* 5. Academic */}
-                        <h3 className={sectionTitle}>Academic History</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
-                            <div><label className={labelClass}>Last School</label><input name="last_school" className={inputClass} onChange={handleChange} /></div>
-                            <div><label className={labelClass}>JSC GPA</label><input name="jsc_gpa" className={inputClass} onChange={handleChange} /></div>
-                            <div><label className={labelClass}>SSC GPA</label><input name="ssc_gpa" className={inputClass} onChange={handleChange} /></div>
-                        </div>
-
-                        <div className="p-4 rounded-xl border-2 border-dashed border-[#1F4E79]/30 bg-[#1F4E79]/5 mt-6">
-                            <label className={labelClass}>Upload Photo</label>
-                            <input type="file" accept="image/*" onChange={e => setFormData({ ...formData, photo: e.target.files[0] })} className="mt-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#1F4E79]/10 file:text-[#1F4E79] hover:file:bg-[#1F4E79]/20" />
-                        </div>
-
-                        <button disabled={loading} type="submit"
-                            className="w-full rounded-full px-6 py-3 bg-[#1F4E79] text-white font-semibold hover:bg-[#1a3d66] transition-colors mt-8 disabled:opacity-60">
-                            {loading ? 'Processing...' : 'Submit Application'}
-                        </button>
-                    </form>
-                </motion.div>
+          {/* ── Section 2: Guardian Information ── */}
+          <motion.div variants={fadeUp}>
+            <h2 className={sectionTitle}>Guardian Information</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className={sectionLabel}>Father's Name *</label>
+                <input
+                  name="father_name"
+                  placeholder="Enter father's name"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label className={sectionLabel}>Father's Mobile *</label>
+                <input
+                  name="father_mobile"
+                  placeholder="Enter father's mobile number"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label className={sectionLabel}>Father's Occupation</label>
+                <input
+                  name="father_occupation"
+                  placeholder="Enter father's occupation"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="border-t border-[#1F4E79]/5 my-1 md:col-span-2" />
+              <div>
+                <label className={sectionLabel}>Mother's Name *</label>
+                <input
+                  name="mother_name"
+                  placeholder="Enter mother's name"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label className={sectionLabel}>Mother's Mobile</label>
+                <input
+                  name="mother_mobile"
+                  placeholder="Enter mother's mobile number"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                />
+              </div>
+              <div>
+                <label className={sectionLabel}>Mother's Occupation</label>
+                <input
+                  name="mother_occupation"
+                  placeholder="Enter mother's occupation"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
-        </div>
-    );
+          </motion.div>
+
+          {/* ── Section 3: Academic Information ── */}
+          <motion.div variants={fadeUp}>
+            <h2 className={sectionTitle}>Academic Information</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className={sectionLabel}>Last School</label>
+                <input
+                  name="last_school"
+                  placeholder="Enter your last school name"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                />
+              </div>
+              <div>
+                <label className={sectionLabel}>JSC GPA</label>
+                <input
+                  name="jsc_gpa"
+                  placeholder="Enter JSC GPA"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                />
+              </div>
+              <div>
+                <label className={sectionLabel}>SSC GPA</label>
+                <input
+                  name="ssc_gpa"
+                  placeholder="Enter SSC GPA"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                />
+              </div>
+              <div>
+                <label className={sectionLabel}>Gender *</label>
+                <div className="relative">
+                  <select
+                    name="gender"
+                    className={glassSelect}
+                    style={inputGlass}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
+                    <svg
+                      className="w-4 h-4 text-[#1F4E79]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className={sectionLabel}>Religion *</label>
+                <div className="relative">
+                  <select
+                    name="religion"
+                    className={glassSelect}
+                    style={inputGlass}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="Islam">Islam</option>
+                    <option value="Hindu">Hindu</option>
+                    <option value="Christian">Christian</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
+                    <svg
+                      className="w-4 h-4 text-[#1F4E79]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className={sectionLabel}>Blood Group</label>
+                <div className="relative">
+                  <select
+                    name="blood_group"
+                    className={glassSelect}
+                    style={inputGlass}
+                    onChange={handleChange}
+                  >
+                    <option value="">Select blood group</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
+                    <svg
+                      className="w-4 h-4 text-[#1F4E79]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className={sectionLabel}>Nationality</label>
+                <input
+                  name="nationality"
+                  value="Bangladeshi"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ── Section 4: Additional Information ── */}
+          <motion.div variants={fadeUp}>
+            <h2 className={sectionTitle}>Additional Information</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className={sectionLabel}>Present Address *</label>
+                <textarea
+                  name="address"
+                  rows="2"
+                  placeholder="Enter your present address"
+                  className={glassTextarea}
+                  style={inputGlass}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label className={sectionLabel}>Permanent Address</label>
+                <textarea
+                  name="permanent_address"
+                  rows="2"
+                  placeholder="Enter your permanent address"
+                  className={glassTextarea}
+                  style={inputGlass}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ── Section 5: Photo Upload ── */}
+          <motion.div variants={fadeUp}>
+            <div
+              className="rounded-[18px] p-6"
+              style={{
+                background: "#FFFFFF",
+                border: "2px dashed #CBD5E1",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+              }}
+            >
+              <label className={sectionLabel}>Upload Photo</label>
+              <div className="flex items-center gap-4 mt-2">
+                <div className="w-12 h-12 rounded-full bg-[#1F4E79]/5 flex items-center justify-center flex-shrink-0">
+                  <Upload size={20} className="text-[#1F4E79]" />
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) =>
+                    setFormData({ ...formData, photo: e.target.files[0] })
+                  }
+                  className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-5 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#1F4E79]/10 file:text-[#1F4E79] hover:file:bg-[#1F4E79]/20 file:transition-colors file:cursor-pointer"
+                />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ── Submit ── */}
+          <motion.div variants={fadeUp} className="pt-4">
+            <motion.button
+              whileHover={{ scale: 1.02, boxShadow: "0 12px 35px rgba(31,78,121,0.3)" }}
+              whileTap={{ scale: 0.97 }}
+              disabled={loading}
+              type="submit"
+              className="w-full bg-[#1F4E79] text-white px-10 h-[60px] rounded-[18px] font-bold text-lg shadow-lg hover:bg-[#163859] transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {loading ? (
+                "Processing..."
+              ) : (
+                <>
+                  Submit Application
+                  <ArrowRight size={20} />
+                </>
+              )}
+            </motion.button>
+          </motion.div>
+        </motion.form>
+      </div>
+    </div>
+  );
 }

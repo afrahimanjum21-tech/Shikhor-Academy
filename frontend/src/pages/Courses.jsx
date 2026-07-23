@@ -4,31 +4,19 @@ import { buildAssetUrl } from "../services/config";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Search, BookOpen, GraduationCap, Users, Award, Clock, UserCheck, Monitor, CheckCircle, ArrowRight, BookX, Sparkles
+  Search, BookOpen, Users, Award, BookX, Sparkles
 } from "lucide-react";
-import HERO_IMAGE from "../images/hero-background.jpg";
+import PageBackground from "../components/common/PageBackground";
 
-function DetailItem({ icon: Icon, text }) {
-  return (
-    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-      <Icon size={13} className="text-gray-400 flex-shrink-0" />
-      <span className="truncate">{text}</span>
-    </div>
-  );
-}
 
 function SkeletonCard() {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
-      <div className="aspect-video bg-gray-200" />
-      <div className="p-5 space-y-3">
-        <div className="h-5 bg-gray-200 rounded w-3/4" />
-        <div className="h-4 bg-gray-200 rounded w-full" />
-        <div className="h-4 bg-gray-200 rounded w-5/6" />
-        <div className="h-4 bg-gray-200 rounded w-2/3" />
-        <div className="pt-3 border-t border-gray-100">
-          <div className="h-8 bg-gray-200 rounded w-1/3" />
-        </div>
+      <div className="aspect-[4/3] bg-gray-200" />
+      <div className="p-3 space-y-2">
+        <div className="h-4 bg-gray-200 rounded w-3/4" />
+        <div className="h-3 bg-gray-200 rounded w-full" />
+        <div className="h-3 bg-gray-200 rounded w-2/3" />
       </div>
     </div>
   );
@@ -75,40 +63,27 @@ export default function Courses() {
   });
 
   const statCards = [
-    { icon: BookOpen, value: stats?.courses, label: "Courses" },
-    { icon: Users, value: stats?.students, label: "Students" },
-    { icon: Award, value: stats?.teachers, label: "Teachers" },
-    { icon: Sparkles, value: stats?.success_rate, label: "Success Rate" },
+    { icon: BookOpen, value: stats?.courses ?? "—", label: "Courses" },
+    { icon: Users, value: stats?.students ?? "—", label: "Students" },
+    { icon: Award, value: stats?.teachers ?? "—", label: "Teachers" },
+    { icon: Sparkles, value: stats?.success_rate != null ? `${stats.success_rate}%` : "—", label: "Success Rate" },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        <img src={HERO_IMAGE} alt=""
-          className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-br from-[#1F4E79]/90 via-[#1F4E79]/85 to-[#1F4E79]/90"></div>
-        <div className="max-w-7xl mx-auto px-4 py-16 relative z-10 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium mb-5 border border-white/20">
-              <BookOpen size={16} /> Our Academic Programs
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Our Academic Programs
-            </h1>
-            <p className="text-lg text-blue-100/90 max-w-2xl mx-auto">
-              Discover the perfect course designed to help you achieve academic excellence.
-            </p>
-          </motion.div>
-        </div>
+    <div className="min-h-screen relative overflow-hidden">
+      <PageBackground />
+      {/* Page Header */}
+      <div className="max-w-7xl mx-auto px-4 pt-12 pb-6 text-center">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+          <h1 className="text-4xl md:text-5xl font-bold text-[#1F4E79] mb-4">Our Academic Programs</h1>
+          <p className="text-lg text-gray-500 max-w-2xl mx-auto">
+            Discover the perfect course designed to help you achieve academic excellence.
+          </p>
+        </motion.div>
       </div>
 
       {/* Search & Filters */}
-      <div className="max-w-7xl mx-auto px-4 -mt-10 relative z-20">
+      <div className="max-w-7xl mx-auto px-4 pb-16">
         <div className="max-w-xl mx-auto mb-6">
           <div className="relative">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -170,7 +145,7 @@ export default function Courses() {
                   <card.icon size={20} />
                 </div>
                 <p className="text-2xl md:text-3xl font-bold text-gray-800">
-                  {card.value ? `${card.value}+` : "—"}
+                  {card.label === "Success Rate" ? card.value : card.value != null ? `${card.value}+` : "—"}
                 </p>
                 <p className="text-sm text-gray-500 mt-1">{card.label}</p>
               </motion.div>
@@ -180,8 +155,8 @@ export default function Courses() {
 
         {/* Course Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            {Array.from({ length: 6 }).map((_, i) => (
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
           </div>
@@ -212,7 +187,7 @@ export default function Courses() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredCourses.map((course, idx) => (
               <Link to={`/course/${course.slug}`} key={course.id}>
               <motion.div
@@ -220,84 +195,38 @@ export default function Courses() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ duration: 0.45, delay: Math.min(idx * 0.08, 0.4) }}
-                whileHover={{ y: -6 }}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group transition-shadow duration-300 hover:shadow-md hover:border-[#1F4E79]/30 cursor-pointer"
+                whileHover={{ y: -4 }}
+                className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden group transition-shadow duration-300 hover:shadow-md hover:border-[#1F4E79]/30 cursor-pointer"
               >
                 {/* Thumbnail */}
-                <div className="relative overflow-hidden aspect-video bg-gradient-to-br from-[#1F4E79]/10 to-[#1F4E79]/5">
+                <div className="relative overflow-hidden aspect-[4/3] bg-gradient-to-br from-[#1F4E79]/10 to-[#1F4E79]/5">
                   {course.thumbnail ? (
                     <img src={buildAssetUrl(course.thumbnail)} alt={course.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <BookOpen size={48} className="text-[#1F4E79]/20" />
+                      <BookOpen size={36} className="text-[#1F4E79]/20" />
                     </div>
-                  )}
-                  <span
-                    className="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold text-white shadow-sm"
-                    style={{ backgroundColor: course.course_category?.color || "#1F4E79" }}
-                  >
-                    {course.course_category?.name || course.category}
-                  </span>
-                  {course.is_featured && (
-                    <span className="absolute top-3 right-3 px-2 py-0.5 bg-amber-400 text-amber-900 rounded-full text-[10px] font-bold">
-                      Featured
-                    </span>
                   )}
                 </div>
 
                 {/* Card Body */}
-                <div className="p-5 flex flex-col flex-1">
-                  <h3 className="text-lg font-bold text-gray-800 mb-2 line-clamp-2 group-hover:text-[#1F4E79] transition-colors">
+                <div className="p-3 flex flex-col gap-1.5">
+                  <h3 className="text-sm font-bold text-gray-800 line-clamp-2 group-hover:text-[#1F4E79] transition-colors leading-snug">
                     {course.title}
                   </h3>
-                  <p className="text-sm text-gray-500 mb-4 line-clamp-3 leading-relaxed flex-1">
+                  <p className="text-xs text-gray-500 line-clamp-1 leading-relaxed">
                     {course.description}
                   </p>
-
-                  {course.features?.length > 0 && (
-                    <div className="border-t border-gray-100 pt-4 mb-4">
-                      <div className="grid grid-cols-2 gap-2">
-                        {course.features.slice(0, 4).map((feat, i) => (
-                          <div key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
-                            <CheckCircle size={12} className="text-green-500 flex-shrink-0" />
-                            <span className="truncate">{feat}</span>
-                          </div>
-                        ))}
-                        {course.features.length > 4 && (
-                          <span className="text-xs text-gray-400">+{course.features.length - 4} more</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Course Details Row */}
-                  <div className="grid grid-cols-2 gap-3 border-t border-gray-100 pt-4 mb-4">
-                    {course.duration && <DetailItem icon={Clock} text={course.duration} />}
-                    {course.seats && <DetailItem icon={Users} text={`${course.seats} Seats`} />}
-                    {course.teacher_name && <DetailItem icon={UserCheck} text={course.teacher_name} />}
-                    {course.class_mode && <DetailItem icon={Monitor} text={course.class_mode} />}
-                  </div>
-
-                  {/* Price + CTA */}
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <div>
-                      <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide">Course Fee</p>
-                      <div className="flex items-center gap-2">
-                        {course.discount_price ? (
-                          <>
-                            <p className="text-xl font-bold text-[#1F4E79]">৳{course.discount_price}</p>
-                            <p className="text-sm text-gray-400 line-through">৳{course.fee}</p>
-                          </>
-                        ) : (
-                          <p className="text-xl font-bold text-[#1F4E79]">৳{course.fee}</p>
-                        )}
-                      </div>
-                    </div>
-                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = '/admission'; }}
-                      className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-[#1F4E79] text-white text-sm font-semibold rounded-full hover:bg-[#1a3d66] transition-all duration-300 group/btn shadow-sm">
-                      Enroll Now <ArrowRight size={15} className="transition-transform group-hover/btn:translate-x-0.5" />
-                    </button>
+                  <div className="flex items-center gap-1.5">
+                    {course.discount_price ? (
+                      <>
+                        <span className="text-sm font-bold text-[#1F4E79]">৳{course.discount_price}</span>
+                        <span className="text-[11px] text-gray-400 line-through">৳{course.fee}</span>
+                      </>
+                    ) : (
+                      <span className="text-sm font-bold text-[#1F4E79]">৳{course.fee}</span>
+                    )}
                   </div>
                 </div>
               </motion.div>

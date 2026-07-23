@@ -33,11 +33,11 @@ export const buildAssetUrl = (path) => {
         path = path.replace(isLocal, '');
     }
 
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
     // ডবল স্ল্যাশ এড়াতে leading slash কেটে দেওয়া
     const cleanPath = path.replace(/^\/+/, '');
     // storage/app/public/ এ থাকা ফাইলগুলোর জন্য /storage/ prefix দরকার (symlink)
-    if (cleanPath.startsWith('faculty/') || cleanPath.startsWith('teacher_photos/') || cleanPath.startsWith('gallery/') || cleanPath.startsWith('elearning/') || cleanPath.startsWith('assignments/') || cleanPath.startsWith('assignment_submissions/') || cleanPath.startsWith('study_materials/')) {
+    if (cleanPath.startsWith('faculty/') || cleanPath.startsWith('teacher_photos/') || cleanPath.startsWith('gallery/') || cleanPath.startsWith('elearning/') || cleanPath.startsWith('assignments/') || cleanPath.startsWith('assignment_submissions/') || cleanPath.startsWith('study_materials/') || cleanPath.startsWith('uploads/')) {
         return `${BACKEND_URL}/storage/${cleanPath}`;
     }
     return `${BACKEND_URL}/${cleanPath}`;

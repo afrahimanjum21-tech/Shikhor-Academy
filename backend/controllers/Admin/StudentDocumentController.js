@@ -1,4 +1,6 @@
 import models from '../../models/index.js';
+import MediaService from '../../services/media/MediaService.js';
+import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
 export const index = async (req, res) => {
   try {
@@ -38,7 +40,8 @@ export const store = async (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    const file_path = req.file.path.replace(/\\/g, '/');
+    const uploadResult = await MediaService.upload(req.file, { bucket: 'documents', folder: 'students' });
+    const file_path = uploadResult.url;
     const original_name = req.file.originalname;
     const mime_type = req.file.mimetype;
 
@@ -64,6 +67,9 @@ export const destroy = async (req, res) => {
       return res.status(404).json({ message: 'Document not found' });
     }
 
+    if (document.file_path) {
+      await MediaDeleteService.deleteByUrl(document.file_path).catch(err => console.warn('Media cleanup:', err.message));
+    }
     await document.destroy();
 
     res.json({ message: 'Document deleted successfully' });

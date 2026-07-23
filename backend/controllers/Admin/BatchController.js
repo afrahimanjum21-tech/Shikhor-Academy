@@ -1,4 +1,6 @@
 import models from '../../models/index.js';
+import { Op } from 'sequelize';
+import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
 export const index = async (req, res) => {
   try {
@@ -88,6 +90,24 @@ export const destroy = async (req, res) => {
       return res.status(404).json({ message: 'Batch not found' });
     }
 
+    const assignments = await models.Assignment.findAll({ where: { batch_id: batch.id } });
+    for (const a of assignments) {
+      if (a.attachment_path) {
+        await MediaDeleteService.deleteByUrl(a.attachment_path).catch(err => console.warn('Media cleanup:', err.message));
+      }
+      const submissions = await models.AssignmentSubmission.findAll({ where: { assignment_id: a.id } });
+      for (const s of submissions) {
+        if (s.submission_file_path) {
+          await MediaDeleteService.deleteByUrl(s.submission_file_path).catch(err => console.warn('Media cleanup:', err.message));
+        }
+      }
+    }
+    const materials = await models.StudyMaterial.findAll({ where: { batch_id: batch.id } });
+    for (const m of materials) {
+      if (m.file_path) {
+        await MediaDeleteService.deleteByUrl(m.file_path).catch(err => console.warn('Media cleanup:', err.message));
+      }
+    }
     await models.TeacherBatchAssignment.destroy({ where: { batch_id: batch.id } });
     await models.Routine.destroy({ where: { batch_id: batch.id } });
     await models.Assignment.destroy({ where: { batch_id: batch.id } });

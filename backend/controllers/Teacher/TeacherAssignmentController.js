@@ -1,5 +1,7 @@
 import models from '../../models/index.js';
 import { Op } from 'sequelize';
+import MediaService from '../../services/media/MediaService.js';
+import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
 export const index = async (req, res) => {
   try {
@@ -50,6 +52,12 @@ export const store = async (req, res) => {
       }
     }
 
+    let attachment_path = null;
+    if (req.file) {
+      const uploadResult = await MediaService.upload(req.file, { bucket: 'assignments', folder: 'general' });
+      attachment_path = uploadResult.url;
+    }
+
     const assignment = await models.Assignment.create({
       teacher_id: teacherId,
       batch_id: batch_id || null,
@@ -57,7 +65,7 @@ export const store = async (req, res) => {
       description: description || null,
       subject: subject || null,
       due_date: due_date || null,
-      attachment_path: req.file ? req.file.path.replace(/\\/g, '/') : null,
+      attachment_path,
       total_marks: total_marks || null,
     });
 
@@ -134,7 +142,13 @@ export const update = async (req, res) => {
     if (due_date !== undefined) updates.due_date = due_date;
     if (total_marks !== undefined) updates.total_marks = total_marks;
     if (batch_id !== undefined) updates.batch_id = batch_id;
-    if (req.file) updates.attachment_path = req.file.path.replace(/\\/g, '/');
+    if (req.file) {
+      const uploadResult = await MediaService.upload(req.file, { bucket: 'assignments', folder: 'general' });
+      if (assignment.attachment_path) {
+        await MediaDeleteService.deleteByUrl(assignment.attachment_path).catch(err => console.warn('Media cleanup:', err.message));
+      }
+      updates.attachment_path = uploadResult.url;
+    }
 
     await assignment.update(updates);
 
@@ -165,6 +179,15 @@ export const destroy = async (req, res) => {
       return res.status(404).json({ message: 'Assignment not found or not owned by you' });
     }
 
+    if (assignment.attachment_path) {
+      await MediaDeleteService.deleteByUrl(assignment.attachment_path).catch(err => console.warn('Media cleanup:', err.message));
+    }
+    const submissions = await models.AssignmentSubmission.findAll({ where: { assignment_id: id } });
+    for (const sub of submissions) {
+      if (sub.submission_file_path) {
+        await MediaDeleteService.deleteByUrl(sub.submission_file_path).catch(err => console.warn('Media cleanup:', err.message));
+      }
+    }
     await models.AssignmentSubmission.destroy({ where: { assignment_id: id } });
     await assignment.destroy();
 

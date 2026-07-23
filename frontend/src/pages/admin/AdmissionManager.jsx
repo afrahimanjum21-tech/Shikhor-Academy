@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { buildAssetUrl } from "../../services/config";
 import { useNotificationCounts } from "../../context/NotificationContext";
 import { Search, CheckCircle, XCircle, Clock, MoreVertical, Check, X, Loader2, Eye, ArrowLeft } from "lucide-react";
 import notify from "../../services/notification";
@@ -112,10 +113,7 @@ export default function AdmissionManager() {
         const ok2 = await confirm({ title: "Confirm Action", message: `${action === 'reject' ? 'Reject' : 'Hold'} this application?`, confirmText: "Confirm", variant: "destructive" }); if (!ok2) return;
         setActionLoading(true);
         try {
-            await api.post('/admin/admission/bulk-action', {
-                ids: [id],
-                action: action
-            });
+            await api.post(`/admin/admission/${action}/${id}`);
             setApplications(prev => prev.map(app => 
                 app.id === id ? { ...app, status: action } : app
             ));
@@ -137,8 +135,7 @@ export default function AdmissionManager() {
     // Detail view
     if (detailApp) {
         const a = detailApp;
-        const baseUrl = api.defaults.baseURL?.replace(/\/api$/, '') || '';
-        const photoUrl = a.photo_path ? baseUrl + '/' + a.photo_path : null;
+        const photoUrl = buildAssetUrl(a.photo_path);
 
         return (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -191,7 +188,7 @@ export default function AdmissionManager() {
                                 {a.gender && <span>{a.gender}</span>}
                             </div>
                             <p className="text-sm text-[#1F4E79] font-medium mt-1.5">
-                                Applied for: {a.course?.title || 'N/A'}
+                                Applied for: {a.course_title || a.course?.title || 'N/A'}
                             </p>
                         </div>
                     </div>
@@ -271,7 +268,7 @@ export default function AdmissionManager() {
                             <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">Application Info</h3>
                             <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                                 <InfoRow label="Application ID" value={`#${a.id}`} />
-                                <InfoRow label="Applied Course" value={a.course?.title || 'N/A'} />
+                                <InfoRow label="Applied Course" value={a.course_title || a.course?.title || 'N/A'} />
                                 <InfoRow label="Status" value={a.status} />
                                 <InfoRow label="Submitted" value={new Date(a.created_at).toLocaleString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })} />
                                 {a.updated_at !== a.created_at && (
@@ -383,11 +380,11 @@ export default function AdmissionManager() {
                                         {app.full_name}
                                     </button>
                                     <div className="md:hidden text-xs text-gray-400 mt-1">
-                                        {app.course?.title} <br/> {app.phone}
+                                        {app.course_title || app.course?.title} <br/> {app.phone}
                                     </div>
                                 </td>
 
-                                <td className="p-3 hidden md:table-cell text-gray-600 font-medium">{app.course?.title || 'N/A'}</td>
+                                <td className="p-3 hidden md:table-cell text-gray-600 font-medium">{app.course_title || app.course?.title || 'N/A'}</td>
                                 
                                 <td className="p-3 hidden md:table-cell">
                                     <p>{app.phone}</p>
@@ -419,15 +416,15 @@ export default function AdmissionManager() {
                                             </button>
                                             {openMenuId === app.id && (
                                                 <div className="absolute right-0 top-0 mt-6 w-32 bg-white border border-gray-200 shadow-lg rounded z-50">
-                                                    <button onClick={() => { setOpenMenuId(null); openApproveModal(app); }} className="w-full px-4 py-2 text-xs text-green-600 hover:bg-green-50 flex items-center gap-2 border-b">
+                                                    <button onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); openApproveModal(app); }} className="w-full px-4 py-2 text-xs text-green-600 hover:bg-green-50 flex items-center gap-2 border-b">
                                                         <Check size={14}/> Approve
                                                     </button>
                                                     {app.status !== 'hold' && (
-                                                        <button onClick={() => handleSingleAction(app.id, 'hold')} className="w-full px-4 py-2 text-xs text-yellow-600 hover:bg-yellow-50 flex items-center gap-2 border-b">
+                                                        <button onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleSingleAction(app.id, 'hold'); }} className="w-full px-4 py-2 text-xs text-yellow-600 hover:bg-yellow-50 flex items-center gap-2 border-b">
                                                             <Clock size={14}/> Hold
                                                         </button>
                                                     )}
-                                                    <button onClick={() => handleSingleAction(app.id, 'reject')} className="w-full px-4 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                                    <button onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleSingleAction(app.id, 'reject'); }} className="w-full px-4 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2">
                                                         <X size={14}/> Reject
                                                     </button>
                                                 </div>
@@ -448,7 +445,7 @@ export default function AdmissionManager() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <button onClick={() => { if (detailApp) setDetailApp(null); setDetailApp(app); }} className="font-semibold text-[#1F4F78] text-sm text-left hover:underline">{app.full_name}</button>
-                    <p className="text-xs text-gray-500 mt-0.5">{app.course?.title}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{app.course_title || app.course?.title}</p>
                     <p className="text-xs text-gray-400">{app.phone} &bull; {app.email}</p>
                   </div>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border flex-shrink-0 ml-2 ${app.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : app.status === 'hold' ? 'bg-orange-50 text-orange-700 border-orange-200' : ''}`}>{app.status}</span>

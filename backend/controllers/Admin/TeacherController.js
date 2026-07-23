@@ -1,4 +1,6 @@
 import models from '../../models/index.js';
+import MediaService from '../../services/media/MediaService.js';
+import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
 export const index = async (req, res) => {
   try {
@@ -31,7 +33,7 @@ export const store = async (req, res) => {
 
     const user = await models.User.create({
       name, email, phone,
-      password: password || '123456',
+      password: password || process.env.DEFAULT_USER_PASSWORD || '123456',
       role: 'teacher',
     });
 
@@ -158,10 +160,14 @@ export const updatePhoto = async (req, res) => {
       return res.status(400).json({ message: 'No photo file provided' });
     }
 
-    const photoPath = req.file.path.replace(/\\/g, '/');
-    await teacher.update({ profile_photo_path: photoPath });
+    const result = await MediaService.upload(req.file, { folder: 'faculty' });
 
-    res.json({ message: 'Photo updated successfully', data: { profile_photo_path: photoPath } });
+    if (teacher.profile_photo_path) {
+      await MediaDeleteService.deleteByUrl(teacher.profile_photo_path).catch(err => console.warn('Media cleanup:', err.message));
+    }
+    await teacher.update({ profile_photo_path: result.url });
+
+    res.json({ message: 'Photo updated successfully', data: { profile_photo_path: result.url } });
   } catch (error) {
     res.status(500).json({ message: 'Failed to update photo', error: error.message });
   }
@@ -177,6 +183,9 @@ export const destroy = async (req, res) => {
       return res.status(404).json({ message: 'Teacher not found' });
     }
 
+    if (teacher.profile_photo_path) {
+      await MediaDeleteService.deleteByUrl(teacher.profile_photo_path).catch(err => console.warn('Media cleanup:', err.message));
+    }
     await models.TeacherBatchAssignment.destroy({ where: { teacher_id: teacher.id } });
     await models.TeacherProfile.destroy({ where: { user_id: teacher.id } });
     await models.Faculty.destroy({ where: { user_id: teacher.id } });

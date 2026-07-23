@@ -31,7 +31,7 @@ const defaultForm = {
     about_content: "",
     student_count: 0,
     years_experience: 0,
-    success_rate: "0%",
+    success_rate: 0,
     admission_email: "",
     messages_email: "",
     smtp_host: "smtp.gmail.com",
@@ -54,8 +54,9 @@ export default function SiteSettings() {
     useEffect(() => {
         api.get("/admin/site-settings")
             .then((res) => {
-                setForm({ ...defaultForm, ...res.data, smtp_password: "" });
-                setHasSmtpPassword(Boolean(res.data.has_smtp_password));
+                const settings = res.data.data || res.data;
+                setForm({ ...defaultForm, ...settings, smtp_password: "" });
+                setHasSmtpPassword(Boolean(settings.has_smtp_password));
             })
             .catch((err) => setError(err.response?.data?.message || "Unable to load site settings"))
             .finally(() => setLoading(false));
@@ -72,10 +73,12 @@ export default function SiteSettings() {
         try {
             const payload = { ...form };
             if (!payload.smtp_password) delete payload.smtp_password;
+            if (typeof payload.success_rate === 'string') payload.success_rate = parseInt(payload.success_rate.replace(/%/g, ''), 10) || 0;
 
             const { data } = await api.post("/admin/site-settings", payload);
-            setForm({ ...defaultForm, ...data.settings, smtp_password: "" });
-            setHasSmtpPassword(Boolean(data.settings?.has_smtp_password));
+            const updated = data.data || data;
+            setForm({ ...defaultForm, ...updated, smtp_password: "" });
+            setHasSmtpPassword(Boolean(updated.has_smtp_password));
             setMessage(data.message || "Site settings saved");
         } catch (err) {
             setError(err.response?.data?.message || "Failed to save site settings");

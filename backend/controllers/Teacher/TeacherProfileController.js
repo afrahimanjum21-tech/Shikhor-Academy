@@ -1,5 +1,7 @@
 import models from '../../models/index.js';
 import bcrypt from 'bcryptjs';
+import MediaService from '../../services/media/MediaService.js';
+import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
 export const show = async (req, res) => {
   try {
@@ -72,7 +74,12 @@ export const updatePhoto = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    user.profile_photo_path = req.file.path.replace(/\\/g, '/');
+    const result = await MediaService.upload(req.file, { folder: 'faculty' });
+
+    if (user.profile_photo_path) {
+      await MediaDeleteService.deleteByUrl(user.profile_photo_path).catch(err => console.warn('Media cleanup:', err.message));
+    }
+    user.profile_photo_path = result.url;
     await user.save();
 
     res.json({ message: 'Photo updated successfully', data: { profile_photo_path: user.profile_photo_path } });

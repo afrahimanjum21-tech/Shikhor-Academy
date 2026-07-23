@@ -10,7 +10,7 @@ const Course = sequelize.define('Course', {
   category_id: { type: DataTypes.INTEGER },
   fee: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
   discount_price: { type: DataTypes.DECIMAL(10, 2) },
-  thumbnail: { type: DataTypes.STRING },
+  thumbnail: { type: DataTypes.TEXT },
   features: { type: DataTypes.JSON },
   duration: { type: DataTypes.STRING },
   seats: { type: DataTypes.INTEGER },

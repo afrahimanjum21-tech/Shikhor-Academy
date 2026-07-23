@@ -1,4 +1,6 @@
 import models from '../../models/index.js';
+import MediaService from '../../services/media/MediaService.js';
+import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
 export const show = async (req, res) => {
   try {
@@ -8,7 +10,10 @@ export const show = async (req, res) => {
       return res.status(404).json({ message: 'Settings not found' });
     }
 
-    res.json({ data: setting });
+    const data = setting.toJSON();
+    data.has_smtp_password = Boolean(data.smtp_password);
+
+    res.json({ data });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch settings', error: error.message });
   }
@@ -20,23 +25,27 @@ export const update = async (req, res) => {
 
     const {
       site_name, hero_title, hero_subtitle, hero_bg_image,
-      about_content, address, map_embed_url,
+      about_content, address, map_link, map_embed_url,
       phone, email,
       facebook_url, youtube_url, twitter_url, linkedin_url, instagram_url,
       whatsapp_number,
-      student_count, years_experience, success_rate,
+      student_count, years_experience, success_rate, established_year,
       admission_email, messages_email,
       smtp_host, smtp_port, smtp_username, smtp_password,
       smtp_encryption, smtp_from_address, smtp_from_name,
+      home_hero_title, home_hero_subtitle,
     } = req.body;
 
     const updateData = {};
     if (site_name !== undefined) updateData.site_name = site_name;
     if (hero_title !== undefined) updateData.hero_title = hero_title;
+    if (home_hero_title !== undefined) updateData.hero_title = home_hero_title;
     if (hero_subtitle !== undefined) updateData.hero_subtitle = hero_subtitle;
+    if (home_hero_subtitle !== undefined) updateData.hero_subtitle = home_hero_subtitle;
     if (hero_bg_image !== undefined) updateData.hero_bg_image = hero_bg_image;
     if (about_content !== undefined) updateData.about_content = about_content;
     if (address !== undefined) updateData.address = address;
+    if (map_link !== undefined) updateData.map_link = map_link;
     if (map_embed_url !== undefined) updateData.map_embed_url = map_embed_url;
     if (phone !== undefined) updateData.phone = phone;
     if (email !== undefined) updateData.email = email;
@@ -48,7 +57,8 @@ export const update = async (req, res) => {
     if (whatsapp_number !== undefined) updateData.whatsapp_number = whatsapp_number;
     if (student_count !== undefined) updateData.student_count = student_count;
     if (years_experience !== undefined) updateData.years_experience = years_experience;
-    if (success_rate !== undefined) updateData.success_rate = success_rate;
+    if (success_rate !== undefined) updateData.success_rate = parseInt(String(success_rate).replace(/%/g, ''), 10) || 0;
+    if (established_year !== undefined) updateData.established_year = parseInt(String(established_year), 10) || null;
     if (admission_email !== undefined) updateData.admission_email = admission_email;
     if (messages_email !== undefined) updateData.messages_email = messages_email;
     if (smtp_host !== undefined) updateData.smtp_host = smtp_host;
@@ -60,14 +70,20 @@ export const update = async (req, res) => {
     if (smtp_from_name !== undefined) updateData.smtp_from_name = smtp_from_name;
 
     if (req.file) {
-      updateData.hero_bg_image = req.file.path.replace(/\\/g, '/');
+      const result = await MediaService.upload(req.file, { folder: 'site' });
+      if (setting.hero_bg_image) {
+        await MediaDeleteService.deleteByUrl(setting.hero_bg_image).catch(err => console.warn('Media cleanup:', err.message));
+      }
+      updateData.hero_bg_image = result.url;
     }
 
     await setting.update(updateData);
 
     const updated = await models.SiteSetting.instance();
+    const result = updated.toJSON();
+    result.has_smtp_password = Boolean(result.smtp_password);
 
-    res.json({ message: 'Settings updated successfully', data: updated });
+    res.json({ message: 'Settings updated successfully', data: result });
   } catch (error) {
     res.status(500).json({ message: 'Failed to update settings', error: error.message });
   }

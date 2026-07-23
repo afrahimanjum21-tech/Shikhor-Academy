@@ -1,5 +1,7 @@
 import models from '../../models/index.js';
 import { Op } from 'sequelize';
+import MediaService from '../../services/media/MediaService.js';
+import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
 export const index = async (req, res) => {
   try {
@@ -62,12 +64,13 @@ export const store = async (req, res) => {
 
     let photoPath = profile_photo_path;
     if (req.file) {
-      photoPath = req.file.path.replace(/\\/g, '/');
+      const result = await MediaService.upload(req.file, { folder: 'users' });
+      photoPath = result.url;
     }
 
     const user = await models.User.create({
       name, email, phone,
-      password: password || '123456',
+      password: password || process.env.DEFAULT_USER_PASSWORD || '123456',
       role: 'student',
       profile_photo_path: photoPath,
     });
@@ -151,7 +154,13 @@ export const update = async (req, res) => {
     if (email !== undefined) userData.email = email;
     if (phone !== undefined) userData.phone = phone;
     if (password !== undefined) userData.password = password;
-    if (req.file) userData.profile_photo_path = req.file.path.replace(/\\/g, '/');
+    if (req.file) {
+      const result = await MediaService.upload(req.file, { folder: 'users' });
+      if (user.profile_photo_path) {
+        await MediaDeleteService.deleteByUrl(user.profile_photo_path).catch(err => console.warn('Media cleanup:', err.message));
+      }
+      userData.profile_photo_path = result.url;
+    }
 
     await user.update(userData);
 
@@ -222,6 +231,9 @@ export const action = async (req, res) => {
         return res.json({ message: 'Student activated successfully' });
 
       case 'delete':
+        if (user.profile_photo_path) {
+          await MediaDeleteService.deleteByUrl(user.profile_photo_path).catch(err => console.warn('Media cleanup:', err.message));
+        }
         await user.destroy();
         return res.json({ message: 'Student deleted successfully' });
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import PageBackground from "../components/common/PageBackground";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { LogIn } from "lucide-react";
 import { motion } from "framer-motion";
@@ -37,7 +38,8 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+            <PageBackground />
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
