@@ -23,7 +23,7 @@ const sendCredentialsEmail = async (admission, user, plainPassword) => {
 
     await transport.sendMail({
       from: `"${fromName}" <${fromAddress}>`,
-      to: admission.email,
+      to: user.email,
       subject: 'Admission Approved - Your Account Credentials',
       html: `
         <h2>Welcome to ${fromName}</h2>
@@ -76,18 +76,30 @@ export const approve = async (req, res) => {
       return res.status(400).json({ message: `Admission is already ${admission.status}` });
     }
 
-    const plainPassword = Math.random().toString(36).slice(2, 10) +
-      Math.random().toString(36).toUpperCase().slice(2, 6);
+    const userEmail = req.body.email || admission.email;
+    if (!userEmail) {
+      return res.status(400).json({ message: 'Email is required to create a student account' });
+    }
 
-    const hashedPassword = await bcrypt.hash(plainPassword, 12);
+    let user = await models.User.findOne({ where: { email: userEmail } });
+    let plainPassword;
+    let isNewUser = false;
 
-    const user = await models.User.create({
-      name: admission.full_name,
-      email: admission.email,
-      password: hashedPassword,
-      role: 'student',
-      phone: admission.phone,
-    });
+    if (!user) {
+      isNewUser = true;
+      plainPassword = Math.random().toString(36).slice(2, 10) +
+        Math.random().toString(36).toUpperCase().slice(2, 6);
+      const hashedPassword = await bcrypt.hash(plainPassword, 12);
+
+      user = await models.User.create({
+        name: admission.full_name,
+        email: userEmail,
+        password: hashedPassword,
+        role: 'student',
+        phone: admission.phone,
+        profile_photo_path: admission.photo_path,
+      });
+    }
 
     const student = await models.Student.create({
       user_id: user.id,
@@ -114,7 +126,7 @@ export const approve = async (req, res) => {
 
     await admission.update({ status: 'approved' });
 
-    if (admission.email) {
+    if (isNewUser && user.email) {
       sendCredentialsEmail(admission, user, plainPassword);
     }
 
@@ -167,6 +179,11 @@ export const bulkAction = async (req, res) => {
 
     if (status === 'approved') {
       for (const admission of validAdmissions) {
+        if (!admission.email) {
+          console.warn(`Skipping user creation for admission #${admission.id}: no email`);
+          continue;
+        }
+
         const plainPassword = Math.random().toString(36).slice(2, 10) +
           Math.random().toString(36).toUpperCase().slice(2, 6);
         const hashedPassword = await bcrypt.hash(plainPassword, 12);
@@ -177,6 +194,7 @@ export const bulkAction = async (req, res) => {
           password: hashedPassword,
           role: 'student',
           phone: admission.phone,
+          profile_photo_path: admission.photo_path,
         });
 
         await models.Student.create({
@@ -186,12 +204,23 @@ export const bulkAction = async (req, res) => {
           admission_date: new Date().toISOString().split('T')[0],
           gender: admission.gender,
           nationality: admission.nationality,
+          religion: admission.religion,
+          blood_group: admission.blood_group,
           dob: admission.dob,
+          father_name: admission.father_name,
+          mother_name: admission.mother_name,
+          present_address: admission.address,
+          last_school: admission.last_school,
+          emergency_contact_phone: admission.emergency_contact,
+          jsc_roll: admission.jsc_roll,
+          jsc_registration: admission.jsc_registration,
+          jsc_gpa: admission.jsc_gpa,
+          ssc_roll: admission.ssc_roll,
+          ssc_registration: admission.ssc_registration,
+          ssc_gpa: admission.ssc_gpa,
         });
 
-        if (admission.email) {
-          sendCredentialsEmail(admission, user, plainPassword);
-        }
+        sendCredentialsEmail(admission, user, plainPassword);
       }
     }
 

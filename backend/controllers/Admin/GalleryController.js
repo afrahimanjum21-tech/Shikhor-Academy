@@ -1,4 +1,6 @@
 import models from '../../models/index.js';
+import MediaService from '../../services/media/MediaService.js';
+import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
 export const index = async (req, res) => {
   try {
@@ -22,7 +24,8 @@ export const storeAlbum = async (req, res) => {
 
     let thumbnail = null;
     if (req.file) {
-      thumbnail = req.file.path.replace(/\\/g, '/');
+      const result = await MediaService.upload(req.file, { folder: 'gallery' });
+      thumbnail = result.url;
     }
 
     const album = await models.Album.create({ name, thumbnail });
@@ -35,7 +38,7 @@ export const storeAlbum = async (req, res) => {
 
 export const uploadImages = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { album: id } = req.params;
 
     const album = await models.Album.findByPk(id);
     if (!album) {
@@ -46,11 +49,11 @@ export const uploadImages = async (req, res) => {
       return res.status(400).json({ message: 'No image files provided' });
     }
 
-    const images = req.files.map(file => ({
-      album_id: parseInt(id, 10),
-      image_path: file.path.replace(/\\/g, '/'),
-      caption: req.body.caption || null,
-    }));
+    const imagePromises = req.files.map(async (file) => {
+      const result = await MediaService.upload(file, { folder: 'gallery' });
+      return { album_id: parseInt(id, 10), image_path: result.url, caption: req.body.caption || null };
+    });
+    const images = await Promise.all(imagePromises);
 
     const created = await models.GalleryImage.bulkCreate(images);
 
@@ -67,7 +70,16 @@ export const destroyAlbum = async (req, res) => {
       return res.status(404).json({ message: 'Album not found' });
     }
 
+    const galleryImages = await models.GalleryImage.findAll({ where: { album_id: album.id } });
+    for (const img of galleryImages) {
+      if (img.image_path) {
+        await MediaDeleteService.deleteByUrl(img.image_path).catch(err => console.warn('Media cleanup:', err.message));
+      }
+    }
     await models.GalleryImage.destroy({ where: { album_id: album.id } });
+    if (album.thumbnail) {
+      await MediaDeleteService.deleteByUrl(album.thumbnail).catch(err => console.warn('Media cleanup:', err.message));
+    }
     await album.destroy();
 
     res.json({ message: 'Album deleted successfully' });
@@ -83,6 +95,9 @@ export const destroyImage = async (req, res) => {
       return res.status(404).json({ message: 'Image not found' });
     }
 
+    if (image.image_path) {
+      await MediaDeleteService.deleteByUrl(image.image_path).catch(err => console.warn('Media cleanup:', err.message));
+    }
     await image.destroy();
 
     res.json({ message: 'Image deleted successfully' });
