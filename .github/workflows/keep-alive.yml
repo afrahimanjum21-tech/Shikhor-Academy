@@ -1,0 +1,16 @@
+name: Keep Database Awake
+
+on:
+  schedule:
+    # Every 4 minutes, 6:00 AM - 10:59 PM Bangladesh time (UTC+6)
+    # = 00:00 - 16:59 UTC. Keeps Neon's free-tier database from suspending
+    # during working hours without burning the whole monthly quota at night.
+    - cron: '*/4 0-16 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping database keep-alive endpoint
+        run: curl -fsS --max-time 60 "https://uttoron-coaching.vercel.app/api/keep-alive" || true
