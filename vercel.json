@@ -1,0 +1,22 @@
+{
+  "services": {
+    "frontend": {
+      "root": "frontend",
+      "framework": "vite",
+      "routes": [
+        { "handle": "filesystem" },
+        { "src": "/.*", "dest": "/index.html" }
+      ]
+    },
+    "backend": {
+      "root": "backend",
+      "entrypoint": "app.js"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": { "service": "backend" } },
+    { "source": "/uploads/(.*)", "destination": { "service": "backend" } },
+    { "source": "/storage/(.*)", "destination": { "service": "backend" } },
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
+  ]
+}

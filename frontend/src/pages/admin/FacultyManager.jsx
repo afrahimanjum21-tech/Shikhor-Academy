@@ -59,7 +59,6 @@ export default function FacultyManager() {
         password: '',
     });
     const [profilePhoto, setProfilePhoto] = useState(null);
-    const [coverPhoto, setCoverPhoto] = useState(null);
 
     useEffect(() => {
         fetchFaculty();
@@ -130,7 +129,7 @@ export default function FacultyManager() {
             }
             if (key === 'subjects') {
                 // subjects is array of ids
-                (value || []).forEach(id => data.append('subjects[]', id));
+                (value || []).forEach(id => data.append('subjects', id));
             } else if (Array.isArray(value)) {
                 // nested arrays (qualifications, achievements, etc.) as JSON
                 data.append(key, JSON.stringify(value));
@@ -147,7 +146,7 @@ export default function FacultyManager() {
         data.append('create_user_account', formData.create_user_account ? 1 : 0);
 
         if (profilePhoto) data.append('profile_photo', profilePhoto);
-        if (coverPhoto) data.append('cover_photo', coverPhoto);
+        if (editingFaculty) data.append('_method', 'PUT');
 
         try {
             if (editingFaculty) {
@@ -164,7 +163,6 @@ export default function FacultyManager() {
             setEditingFaculty(null);
             resetForm();
             setProfilePhoto(null);
-            setCoverPhoto(null);
             notify.success(editingFaculty ? 'Faculty updated successfully!' : 'Faculty member created successfully!');
         } catch (error) {
             logger.error('Failed to save faculty:', error);
@@ -215,13 +213,12 @@ export default function FacultyManager() {
                 achievements: data.achievements || [],
                 certifications: data.certifications || [],
                 social_links: data.social_links || [],
-                batches: data.batches || [],
+                batches: (data.batches || []).map(b => ({ batch_id: b.id, subject: b.subject || b.FacultyBatch?.subject || '' })),
                 create_user_account: false,
                 email: data.user?.email || '',
                 password: '',
             });
             setProfilePhoto(null);
-            setCoverPhoto(null);
             setDepartmentSearch('');
             setCategorySearch('');
             setShowModal(true);
@@ -311,7 +308,6 @@ export default function FacultyManager() {
             password: '',
         });
         setProfilePhoto(null);
-        setCoverPhoto(null);
         setDepartmentSearch('');
         setCategorySearch('');
     };
@@ -590,7 +586,7 @@ export default function FacultyManager() {
 
                         <form onSubmit={handleSubmit} className="p-6 space-y-6">
                             {/* Photo Upload */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Profile Photo</label>
                                     <input
@@ -600,16 +596,6 @@ export default function FacultyManager() {
                                         className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#1F4E79] file:text-white hover:file:bg-[#1a3d66]"
                                     />
                                     {profilePhoto && <p className="text-xs text-green-600 mt-1">Selected: {profilePhoto.name}</p>}
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Cover Photo</label>
-                                    <input
-                                        type="file"
-                                        accept="image/jpg,image/jpeg,image/png,image/webp"
-                                        onChange={(e) => setCoverPhoto(e.target.files[0])}
-                                        className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#1F4E79] file:text-white hover:file:bg-[#1a3d66]"
-                                    />
-                                    {coverPhoto && <p className="text-xs text-green-600 mt-1">Selected: {coverPhoto.name}</p>}
                                 </div>
                             </div>
 
@@ -1334,7 +1320,7 @@ export default function FacultyManager() {
                                 {viewFaculty.qualification && (
                                     <div className="p-3 bg-gray-50 rounded-lg"><p className="text-xs text-gray-500 uppercase">Qualification</p><p className="text-gray-800 text-sm">{viewFaculty.qualification}</p></div>
                                 )}
-                                {viewFaculty.teaching_experience !== null && (
+                                {viewFaculty.teaching_experience > 0 && (
                                     <div className="p-3 bg-gray-50 rounded-lg"><p className="text-xs text-gray-500 uppercase">Experience</p><p className="text-gray-800 text-sm">{viewFaculty.teaching_experience} Years</p></div>
                                 )}
                                 {viewFaculty.employee_id && (

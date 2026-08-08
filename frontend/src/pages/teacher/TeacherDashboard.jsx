@@ -58,17 +58,17 @@ export default function TeacherDashboard() {
                 <h2 className="text-lg font-bold text-gray-800 mb-4">Assigned Batches</h2>
                 {stats?.assigned_batches?.length > 0 ? (
                     <div className="space-y-3">
-                        {stats.assigned_batches.map((assignment) => (
-                            <div key={assignment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
-                                <div>
-                                    <p className="font-medium text-gray-800">{assignment.batch?.name}</p>
-                                    <p className="text-sm text-gray-500">{assignment.batch?.course?.title} - {assignment.subject}</p>
-                                </div>
-                                <span className="px-3 py-1 bg-[#1F4E79]/10 text-[#1F4E79] rounded-full text-xs font-medium">
-                                    {assignment.batch?.students?.length || 0} Students
-                                </span>
-                            </div>
-                        ))}
+                {stats.assigned_batches.map((assignment) => (
+                    <div key={assignment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                        <div>
+                            <p className="font-medium text-gray-800">{assignment.name}</p>
+                            <p className="text-sm text-gray-500">{assignment.course?.title} - {assignment.subject}</p>
+                        </div>
+                        <span className="px-3 py-1 bg-[#1F4E79]/10 text-[#1F4E79] rounded-full text-xs font-medium">
+                            {assignment.student_count || 0} Students
+                        </span>
+                    </div>
+                ))}
                     </div>
                 ) : (
                     <p className="text-gray-500 text-center py-8">No batches assigned yet</p>
@@ -102,7 +102,7 @@ export default function TeacherDashboard() {
                         {stats.latest_materials.map((material) => (
                             <div key={material.id} className="p-4 bg-gray-50 rounded-lg border border-gray-100">
                                 <p className="font-medium text-gray-800">{material.title}</p>
-                                <p className="text-sm text-gray-500 mt-1">{material.subject} - {material.batch?.name}</p>
+                                <p className="text-sm text-gray-500 mt-1">{material.subject} - {material.Batch?.name}</p>
                             </div>
                         ))}
                     </div>

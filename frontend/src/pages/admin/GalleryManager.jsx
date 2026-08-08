@@ -16,7 +16,11 @@ export default function GalleryManager() {
     const fetchAlbums = async () => {
         try {
             const res = await api.get('/public/gallery');
-            setAlbums(res.data);
+            const nextAlbums = res.data;
+            setAlbums(nextAlbums);
+            if (selectedAlbum) {
+                setSelectedAlbum(nextAlbums.find(album => album.id === selectedAlbum.id) || null);
+            }
         } catch (err) {
             logger.error("Error fetching albums", err);
         }
@@ -47,7 +51,7 @@ export default function GalleryManager() {
         if(!file) return;
 
         const formData = new FormData();
-        formData.append('image', file);
+        formData.append('images', file);
 
         try {
             await api.post(`/admin/gallery/${albumId}/upload`, formData, {

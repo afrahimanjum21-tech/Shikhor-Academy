@@ -207,16 +207,16 @@ export default function TeacherManager() {
       name: t.name || '',
       email: t.email || '',
       phone: t.phone || '',
-      designation: t.teacher_profile?.designation || '',
-      subject: t.teacher_profile?.subject || '',
-      bio: t.teacher_profile?.bio || '',
-      joining_date: t.teacher_profile?.joining_date || '',
+      designation: t.TeacherProfile?.designation || '',
+      subject: t.TeacherProfile?.subject || '',
+      bio: t.TeacherProfile?.bio || '',
+      joining_date: t.TeacherProfile?.joining_date || '',
       password: '',
     });
     setAssignments(
-      (t.batch_assignments || []).map(ba => ({
+      (t.TeacherBatchAssignments || []).map(ba => ({
         batch_id: ba.batch_id,
-        batch_label: ba.batch ? `${ba.batch.course?.title || ''} - ${ba.batch.name}` : `Batch #${ba.batch_id}`,
+        batch_label: ba.Batch ? `${ba.Batch.course?.title || ''} - ${ba.Batch.name}` : `Batch #${ba.batch_id}`,
         subject: ba.subject,
       }))
     );
@@ -264,7 +264,7 @@ export default function TeacherManager() {
         await api.put(`/admin/teachers/${editingTeacher.id}`, payload);
       } else {
         const res = await api.post('/admin/teachers', payload);
-        teacherId = res.data?.user_id;
+        teacherId = res.data?.data?.id ?? res.data?.id;
       }
 
       if (photoFile && teacherId) {
@@ -366,13 +366,13 @@ export default function TeacherManager() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-4"><span className="text-sm text-gray-600">{t.teacher_profile?.designation || '—'}</span></td>
-                  <td className="px-5 py-4"><span className="text-sm text-gray-600">{t.teacher_profile?.subject || '—'}</span></td>
+                  <td className="px-5 py-4"><span className="text-sm text-gray-600">{t.TeacherProfile?.designation || '—'}</span></td>
+                  <td className="px-5 py-4"><span className="text-sm text-gray-600">{t.TeacherProfile?.subject || '—'}</span></td>
                   <td className="px-5 py-4">
                     <div className="flex flex-wrap gap-1.5">
-                      {(t.batch_assignments || []).length > 0 ? t.batch_assignments.map(ba => (
+                      {(t.TeacherBatchAssignments || []).length > 0 ? t.TeacherBatchAssignments.map(ba => (
                         <span key={ba.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md text-[11px] font-medium border border-blue-100">
-                          <Layers size={10} />{ba.batch ? `${ba.batch.course?.title || ''} - ${ba.batch.name}` : `Batch #${ba.batch_id}`}
+                          <Layers size={10} />{ba.Batch ? `${ba.Batch.course?.title || ''} - ${ba.Batch.name}` : `Batch #${ba.batch_id}`}
                         </span>
                       )) : <span className="text-sm text-gray-300">—</span>}
                     </div>
@@ -412,13 +412,13 @@ export default function TeacherManager() {
                   <p className="font-semibold text-gray-800 text-[13px] truncate">{t.name}</p>
                   <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${t.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
                 </div>
-                <p className="text-[11px] text-gray-400 truncate">{t.email} · {t.teacher_profile?.designation || '—'}</p>
-                {(t.batch_assignments || []).length > 0 && (
+                <p className="text-[11px] text-gray-400 truncate">{t.email} · {t.TeacherProfile?.designation || '—'}</p>
+                {(t.TeacherBatchAssignments || []).length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {t.batch_assignments.slice(0, 2).map(ba => (
-                      <span key={ba.id} className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{ba.batch ? ba.batch.name : `#${ba.batch_id}`}</span>
+                    {t.TeacherBatchAssignments.slice(0, 2).map(ba => (
+                      <span key={ba.id} className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{ba.Batch ? ba.Batch.name : `#${ba.batch_id}`}</span>
                     ))}
-                    {t.batch_assignments.length > 2 && <span className="text-[10px] text-gray-400">+{t.batch_assignments.length - 2}</span>}
+                    {t.TeacherBatchAssignments.length > 2 && <span className="text-[10px] text-gray-400">+{t.TeacherBatchAssignments.length - 2}</span>}
                   </div>
                 )}
               </div>

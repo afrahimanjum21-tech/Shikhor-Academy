@@ -29,8 +29,8 @@ export default function StudentManager() {
         student_id_card_no: '', current_batch_id: '',
         gender: '', guardian_phone: '',
         dob: '', religion: 'islam', blood_group: '', nationality: 'Bangladeshi',
-        father_name: '', father_mobile: '', father_occupation: '',
-        mother_name: '', mother_mobile: '', mother_occupation: '',
+        father_name: '', father_phone: '', father_occupation: '',
+        mother_name: '', mother_phone: '', mother_occupation: '',
         present_address: '', permanent_address: '',
         emergency_name: '', emergency_mobile: '',
         last_school: '', jsc_gpa: '', ssc_gpa: '',
@@ -102,7 +102,7 @@ export default function StudentManager() {
             notify.success("Student created successfully!");
             setIsAddOpen(false);
             setAddPhoto(null);
-            setAddForm({ name: '', email: '', password: '', phone: '', student_id_card_no: '', current_batch_id: '', gender: '', guardian_phone: '', dob: '', religion: 'islam', blood_group: '', nationality: 'Bangladeshi', father_name: '', father_mobile: '', father_occupation: '', mother_name: '', mother_mobile: '', mother_occupation: '', present_address: '', permanent_address: '', emergency_name: '', emergency_mobile: '', last_school: '', jsc_gpa: '', ssc_gpa: '' });
+            setAddForm({ name: '', email: '', password: '', phone: '', student_id_card_no: '', current_batch_id: '', gender: '', guardian_phone: '', dob: '', religion: 'islam', blood_group: '', nationality: 'Bangladeshi', father_name: '', father_phone: '', father_occupation: '', mother_name: '', mother_phone: '', mother_occupation: '', present_address: '', permanent_address: '', emergency_name: '', emergency_mobile: '', last_school: '', jsc_gpa: '', ssc_gpa: '' });
             fetchData();
         } catch (err) {
             const errors = err.response?.data?.errors;
@@ -178,7 +178,11 @@ export default function StudentManager() {
                                         <div className="absolute right-8 top-0 bg-white shadow-lg border rounded z-50 w-36 text-left">
                                             <button onClick={(e) => {e.stopPropagation(); goToDetails(std.id)}} className="w-full px-4 py-2 hover:bg-gray-50 flex items-center gap-2"><Eye size={14}/> View</button>
                                             <button onClick={(e) => {e.stopPropagation(); openEditModal(std)}} className="w-full px-4 py-2 hover:bg-gray-50 flex items-center gap-2 text-blue-600"><Edit size={14}/> Edit</button>
-                                            <button onClick={(e) => {e.stopPropagation(); handleAction(std.id, 'ban')}} className="w-full px-4 py-2 hover:bg-gray-50 text-orange-600 flex items-center gap-2"><ShieldAlert size={14}/> Ban</button>
+                                            {std.is_active ? (
+                                                <button onClick={(e) => {e.stopPropagation(); handleAction(std.id, 'ban')}} className="w-full px-4 py-2 hover:bg-gray-50 text-orange-600 flex items-center gap-2"><ShieldAlert size={14}/> Ban</button>
+                                            ) : (
+                                                <button onClick={(e) => {e.stopPropagation(); handleAction(std.id, 'activate')}} className="w-full px-4 py-2 hover:bg-gray-50 text-green-600 flex items-center gap-2"><CheckCircle size={14}/> Activate</button>
+                                            )}
                                             <button onClick={(e) => {e.stopPropagation(); handleAction(std.id, 'delete')}} className="w-full px-4 py-2 hover:bg-gray-50 text-red-600 flex items-center gap-2 border-t"><Trash2 size={14}/> Delete</button>
                                         </div>
                                     )}
@@ -217,6 +221,11 @@ export default function StudentManager() {
                             <div className="flex gap-1 mt-1.5 pt-1.5 border-t border-gray-100">
                                 <button onClick={(e) => {e.stopPropagation(); goToDetails(std.id)}} className="flex-1 py-1 text-[11px] bg-gray-100 rounded hover:bg-gray-200">View</button>
                                 <button onClick={(e) => {e.stopPropagation(); openEditModal(std)}} className="flex-1 py-1 text-[11px] bg-blue-50 text-blue-600 rounded hover:bg-blue-100">Edit</button>
+                                {std.is_active ? (
+                                    <button onClick={(e) => {e.stopPropagation(); handleAction(std.id, 'ban')}} className="flex-1 py-1 text-[11px] bg-orange-50 text-orange-600 rounded hover:bg-orange-100">Ban</button>
+                                ) : (
+                                    <button onClick={(e) => {e.stopPropagation(); handleAction(std.id, 'activate')}} className="flex-1 py-1 text-[11px] bg-green-50 text-green-600 rounded hover:bg-green-100">Activate</button>
+                                )}
                                 <button onClick={(e) => {e.stopPropagation(); handleAction(std.id, 'delete')}} className="flex-1 py-1 text-[11px] bg-red-50 text-red-600 rounded hover:bg-red-100">Delete</button>
                             </div>
                         )}
@@ -336,7 +345,7 @@ export default function StudentManager() {
                                     </div>
                                     <div>
                                         <label className="block text-xs font-medium text-gray-600 mb-1">Father's Mobile *</label>
-                                        <input className="w-full border p-2 rounded text-sm" value={addForm.father_mobile} onChange={e => setAddForm({...addForm, father_mobile: e.target.value})} />
+                                        <input className="w-full border p-2 rounded text-sm" value={addForm.father_phone} onChange={e => setAddForm({...addForm, father_phone: e.target.value})} />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-medium text-gray-600 mb-1">Father's Occupation</label>
@@ -348,7 +357,7 @@ export default function StudentManager() {
                                     </div>
                                     <div>
                                         <label className="block text-xs font-medium text-gray-600 mb-1">Mother's Mobile</label>
-                                        <input className="w-full border p-2 rounded text-sm" value={addForm.mother_mobile} onChange={e => setAddForm({...addForm, mother_mobile: e.target.value})} />
+                                        <input className="w-full border p-2 rounded text-sm" value={addForm.mother_phone} onChange={e => setAddForm({...addForm, mother_phone: e.target.value})} />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-medium text-gray-600 mb-1">Mother's Occupation</label>

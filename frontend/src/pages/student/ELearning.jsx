@@ -51,9 +51,20 @@ export default function ELearning() {
     };
 
     const openVideo = (vid) => {
-        if (vid.is_locked) return;        // লক করা ভিডিও চালু হবে না
+        if (isBlocked(vid)) return;        // লক করা ভিডিও চালু হবে না
         setActiveVideo(vid);
         document.body.style.overflow = 'hidden';
+    };
+
+    // Playable only when the admin hasn't locked it AND it's unlocked
+    // for this student's batch/class/course.
+    const isBlocked = (vid) => vid.is_locked || vid.is_unlocked === false;
+
+    const accessHint = (vid) => {
+        if (vid.access_type === 'batch') return vid.Batch?.name ? `For ${vid.Batch.name} only` : 'Batch locked';
+        if (vid.access_type === 'class') return vid.class_name ? `For ${vid.class_name} class only` : 'Class locked';
+        if (vid.access_type === 'course') return vid.Course?.title ? `For ${vid.Course.title} course only` : 'Course locked';
+        return null;
     };
 
     const closeVideo = () => {
@@ -105,7 +116,7 @@ export default function ELearning() {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: idx * 0.05 }}
                                 onClick={() => openVideo(vid)}
-                                className={`group ${vid.is_locked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                className={`group ${isBlocked(vid) ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                             >
                                 {/* Thumbnail */}
                                 <div className="relative rounded-xl overflow-hidden aspect-video mb-3 shadow-md group-hover:shadow-lg transition">
@@ -133,13 +144,18 @@ export default function ELearning() {
                                             )}
                                         </div>
                                     )}
-                                    <div className={`absolute inset-0 flex items-center justify-center transition ${vid.is_locked ? 'bg-black/50' : 'bg-black/20 group-hover:bg-black/40'}`}>
-                                        {vid.is_locked ? (
+                                    <div className={`absolute inset-0 flex items-center justify-center transition ${isBlocked(vid) ? 'bg-black/50' : 'bg-black/20 group-hover:bg-black/40'}`}>
+                                        {isBlocked(vid) ? (
                                             <Lock size={32} className="text-gray-300" />
                                         ) : (
                                             <PlayCircle size={52} className="text-white opacity-90 group-hover:scale-110 transition" />
                                         )}
                                     </div>
+                                    {isBlocked(vid) && (
+                                        <span className="absolute top-2 right-2 bg-red-600/90 text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded flex items-center gap-1">
+                                            <Lock size={10}/> {vid.is_locked ? 'Locked' : 'Restricted'}
+                                        </span>
+                                    )}
                                     {vid.duration && (
                                         <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
                                             <Clock size={10}/> {vid.duration}
@@ -153,16 +169,19 @@ export default function ELearning() {
 
                                 {/* Info */}
                                 <div className="px-1">
-                                    <h4 className={`font-bold text-lg mb-1 transition ${vid.is_locked ? 'text-gray-400' : 'text-gray-800 group-hover:text-[#1F4E79]'}`}>
+                                    <h4 className={`font-bold text-lg mb-1 transition ${isBlocked(vid) ? 'text-gray-400' : 'text-gray-800 group-hover:text-[#1F4E79]'}`}>
                                         {vid.title}
                                     </h4>
+                                    {isBlocked(vid) && accessHint(vid) && (
+                                        <p className="text-xs text-red-500 font-medium mb-1.5">{accessHint(vid)}</p>
+                                    )}
                                     {vid.description && (
                                         <p className="text-sm text-gray-500 line-clamp-2 mb-2">{vid.description}</p>
                                     )}
                                     <div className="flex justify-between items-center text-xs text-gray-500">
                                         {vid.teacher && <span className="font-medium bg-gray-100 px-2 py-0.5 rounded">by {vid.teacher}</span>}
-                                        <span className={vid.is_locked ? 'text-red-500 font-bold' : 'text-green-600 font-bold'}>
-                                            {vid.is_locked ? 'Locked' : 'Unlocked'}
+                                        <span className={isBlocked(vid) ? 'text-red-500 font-bold' : 'text-green-600 font-bold'}>
+                                            {vid.is_locked ? 'Locked' : !vid.is_unlocked ? 'Restricted' : 'Unlocked'}
                                         </span>
                                     </div>
                                 </div>

@@ -126,10 +126,10 @@ function getGuardianRows(ctx) {
     return [
         { label: "Father's Name", name: "father_name", value: formData?.father_name, type: "text" },
         { label: "Father's Occupation", name: "father_occupation", value: formData?.father_occupation, type: "text" },
-        { label: "Father's Mobile", name: "father_mobile", value: formData?.father_mobile, type: "text" },
+        { label: "Father's Mobile", name: "father_phone", value: formData?.father_phone, type: "text" },
         { label: "Mother's Name", name: "mother_name", value: formData?.mother_name, type: "text" },
         { label: "Mother's Occupation", name: "mother_occupation", value: formData?.mother_occupation, type: "text" },
-        { label: "Mother's Mobile", name: "mother_mobile", value: formData?.mother_mobile, type: "text" },
+        { label: "Mother's Mobile", name: "mother_phone", value: formData?.mother_phone, type: "text" },
     ];
 }
 

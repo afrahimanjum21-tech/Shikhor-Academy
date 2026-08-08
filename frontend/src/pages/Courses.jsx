@@ -202,6 +202,7 @@ export default function Courses() {
                 <div className="relative overflow-hidden aspect-[4/3] bg-gradient-to-br from-[#1F4E79]/10 to-[#1F4E79]/5">
                   {course.thumbnail ? (
                     <img src={buildAssetUrl(course.thumbnail)} alt={course.title}
+                      loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">

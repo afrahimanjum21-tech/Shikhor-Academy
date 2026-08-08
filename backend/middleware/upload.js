@@ -32,11 +32,11 @@ const createStorage = (subDir) => {
 };
 
 const imageFilter = (req, file, cb) => {
-  const allowed = /jpeg|jpg|png|gif|webp|svg/;
+  const allowed = /jpeg|jpg|png|gif|webp/;
   const extOk = allowed.test(path.extname(file.originalname).toLowerCase());
   const mimeOk = allowed.test(file.mimetype.split('/')[1]);
   if (extOk && mimeOk) cb(null, true);
-  else cb(new Error('Only image files (jpeg, jpg, png, gif, webp, svg) are allowed'), false);
+  else cb(new Error('Only image files (jpeg, jpg, png, gif, webp) are allowed'), false);
 };
 
 const fileFilter = (req, file, cb) => {

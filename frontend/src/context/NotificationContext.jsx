@@ -25,18 +25,27 @@ const countKeyMap = {
     messages: 'unread_messages',
 };
 
+// All page keys tracked by the notification system. Used to seed last-viewed
+// timestamps on first login so brand-new users don't get counts for every
+// item ever created.
+const PAGE_KEYS = Object.keys(countKeyMap);
+
 // Maps page keys to notification types so visiting a page marks those notifications as read
 const pageToNotifType = {
     admissions: 'admission',
     payments: 'payment',
-    messages: 'message',
+    messages: 'contact',
     leaves: 'leave',
     assignments: 'assignment',
     routine: 'routine',
-    attendance: 'attendance',
+    attendance: 'leave',
     exam_results: 'exam',
     library: 'material',
     calendar: 'event',
+    gallery: 'album',
+    e_learning: 'video',
+    fees: 'payment',
+    results: 'assignment',
 };
 
 export function getLastViewed(key) {
@@ -53,6 +62,12 @@ const INIT_DONE_KEY = LS_PREFIX + '_init_done';
 
 function ensureLastViewed() {
     if (localStorage.getItem(INIT_DONE_KEY)) return;
+    const now = new Date().toISOString();
+    PAGE_KEYS.forEach((key) => {
+        if (!localStorage.getItem(LS_PREFIX + key)) {
+            localStorage.setItem(LS_PREFIX + key, now);
+        }
+    });
     localStorage.setItem(INIT_DONE_KEY, '1');
 }
 
@@ -85,6 +100,9 @@ export function NotificationProvider({ children }) {
         if (countKey) {
             setCounts(prev => ({ ...prev, [countKey]: 0 }));
         }
+        if (pageKey === 'admissions') {
+            setCounts(prev => ({ ...prev, hold_admissions: 0 }));
+        }
         const notifType = pageToNotifType[pageKey];
         if (notifType) {
             api.post('/notifications/read-by-type', { type: notifType }).catch(() => {});
@@ -98,7 +116,7 @@ export function NotificationProvider({ children }) {
         }
 
         fetchCounts();
-        timerRef.current = setInterval(fetchCounts, 30000);
+        timerRef.current = setInterval(fetchCounts, 60000);
 
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);

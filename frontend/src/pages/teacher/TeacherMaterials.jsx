@@ -23,7 +23,7 @@ export default function TeacherMaterials() {
     const fetchMaterials = async () => {
         try {
             const { data } = await api.get('/teacher/materials');
-            setMaterials(data.data || data);
+            setMaterials(data);
         } catch (error) {
             logger.error('Failed to fetch materials:', error);
         }
@@ -141,11 +141,11 @@ export default function TeacherMaterials() {
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F4E79] focus:border-transparent"
                             >
                                 <option value="">Select a batch</option>
-                                {batches.map((assignment) => (
-                                    <option key={assignment.id} value={assignment.batch_id}>
-                                        {assignment.batch?.name} - {assignment.subject}
-                                    </option>
-                                ))}
+                                 {batches.map((assignment) => (
+                                     <option key={assignment.id} value={assignment.batch_id}>
+                                         {assignment.name} - {assignment.subject}
+                                     </option>
+                                 ))}
                             </select>
                         </div>
                         <div>
@@ -205,16 +205,13 @@ export default function TeacherMaterials() {
                                 <span>{material.subject}</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <span>Batch: {material.batch?.name}</span>
+                                <span>Batch: {material.Batch?.name}</span>
                             </div>
-                            {material.uploader && (
-                                <div className="flex items-center gap-2 text-xs text-gray-400 pt-1 border-t border-gray-100">
-                                    <span>Uploaded by <strong>{material.uploader?.name}</strong></span>
-                                    {material.uploader?.teacher_profile?.designation && (
-                                        <span>· {material.uploader.teacher_profile.designation}</span>
-                                    )}
-                                </div>
-                            )}
+                                {material.Uploader && (
+                                    <div className="flex items-center gap-2 text-xs text-gray-400 pt-1 border-t border-gray-100">
+                                        <span>Uploaded by <strong>{material.Uploader?.name}</strong></span>
+                                    </div>
+                                )}
                         </div>
                         <button
                             onClick={() => handleDownload(material.file_path)}

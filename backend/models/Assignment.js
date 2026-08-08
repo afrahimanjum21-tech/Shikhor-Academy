@@ -10,7 +10,12 @@ const Assignment = sequelize.define('Assignment', {
   subject: { type: DataTypes.STRING },
   due_date: { type: DataTypes.DATEONLY },
   attachment_path: { type: DataTypes.STRING },
-  total_marks: { type: DataTypes.INTEGER },
+   total_marks: { type: DataTypes.INTEGER },
+}, {
+  indexes: [
+    { fields: ['teacher_id'] },
+    { fields: ['batch_id'] },
+  ],
 });
 
 Assignment.associate = (models) => {

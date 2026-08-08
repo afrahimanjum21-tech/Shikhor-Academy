@@ -102,6 +102,7 @@ export default function Gallery() {
                                     <img
                                         src={getUrl(album.thumbnail || album.images?.[0]?.image_path)}
                                         alt={album.name}
+                                        loading="lazy"
                                         className="w-full h-full object-cover transition duration-500 group-hover:scale-110"
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex flex-col justify-end p-5">

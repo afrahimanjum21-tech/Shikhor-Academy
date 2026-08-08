@@ -114,7 +114,10 @@ admin.post('/teachers/:id/photo', uploadPhoto('teacher_photos').single('photo'),
 admin.delete('/teachers/:id', TeacherController.destroy);
 
 admin.post('/gallery/album', uploadPhoto('gallery').single('thumbnail'), GalleryController.storeAlbum);
-admin.post('/gallery/:album/upload', uploadPhoto('gallery').array('images', 20), GalleryController.uploadImages);
+admin.post('/gallery/:album/upload', uploadPhoto('gallery').fields([
+  { name: 'images', maxCount: 20 },
+  { name: 'image', maxCount: 20 },
+]), GalleryController.uploadImages);
 admin.delete('/gallery/album/:id', GalleryController.destroyAlbum);
 admin.delete('/gallery/:albumId/image/:imageId', GalleryController.destroyImage);
 
@@ -149,6 +152,7 @@ admin.post('/attendance/leave-requests/:attendance/reject', AttendanceController
 admin.post('/attendance/leave-requests/:attendance/review', AttendanceController.reviewLeave);
 
 admin.post('/materials', uploadFile('materials').single('file'), ResourceController.uploadMaterial);
+admin.put('/materials/:id', uploadFile('materials').single('file'), ResourceController.update);
 admin.delete('/materials/:id', ResourceController.destroy);
 
 admin.get('/routines', RoutineController.index);
@@ -206,6 +210,15 @@ admin.put('/faculty/:id', uploadPhoto('faculty').fields([
   { name: 'profile_photo', maxCount: 1 },
   { name: 'cover_photo', maxCount: 1 },
 ]), FacultyManagementController.update);
+admin.post('/faculty/:id', uploadPhoto('faculty').fields([
+  { name: 'profile_photo', maxCount: 1 },
+  { name: 'cover_photo', maxCount: 1 },
+]), (req, res) => {
+  if (req.body._method === 'PUT') {
+    return FacultyManagementController.update(req, res);
+  }
+  res.status(405).json({ message: 'Method not allowed' });
+});
 admin.delete('/faculty/:id', FacultyManagementController.destroy);
 admin.post('/faculty/:id/restore', FacultyManagementController.restore);
 admin.delete('/faculty/:id/force', FacultyManagementController.forceDelete);

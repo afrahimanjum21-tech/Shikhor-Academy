@@ -24,7 +24,7 @@ export default function TeacherProfile() {
             setFormData({
                 name: data.name || '',
                 phone: data.phone || '',
-                bio: data.teacher_profile?.bio || ''
+                bio: data.TeacherProfile?.bio || ''
             });
         } catch (error) {
             logger.error('Failed to fetch profile:', error);
@@ -38,8 +38,10 @@ export default function TeacherProfile() {
             await api.put('/teacher/profile', formData);
             await fetchProfile();
             setIsEditing(false);
+            notify.success('Profile updated successfully');
         } catch (error) {
             logger.error('Failed to update profile:', error);
+            notify.error('Failed to update profile');
         }
     };
 
@@ -81,8 +83,8 @@ export default function TeacherProfile() {
         return <div className="flex items-center justify-center h-64">Loading...</div>;
     }
 
-    const rawPhotoPath = profile?.profile_photo_url || profile?.profile_photo_path;
-    const photoUrl = buildAssetUrl(rawPhotoPath?.startsWith('http') ? rawPhotoPath : rawPhotoPath);
+    const rawPhotoPath = profile?.profile_photo_path;
+    const photoUrl = buildAssetUrl(rawPhotoPath);
 
     return (
         <div className="space-y-6">
@@ -162,14 +164,14 @@ export default function TeacherProfile() {
                                             <Phone size={16} /> {profile.phone}
                                         </div>
                                     )}
-                                    {profile?.teacher_profile?.joining_date && (
+                                    {profile?.TeacherProfile?.joining_date && (
                                         <div className="flex items-center gap-2 text-gray-600">
-                                            <Calendar size={16} /> Joined: {new Date(profile.teacher_profile.joining_date).toLocaleDateString()}
+                                            <Calendar size={16} /> Joined: {new Date(profile.TeacherProfile.joining_date).toLocaleDateString()}
                                         </div>
                                     )}
-                                    {profile?.teacher_profile?.designation && (
+                                    {profile?.TeacherProfile?.designation && (
                                         <div className="flex items-center gap-2 text-gray-600">
-                                            <User size={16} /> {profile.teacher_profile.designation}
+                                            <User size={16} /> {profile.TeacherProfile.designation}
                                         </div>
                                     )}
                                     {formData.bio && (

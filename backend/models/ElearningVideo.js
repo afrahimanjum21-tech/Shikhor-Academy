@@ -14,6 +14,15 @@ const ElearningVideo = sequelize.define('ElearningVideo', {
   is_locked: { type: DataTypes.BOOLEAN, defaultValue: false },
   is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
   sort_order: { type: DataTypes.INTEGER, defaultValue: 0 },
+  batch_id: { type: DataTypes.INTEGER, allowNull: true },
+  access_type: { type: DataTypes.STRING(20), defaultValue: 'all' },
+  course_id: { type: DataTypes.INTEGER, allowNull: true },
+  class_name: { type: DataTypes.STRING, allowNull: true },
 });
+
+ElearningVideo.associate = (models) => {
+  ElearningVideo.belongsTo(models.Batch, { foreignKey: 'batch_id' });
+  ElearningVideo.belongsTo(models.Course, { foreignKey: 'course_id' });
+};
 
 export default ElearningVideo;

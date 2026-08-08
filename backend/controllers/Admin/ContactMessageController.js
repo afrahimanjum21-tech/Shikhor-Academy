@@ -33,7 +33,7 @@ export const index = async (req, res) => {
       total: count,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch messages', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch messages' });
   }
 };
 
@@ -59,7 +59,7 @@ export const trashed = async (req, res) => {
       total: count,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch trashed messages', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch trashed messages' });
   }
 };
 
@@ -73,7 +73,7 @@ export const show = async (req, res) => {
 
     res.json({ data: message });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch message', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch message' });
   }
 };
 
@@ -88,7 +88,7 @@ export const markAsRead = async (req, res) => {
 
     res.json({ message: 'Message marked as read', data: message });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to mark message as read', error: error.message });
+    res.status(500).json({ message: 'Failed to mark message as read' });
   }
 };
 
@@ -101,7 +101,7 @@ export const markAllAsRead = async (req, res) => {
 
     res.json({ message: `Marked ${count[0] || 0} messages as read` });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to mark messages as read', error: error.message });
+    res.status(500).json({ message: 'Failed to mark messages as read' });
   }
 };
 
@@ -116,7 +116,7 @@ export const destroy = async (req, res) => {
 
     res.json({ message: 'Message deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to delete message', error: error.message });
+    res.status(500).json({ message: 'Failed to delete message' });
   }
 };
 
@@ -135,7 +135,7 @@ export const restore = async (req, res) => {
 
     res.json({ message: 'Message restored successfully', data: message });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to restore message', error: error.message });
+    res.status(500).json({ message: 'Failed to restore message' });
   }
 };
 
@@ -150,6 +150,6 @@ export const forceDelete = async (req, res) => {
 
     res.json({ message: 'Message permanently deleted' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to permanently delete message', error: error.message });
+    res.status(500).json({ message: 'Failed to permanently delete message' });
   }
 };

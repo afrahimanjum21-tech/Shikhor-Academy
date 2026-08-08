@@ -5,31 +5,27 @@ import NotificationItem from "./NotificationItem";
 export default function NotificationDropdown({ open, onClose, triggerRef, onCountChange }) {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const dropdownRef = useRef(null);
 
-    const fetch = useCallback((p = 1, append = false) => {
+    const fetch = useCallback((offset = 0, append = false) => {
         if (!open) return;
         setLoading(true);
-        const params = { page: p, per_page: 10, unread: "true" };
-        api.get("/notifications", { params })
+        const limit = 10;
+        api.get("/notifications", { params: { limit, offset } })
             .then(({ data }) => {
-                const items = data.notifications?.data || [];
+                const items = data?.data || (Array.isArray(data) ? data : []);
+                const total = data?.total ?? items.length;
                 setNotifications(prev => append ? [...prev, ...items] : items);
-                setHasMore(data.notifications?.current_page < data.notifications?.last_page);
-                if (data.unread_count !== undefined && onCountChange) {
-                    onCountChange(data.unread_count);
-                }
+                setHasMore((offset + items.length) < total);
             })
             .catch(() => {})
             .finally(() => setLoading(false));
-    }, [open, onCountChange]);
+    }, [open]);
 
     useEffect(() => {
         if (open) {
-            setPage(1);
-            fetch(1);
+            fetch(0);
         } else {
             setNotifications([]);
         }
@@ -50,25 +46,24 @@ export default function NotificationDropdown({ open, onClose, triggerRef, onCoun
     }, [open, onClose, triggerRef]);
 
     const handleMarkRead = (id) => {
-        setNotifications(prev => {
-            const filtered = prev.filter(n => n.id !== id);
-            if (onCountChange) onCountChange(filtered.length);
-            return filtered;
-        });
+        setNotifications(prev => prev.filter(n => n.id !== id));
+        if (onCountChange) onCountChange(prev => Math.max(0, (typeof prev === 'number' ? prev : 0) - 1));
         api.post(`/notifications/${id}/read`).catch(() => {});
+        if (hasMore && notifications.length === 1) {
+            fetch(0);
+        }
     };
 
     const handleMarkAllRead = () => {
         api.post("/notifications/read-all").then(() => {
             setNotifications([]);
+            setHasMore(false);
             if (onCountChange) onCountChange(0);
         }).catch(() => {});
     };
 
     const loadMore = () => {
-        const next = page + 1;
-        setPage(next);
-        fetch(next, true);
+        fetch(notifications.length, true);
     };
 
     if (!open) return null;

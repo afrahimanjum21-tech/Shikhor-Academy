@@ -1,6 +1,22 @@
 import models from '../../models/index.js';
 import MediaService from '../../services/media/MediaService.js';
 import MediaDeleteService from '../../services/media/MediaDeleteService.js';
+import NotificationService from '../../services/NotificationService.js';
+
+const normalizeAlbum = (album) => {
+  const data = album.toJSON ? album.toJSON() : { ...album };
+  data.images = data.images || data.GalleryImages || [];
+  delete data.GalleryImages;
+  return data;
+};
+
+const getUploadedImages = (req) => {
+  if (Array.isArray(req.files)) return req.files;
+  return [
+    ...(req.files?.images || []),
+    ...(req.files?.image || []),
+  ];
+};
 
 export const index = async (req, res) => {
   try {
@@ -8,9 +24,9 @@ export const index = async (req, res) => {
       include: [{ model: models.GalleryImage }],
       order: [['createdAt', 'DESC']],
     });
-    res.json({ data: albums });
+    res.json({ data: albums.map(normalizeAlbum) });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch albums', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch albums' });
   }
 };
 
@@ -30,9 +46,21 @@ export const storeAlbum = async (req, res) => {
 
     const album = await models.Album.create({ name, thumbnail });
 
+    try {
+      await NotificationService.createForAllStudents({
+        type: 'album',
+        title: 'New Gallery Album',
+        body: `A new album "${name}" has been added.`,
+        actionUrl: '/student/gallery',
+        actionLabel: 'View Gallery',
+      });
+    } catch (notifErr) {
+      console.error('Failed to send album notification:', notifErr);
+    }
+
     res.status(201).json({ message: 'Album created successfully', data: album });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to create album', error: error.message });
+    res.status(500).json({ message: 'Failed to create album' });
   }
 };
 
@@ -45,11 +73,13 @@ export const uploadImages = async (req, res) => {
       return res.status(404).json({ message: 'Album not found' });
     }
 
-    if (!req.files || req.files.length === 0) {
+    const files = getUploadedImages(req);
+
+    if (!files || files.length === 0) {
       return res.status(400).json({ message: 'No image files provided' });
     }
 
-    const imagePromises = req.files.map(async (file) => {
+    const imagePromises = files.map(async (file) => {
       const result = await MediaService.upload(file, { folder: 'gallery' });
       return { album_id: parseInt(id, 10), image_path: result.url, caption: req.body.caption || null };
     });
@@ -59,7 +89,7 @@ export const uploadImages = async (req, res) => {
 
     res.status(201).json({ message: `${created.length} image(s) uploaded`, data: created });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to upload images', error: error.message });
+    res.status(500).json({ message: 'Failed to upload images' });
   }
 };
 
@@ -84,7 +114,7 @@ export const destroyAlbum = async (req, res) => {
 
     res.json({ message: 'Album deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to delete album', error: error.message });
+    res.status(500).json({ message: 'Failed to delete album' });
   }
 };
 
@@ -102,6 +132,6 @@ export const destroyImage = async (req, res) => {
 
     res.json({ message: 'Image deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to delete image', error: error.message });
+    res.status(500).json({ message: 'Failed to delete image' });
   }
 };

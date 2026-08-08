@@ -12,6 +12,8 @@ export async function submit(req, res) {
       guardian_address, emergency_contact, last_school,
       jsc_roll, jsc_registration, jsc_gpa,
       ssc_roll, ssc_registration, ssc_gpa,
+      father_phone, father_occupation, mother_phone, mother_occupation,
+      permanent_address, shift, section, group_name, subject,
     } = req.body;
 
     if (!full_name || !phone) {
@@ -36,6 +38,8 @@ export async function submit(req, res) {
       guardian_address, emergency_contact, last_school,
       jsc_roll, jsc_registration, jsc_gpa,
       ssc_roll, ssc_registration, ssc_gpa,
+      father_phone, father_occupation, mother_phone, mother_occupation,
+      permanent_address, shift, section, group_name, subject,
     });
 
     const course = course_id ? await models.Course.findByPk(course_id) : null;

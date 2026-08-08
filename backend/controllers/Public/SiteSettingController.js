@@ -17,24 +17,15 @@ export async function show(req, res) {
     ];
     sensitiveFields.forEach(field => { delete data[field]; });
 
-    const studentCount = await models.Student.count({
-      include: [{
-        model: models.User,
-        as: 'User',
-        where: { is_active: true },
-      }],
-    });
-
-    const teacherCount = await models.TeacherProfile.count({
-      include: [{
-        model: models.User,
-        as: 'User',
-        where: { is_active: true },
-      }],
-    });
+    const [studentCount, teacherCount, courseCount] = await Promise.all([
+      models.User.count({ where: { role: 'student' } }),
+      models.User.count({ where: { role: 'teacher' } }),
+      models.Course.count({ where: { is_active: true } }),
+    ]);
 
     data.real_student_count = studentCount;
     data.real_teacher_count = teacherCount;
+    data.real_course_count = courseCount;
 
     res.json(data);
   } catch (error) {

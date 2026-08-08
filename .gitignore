@@ -9,6 +9,10 @@ frontend/dist/
 # -------------------------
 backend/node_modules/
 backend/.env
+backend/uploads/
+backend/public/uploads/admission_photos/
+backend/public/uploads/student_documents/
+backend/public/uploads/students/
 
 # -------------------------
 # Environment
@@ -54,3 +58,6 @@ frontend/.env.local
 # -------------------------
 Thumbs.db
 .DS_Store
+
+.vercel
+.env*

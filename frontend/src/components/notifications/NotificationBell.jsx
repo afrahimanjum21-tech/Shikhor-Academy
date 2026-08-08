@@ -1,23 +1,18 @@
 import { useState, useRef, useEffect } from "react";
-import api from "../../services/api";
 import NotificationDropdown from "./NotificationDropdown";
+import { useNotificationCounts } from "../../context/NotificationContext";
 
 export default function NotificationBell() {
     const [open, setOpen] = useState(false);
     const [count, setCount] = useState(0);
     const bellRef = useRef(null);
-
-    const fetchCount = () => {
-        api.get("/notifications/unread-count")
-            .then(({ data }) => setCount(data.count || 0))
-            .catch(() => {});
-    };
+    const { counts } = useNotificationCounts();
 
     useEffect(() => {
-        fetchCount();
-        const interval = setInterval(fetchCount, 30000);
-        return () => clearInterval(interval);
-    }, []);
+        if (counts?.notifications !== undefined) {
+            setCount(counts.notifications);
+        }
+    }, [counts]);
 
     return (
         <div className="relative">

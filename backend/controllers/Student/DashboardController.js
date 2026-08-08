@@ -1,5 +1,5 @@
 import models from '../../models/index.js';
-import { Op, fn, col } from 'sequelize';
+import { Op } from 'sequelize';
 
 export const summary = async (req, res) => {
   try {
@@ -36,6 +36,27 @@ export const summary = async (req, res) => {
       .filter(p => p.status === 'due' || p.status === 'pending')
       .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
 
+    const allPayments = await models.Payment.findAll({
+      where: { student_id: student.id },
+      order: [['date', 'DESC']],
+    });
+
+    const pendingCount = allPayments.filter(p => p.status === 'pending').length;
+    const dueMonths = allPayments
+      .filter(p => p.status === 'due' || p.status === 'pending')
+      .map(p => p.month)
+      .filter(Boolean);
+
+    const monthlyFee = parseFloat(student.Batch?.Course?.fee) || 0;
+    let totalDue = pendingAmount;
+    if (student.admission_date && monthlyFee > 0) {
+      const admission = new Date(student.admission_date);
+      const now = new Date();
+      const months = (now.getFullYear() - admission.getFullYear()) * 12 +
+        (now.getMonth() - admission.getMonth()) + 1;
+      totalDue = Math.max(0, months * monthlyFee - totalPaid);
+    }
+
     const upcomingEvents = await models.AcademicEvent.findAll({
       where: { date: { [Op.gte]: new Date().toISOString().split('T')[0] } },
       order: [['date', 'ASC']],
@@ -44,10 +65,23 @@ export const summary = async (req, res) => {
 
     const recentResults = await models.ExamResult.findAll({
       where: { student_id: student.id },
-      include: [{ model: models.Exam, attributes: ['id', 'name', 'date'] }],
+      include: [{
+        model: models.Exam,
+        attributes: ['id', 'name', 'date', 'type', 'total_marks', 'subjects'],
+        include: [{ model: models.Course, attributes: ['id', 'title'] }],
+      }],
       order: [['id', 'DESC']],
       limit: 5,
     });
+
+    const paymentBlock = {
+      total_paid: totalPaid,
+      total_due: totalDue,
+      pending_amount: pendingAmount,
+      pending_count: pendingCount,
+      due_months: dueMonths,
+      recent_payments: payments.slice(0, 5),
+    };
 
     res.json({
       data: {
@@ -64,17 +98,15 @@ export const summary = async (req, res) => {
           present: presentCount,
           percentage: attendancePercentage,
         },
-        payment: {
-          total_paid: totalPaid,
-          pending_amount: pendingAmount,
-          recent_payments: payments.slice(0, 5),
-        },
+        payment: paymentBlock,
+        payments: paymentBlock,
+        upcoming: upcomingEvents,
         upcoming_events: upcomingEvents,
         recent_results: recentResults,
       },
     });
   } catch (error) {
     console.error('StudentDashboardController.summary error:', error);
-    res.status(500).json({ message: 'Failed to fetch dashboard summary', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch dashboard summary' });
   }
 };

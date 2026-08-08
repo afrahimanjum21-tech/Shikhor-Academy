@@ -10,7 +10,7 @@ export const show = async (req, res) => {
 
     res.json({ data: setting });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch payment settings', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch payment settings' });
   }
 };
 
@@ -45,6 +45,6 @@ export const update = async (req, res) => {
 
     res.json({ message: 'Payment settings updated successfully', data: updated });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to update payment settings', error: error.message });
+    res.status(500).json({ message: 'Failed to update payment settings' });
   }
 };

@@ -10,7 +10,7 @@ export const index = async (req, res) => {
     });
     res.json({ data: batches });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch batches', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch batches' });
   }
 };
 
@@ -31,7 +31,7 @@ export const store = async (req, res) => {
 
     res.status(201).json({ message: 'Batch created successfully', data: batch });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to create batch', error: error.message });
+    res.status(500).json({ message: 'Failed to create batch' });
   }
 };
 
@@ -51,7 +51,7 @@ export const show = async (req, res) => {
 
     res.json({ data: batch });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch batch', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch batch' });
   }
 };
 
@@ -79,7 +79,7 @@ export const update = async (req, res) => {
 
     res.json({ message: 'Batch updated successfully', data: batch });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to update batch', error: error.message });
+    res.status(500).json({ message: 'Failed to update batch' });
   }
 };
 
@@ -118,6 +118,6 @@ export const destroy = async (req, res) => {
 
     res.json({ message: 'Batch deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to delete batch', error: error.message });
+    res.status(500).json({ message: 'Failed to delete batch' });
   }
 };

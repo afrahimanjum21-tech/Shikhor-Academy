@@ -41,8 +41,8 @@ export default function Admission() {
   const [formData, setFormData] = useState({
     full_name: "", email: "", phone: "", dob: "", course_id: "", photo: null,
     gender: "", religion: "Islam", blood_group: "", nationality: "Bangladeshi",
-    father_name: "", father_mobile: "", father_occupation: "",
-    mother_name: "", mother_mobile: "", mother_occupation: "",
+    father_name: "", father_phone: "", father_occupation: "",
+    mother_name: "", mother_phone: "", mother_occupation: "",
     address: "", permanent_address: "",
     emergency_name: "", emergency_mobile: "",
     last_school: "", jsc_gpa: "", ssc_gpa: "",
@@ -250,7 +250,7 @@ export default function Admission() {
               <div>
                 <label className={sectionLabel}>Father's Mobile *</label>
                 <input
-                  name="father_mobile"
+                  name="father_phone"
                   placeholder="Enter father's mobile number"
                   className={glassInput}
                   style={inputGlass}
@@ -283,7 +283,7 @@ export default function Admission() {
               <div>
                 <label className={sectionLabel}>Mother's Mobile</label>
                 <input
-                  name="mother_mobile"
+                  name="mother_phone"
                   placeholder="Enter mother's mobile number"
                   className={glassInput}
                   style={inputGlass}

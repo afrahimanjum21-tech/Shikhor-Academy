@@ -11,40 +11,54 @@ export const index = async (req, res) => {
       attributes: ['batch_id'],
     }).then(rows => rows.map(r => r.batch_id));
 
-    const whereBatch = batch_id ? { batch_id } : { batch_id: { [Op.in]: batchIds } };
+    // A batch filter is only honoured when the teacher is actually assigned to
+    // that batch - otherwise the query silently returns nothing.
+    const whereBatch = { id: { [Op.in]: batchIds } };
+    if (batch_id) whereBatch.id = { [Op.in]: batchIds, [Op.eq]: Number(batch_id) };
 
     const batches = await models.Batch.findAll({
       where: whereBatch,
       include: [{ model: models.Course, attributes: ['id', 'title'] }],
     });
 
-    const result = await Promise.all(batches.map(async (batch) => {
-      const students = await models.Student.findAll({
-        where: { current_batch_id: batch.id },
-        include: [{ model: models.User, attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'] }],
-      });
+    const queriedBatchIds = batches.map(b => b.id);
 
-      const attendanceWhere = { student_id: { [Op.in]: students.map(s => s.id) } };
-      if (date) attendanceWhere.date = date;
-      if (session) attendanceWhere.session = session;
+    const students = queriedBatchIds.length > 0 ? await models.Student.findAll({
+      where: { current_batch_id: { [Op.in]: queriedBatchIds } },
+      include: [{ model: models.User, attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'] }],
+    }) : [];
 
-      const records = await models.Attendance.findAll({ where: attendanceWhere });
+    const studentIds = students.map(s => s.id);
 
-      const recordMap = {};
-      records.forEach(r => { recordMap[r.student_id] = r; });
+    const attendanceWhere = { student_id: { [Op.in]: studentIds } };
+    if (date) attendanceWhere.date = date;
+    if (session) attendanceWhere.session = session;
 
-      const sheet = students.map(student => ({
+    const records = studentIds.length > 0 ? await models.Attendance.findAll({ where: attendanceWhere }) : [];
+
+    const recordMap = {};
+    records.forEach(r => { recordMap[r.student_id] = r; });
+
+    const studentByBatch = {};
+    students.forEach(s => {
+      const bid = s.current_batch_id;
+      if (!studentByBatch[bid]) studentByBatch[bid] = [];
+      studentByBatch[bid].push(s);
+    });
+
+    const result = batches.map((batch) => {
+      const batchStudents = studentByBatch[batch.id] || [];
+      const sheet = batchStudents.map(student => ({
         student,
         attendance: recordMap[student.id] || null,
       }));
-
       return { batch, sheet };
-    }));
+    });
 
     res.json({ data: result });
   } catch (error) {
     console.error('TeacherAttendanceController.index error:', error);
-    res.status(500).json({ message: 'Failed to fetch attendance', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch attendance' });
   }
 };
 
@@ -78,7 +92,7 @@ export const getStudentsForAttendance = async (req, res) => {
     res.json({ data: { batch, students } });
   } catch (error) {
     console.error('TeacherAttendanceController.getStudentsForAttendance error:', error);
-    res.status(500).json({ message: 'Failed to fetch students', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch students' });
   }
 };
 
@@ -107,6 +121,18 @@ export const markAttendance = async (req, res) => {
       status: record.status || 'present',
     }));
 
+    // Reject records that reference students outside the teacher's batch -
+    // otherwise a teacher could mark attendance for (or impersonate marks of)
+    // any student in the school.
+    const studentIds = attendanceData.map(r => r.student_id);
+    const validStudents = await models.Student.findAll({
+      where: { id: { [Op.in]: studentIds }, current_batch_id: batch_id },
+      attributes: ['id'],
+    });
+    if (validStudents.length !== attendanceData.length) {
+      return res.status(400).json({ message: 'Some students are not in your assigned batch' });
+    }
+
     await models.Attendance.bulkCreate(attendanceData, {
       updateOnDuplicate: ['status', 'session'],
     });
@@ -114,7 +140,7 @@ export const markAttendance = async (req, res) => {
     res.json({ message: 'Attendance marked successfully', count: attendanceData.length });
   } catch (error) {
     console.error('TeacherAttendanceController.markAttendance error:', error);
-    res.status(500).json({ message: 'Failed to mark attendance', error: error.message });
+    res.status(500).json({ message: 'Failed to mark attendance' });
   }
 };
 
@@ -149,6 +175,6 @@ export const updateAttendance = async (req, res) => {
     res.json({ message: 'Attendance updated successfully', data: attendance });
   } catch (error) {
     console.error('TeacherAttendanceController.updateAttendance error:', error);
-    res.status(500).json({ message: 'Failed to update attendance', error: error.message });
+    res.status(500).json({ message: 'Failed to update attendance' });
   }
 };

@@ -6,6 +6,11 @@ const TeacherBatchAssignment = sequelize.define('TeacherBatchAssignment', {
   teacher_id: { type: DataTypes.INTEGER, allowNull: false },
   batch_id: { type: DataTypes.INTEGER, allowNull: false },
   subject: { type: DataTypes.STRING },
+}, {
+  indexes: [
+    { fields: ['teacher_id'] },
+    { fields: ['batch_id'] },
+  ],
 });
 
 TeacherBatchAssignment.associate = (models) => {

@@ -2,40 +2,56 @@ import { Op } from 'sequelize';
 import models from '../../models/index.js';
 
 const facultyIncludes = [
-  { model: models.Department, as: 'Department' },
-  { model: models.FacultyCategory, as: 'FacultyCategory' },
-  { model: models.Subject, as: 'Subjects', through: { attributes: [] } },
-  { model: models.FacultyQualification, as: 'FacultyQualifications' },
-  { model: models.FacultyAchievement, as: 'FacultyAchievements' },
-  { model: models.FacultyCertification, as: 'FacultyCertifications' },
-  { model: models.FacultySocialLink, as: 'FacultySocialLinks' },
-  { model: models.FacultyGallery, as: 'FacultyGalleries', order: [['display_order', 'ASC']] },
-  { model: models.Batch, as: 'Batches', through: { attributes: ['subject'] } },
-  { model: models.User, as: 'User', attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'] },
+  { model: models.Department, as: 'department' },
+  { model: models.FacultyCategory, as: 'category' },
+  { model: models.Subject, as: 'subjects', through: { attributes: [] } },
+  { model: models.Batch, as: 'batches', through: { attributes: ['subject'] } },
+  { model: models.FacultyGallery, as: 'galleries', order: [['display_order', 'ASC']] },
+  { model: models.User, as: 'user', attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'] },
+];
+
+const serializeFaculty = (faculty) => {
+  const json = faculty.toJSON ? faculty.toJSON() : faculty;
+  if (Array.isArray(json.batches)) {
+    json.batches = json.batches.map(b => {
+      b.subject = b.FacultyBatch ? b.FacultyBatch.subject || null : b.subject || null;
+      delete b.FacultyBatch;
+      return b;
+    });
+  }
+  return json;
+};
+
+const listIncludes = [
+  { model: models.Department, as: 'department' },
+  { model: models.FacultyCategory, as: 'category' },
+  { model: models.Subject, as: 'subjects', through: { attributes: [] } },
+  { model: models.Batch, as: 'batches', through: { attributes: ['subject'] } },
 ];
 
 export async function index(req, res) {
   try {
-    const { department, category, page = 1, limit = 12 } = req.query;
+    const { department, category, subject_id, page = 1, limit = 12 } = req.query;
     const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
     const where = { is_active: true, public_profile_enabled: true };
     if (department) where.department_id = department;
     if (category) where.faculty_category_id = category;
 
+    const include = [...listIncludes];
+    if (subject_id) include[2].where = { id: subject_id };
+
     const { count, rows } = await models.Faculty.findAndCountAll({
       where,
-      include: [
-        { model: models.Department, as: 'Department' },
-        { model: models.FacultyCategory, as: 'FacultyCategory' },
-      ],
+      include,
+      distinct: true,
       order: [['display_order', 'ASC'], ['full_name', 'ASC']],
       limit: parseInt(limit, 10),
       offset,
     });
 
     res.json({
-      data: rows,
+      data: rows.map(serializeFaculty),
       current_page: parseInt(page, 10),
       last_page: Math.ceil(count / parseInt(limit, 10)),
       total: count,
@@ -51,14 +67,11 @@ export async function featured(req, res) {
   try {
     const faculty = await models.Faculty.findAll({
       where: { is_featured: true, is_active: true, public_profile_enabled: true },
-      include: [
-        { model: models.Department, as: 'Department' },
-        { model: models.FacultyCategory, as: 'FacultyCategory' },
-      ],
+      include: listIncludes,
       order: [['display_order', 'ASC']],
       limit: 8,
     });
-    res.json(faculty);
+    res.json(faculty.map(serializeFaculty));
   } catch (error) {
     console.error('Faculty featured error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -76,7 +89,7 @@ export async function show(req, res) {
       return res.status(404).json({ message: 'Faculty member not found' });
     }
 
-    res.json(member);
+    res.json(serializeFaculty(member));
   } catch (error) {
     console.error('Faculty show error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -124,7 +137,7 @@ export async function subjects(req, res) {
 
 export async function search(req, res) {
   try {
-    const { q, department, category, page = 1, limit = 12 } = req.query;
+    const { q, department, category, subject_id, page = 1, limit = 12 } = req.query;
     const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
     const where = { is_active: true, public_profile_enabled: true };
@@ -146,19 +159,20 @@ export async function search(req, res) {
     if (department) where.department_id = department;
     if (category) where.faculty_category_id = category;
 
+    const include = [...listIncludes];
+    if (subject_id) include[2].where = { id: subject_id };
+
     const { count, rows } = await models.Faculty.findAndCountAll({
       where,
-      include: [
-        { model: models.Department, as: 'Department' },
-        { model: models.FacultyCategory, as: 'FacultyCategory' },
-      ],
+      include,
+      distinct: true,
       order: [['display_order', 'ASC'], ['full_name', 'ASC']],
       limit: parseInt(limit, 10),
       offset,
     });
 
     res.json({
-      data: rows,
+      data: rows.map(serializeFaculty),
       current_page: parseInt(page, 10),
       last_page: Math.ceil(count / parseInt(limit, 10)),
       total: count,

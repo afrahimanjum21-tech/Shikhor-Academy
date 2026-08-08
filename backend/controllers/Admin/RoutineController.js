@@ -1,5 +1,6 @@
 import models from '../../models/index.js';
 import { Op } from 'sequelize';
+import NotificationService from '../../services/NotificationService.js';
 
 export const index = async (req, res) => {
   try {
@@ -25,7 +26,7 @@ export const index = async (req, res) => {
     return res.json({ data: routines });
   } catch (error) {
     console.error('RoutineController.index error:', error);
-    return res.status(500).json({ message: 'Failed to fetch routines', error: error.message });
+    return res.status(500).json({ message: 'Failed to fetch routines' });
   }
 };
 
@@ -41,7 +42,7 @@ export const meta = async (req, res) => {
     return res.json({ batches, days });
   } catch (error) {
     console.error('RoutineController.meta error:', error);
-    return res.status(500).json({ message: 'Failed to fetch meta data', error: error.message });
+    return res.status(500).json({ message: 'Failed to fetch meta data' });
   }
 };
 
@@ -51,7 +52,7 @@ export const store = async (req, res) => {
     return res.status(201).json({ message: 'Routine entry created', data: routine });
   } catch (error) {
     console.error('RoutineController.store error:', error);
-    return res.status(500).json({ message: 'Failed to create routine entry', error: error.message });
+    return res.status(500).json({ message: 'Failed to create routine entry' });
   }
 };
 
@@ -94,7 +95,7 @@ export const saveAll = async (req, res) => {
     return res.status(201).json({ message: 'Routines saved successfully', count: created.length });
   } catch (error) {
     console.error('RoutineController.saveAll error:', error);
-    return res.status(500).json({ message: 'Failed to save routines', error: error.message });
+    return res.status(500).json({ message: 'Failed to save routines' });
   }
 };
 
@@ -127,10 +128,23 @@ export const publish = async (req, res) => {
 
     await models.Routine.destroy({ where: { batch_id, status: 'draft' } });
 
+    try {
+      await NotificationService.createForBatch({
+        batchId: batch_id,
+        type: 'routine',
+        title: 'Class Routine Updated',
+        body: 'A new class routine has been published for your batch.',
+        actionUrl: '/student/routine',
+        actionLabel: 'View Routine',
+      });
+    } catch (notifErr) {
+      console.error('Failed to send routine notification:', notifErr);
+    }
+
     return res.json({ message: 'Routines published successfully' });
   } catch (error) {
     console.error('RoutineController.publish error:', error);
-    return res.status(500).json({ message: 'Failed to publish routines', error: error.message });
+    return res.status(500).json({ message: 'Failed to publish routines' });
   }
 };
 
@@ -150,7 +164,7 @@ export const unpublish = async (req, res) => {
     return res.json({ message: 'Routines unpublished (reverted to draft)' });
   } catch (error) {
     console.error('RoutineController.unpublish error:', error);
-    return res.status(500).json({ message: 'Failed to unpublish routines', error: error.message });
+    return res.status(500).json({ message: 'Failed to unpublish routines' });
   }
 };
 
@@ -173,7 +187,7 @@ export const renameTimeSlot = async (req, res) => {
     return res.json({ message: 'Time slot renamed', updatedCount });
   } catch (error) {
     console.error('RoutineController.renameTimeSlot error:', error);
-    return res.status(500).json({ message: 'Failed to rename time slot', error: error.message });
+    return res.status(500).json({ message: 'Failed to rename time slot' });
   }
 };
 
@@ -188,7 +202,7 @@ export const update = async (req, res) => {
     return res.json({ message: 'Routine updated', data: routine });
   } catch (error) {
     console.error('RoutineController.update error:', error);
-    return res.status(500).json({ message: 'Failed to update routine', error: error.message });
+    return res.status(500).json({ message: 'Failed to update routine' });
   }
 };
 
@@ -203,7 +217,7 @@ export const destroy = async (req, res) => {
     return res.json({ message: 'Routine entry deleted' });
   } catch (error) {
     console.error('RoutineController.destroy error:', error);
-    return res.status(500).json({ message: 'Failed to delete routine', error: error.message });
+    return res.status(500).json({ message: 'Failed to delete routine' });
   }
 };
 
@@ -223,9 +237,34 @@ export const myRoutine = async (req, res) => {
       order: [['day', 'ASC'], ['start_time', 'ASC']],
     });
 
-    return res.json({ data: routines });
+    // Build the structure the student panel renders:
+    // { shifts: { shiftName: { dayName: [cells] } }, label, meta }
+    const shifts = {};
+    let label = '';
+    let meta = {};
+    routines.forEach((routine) => {
+      const json = routine.toJSON();
+      const shift = json.shift || 'default';
+      if (!shifts[shift]) shifts[shift] = {};
+      if (!shifts[shift][json.day]) shifts[shift][json.day] = [];
+      shifts[shift][json.day].push(json);
+      if (json.Batch) label = json.Batch.name;
+      if (json.department || json.program || json.semester || json.section ||
+          json.academic_year || json.session) {
+        meta = {
+          department: json.department,
+          program: json.program,
+          semester: json.semester,
+          section: json.section,
+          academic_year: json.academic_year,
+          session: json.session,
+        };
+      }
+    });
+
+    return res.json({ data: { shifts, label, meta } });
   } catch (error) {
     console.error('RoutineController.myRoutine error:', error);
-    return res.status(500).json({ message: 'Failed to fetch routine', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch routine' });
   }
 };

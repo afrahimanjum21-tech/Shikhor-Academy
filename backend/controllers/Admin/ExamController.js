@@ -1,6 +1,7 @@
 import models from '../../models/index.js';
 import GradeService from '../../services/GradeService.js';
 import { Op } from 'sequelize';
+import NotificationService from '../../services/NotificationService.js';
 
 export const index = async (req, res) => {
   try {
@@ -24,7 +25,7 @@ export const index = async (req, res) => {
     });
   } catch (error) {
     console.error('ExamController.index error:', error);
-    return res.status(500).json({ message: 'Failed to fetch exams', error: error.message });
+    return res.status(500).json({ message: 'Failed to fetch exams' });
   }
 };
 
@@ -45,7 +46,7 @@ export const store = async (req, res) => {
     return res.status(201).json({ message: 'Exam created successfully', data: exam });
   } catch (error) {
     console.error('ExamController.store error:', error);
-    return res.status(500).json({ message: 'Failed to create exam', error: error.message });
+    return res.status(500).json({ message: 'Failed to create exam' });
   }
 };
 
@@ -75,16 +76,17 @@ export const getExamData = async (req, res) => {
     return res.json({ data: { exam, students, results } });
   } catch (error) {
     console.error('ExamController.getExamData error:', error);
-    return res.status(500).json({ message: 'Failed to fetch exam data', error: error.message });
+    return res.status(500).json({ message: 'Failed to fetch exam data' });
   }
 };
 
 export const storeMarks = async (req, res) => {
   try {
-    const { exam_id, marks_details } = req.body;
+    const { exam_id, marks_data, marks_details } = req.body;
 
-    if (!exam_id || !marks_details || !Array.isArray(marks_details)) {
-      return res.status(400).json({ message: 'exam_id and marks_details array are required' });
+    const entries = marks_data || marks_details;
+    if (!exam_id || !entries || !Array.isArray(entries)) {
+      return res.status(400).json({ message: 'exam_id and a marks array are required' });
     }
 
     const exam = await models.Exam.findByPk(exam_id);
@@ -94,16 +96,18 @@ export const storeMarks = async (req, res) => {
 
     const results = [];
 
-    for (const entry of marks_details) {
-      const { student_id, marks_details: subjectMarks, teacher_comment } = entry;
+    for (const entry of entries) {
+      const student_id = entry.student_id;
+      const subjectMarks = entry.details || entry.marks_details || {};
+      const teacher_comment = entry.teacher_comment;
 
       const totalObtained = GradeService.calculateTotalObtained(subjectMarks);
-      const { grade, gpa, percentage } = GradeService.calculate(totalObtained, exam.total_marks);
+      const { grade, gpa } = GradeService.calculate(totalObtained, exam.total_marks);
 
       const [result, created] = await models.ExamResult.upsert({
         exam_id,
         student_id,
-        marks_details: subjectMarks || [],
+        marks_details: subjectMarks,
         total_obtained: totalObtained,
         grade,
         gpa,
@@ -116,7 +120,7 @@ export const storeMarks = async (req, res) => {
     return res.json({ message: 'Marks saved successfully', data: results });
   } catch (error) {
     console.error('ExamController.storeMarks error:', error);
-    return res.status(500).json({ message: 'Failed to save marks', error: error.message });
+    res.status(500).json({ message: 'Failed to save marks' });
   }
 };
 
@@ -130,10 +134,36 @@ export const togglePublish = async (req, res) => {
     exam.is_published = !exam.is_published;
     await exam.save();
 
+    if (exam.is_published) {
+      try {
+        const batchIds = await models.Batch.findAll({
+          where: { course_id: exam.course_id },
+          attributes: ['id'],
+        }).then(rows => rows.map(r => r.id));
+
+        if (batchIds.length > 0) {
+          const students = await models.Student.findAll({
+            where: { current_batch_id: { [Op.in]: batchIds } },
+            attributes: ['user_id'],
+          });
+          await NotificationService.createForStudents({
+            userIds: students.map(s => s.user_id),
+            type: 'exam',
+            title: 'Exam Result Published',
+            body: `Your result for "${exam.name}" is now available.`,
+            actionUrl: '/student/results',
+            actionLabel: 'View Result',
+          });
+        }
+      } catch (notifErr) {
+        console.error('Failed to send exam result notification:', notifErr);
+      }
+    }
+
     return res.json({ message: `Exam ${exam.is_published ? 'published' : 'unpublished'} successfully`, data: exam });
   } catch (error) {
     console.error('ExamController.togglePublish error:', error);
-    return res.status(500).json({ message: 'Failed to toggle publish status', error: error.message });
+    return res.status(500).json({ message: 'Failed to toggle publish status' });
   }
 };
 
@@ -150,7 +180,7 @@ export const destroy = async (req, res) => {
     return res.json({ message: 'Exam deleted successfully' });
   } catch (error) {
     console.error('ExamController.destroy error:', error);
-    return res.status(500).json({ message: 'Failed to delete exam', error: error.message });
+    return res.status(500).json({ message: 'Failed to delete exam' });
   }
 };
 
@@ -173,6 +203,6 @@ export const myResults = async (req, res) => {
     return res.json({ data: results });
   } catch (error) {
     console.error('ExamController.myResults error:', error);
-    return res.status(500).json({ message: 'Failed to fetch results', error: error.message });
+    return res.status(500).json({ message: 'Failed to fetch results' });
   }
 };

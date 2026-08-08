@@ -30,9 +30,9 @@ export default function TeacherAttendance() {
         try {
             setLoading(true);
             const { data } = await api.get(`/teacher/attendance/students/${batchId}`);
-            setStudents(data);
+            setStudents(data.students || []);
             const initialAttendance = {};
-            data.forEach(student => {
+            (data.students || []).forEach(student => {
                 initialAttendance[student.id] = 'present';
             });
             setAttendance(initialAttendance);
@@ -63,7 +63,7 @@ export default function TeacherAttendance() {
                 batch_id: selectedBatch,
                 date,
                 session,
-                attendance_data: attendanceData
+                records: attendanceData
             });
             notify.success('Attendance marked successfully');
         } catch (error) {
@@ -87,11 +87,11 @@ export default function TeacherAttendance() {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F4E79] focus:border-transparent"
                         >
                             <option value="">Select a batch</option>
-                            {batches.map((assignment) => (
-                                <option key={assignment.id} value={assignment.batch_id}>
-                                    {assignment.batch?.name} - {assignment.subject}
-                                </option>
-                            ))}
+                             {batches.map((assignment) => (
+                                 <option key={assignment.id} value={assignment.batch_id}>
+                                     {assignment.name} - {assignment.subject}
+                                 </option>
+                             ))}
                         </select>
                     </div>
                     <div>
@@ -135,10 +135,10 @@ export default function TeacherAttendance() {
                             <div key={student.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
                                 <div className="flex items-center gap-4">
                                     <div className="h-10 w-10 rounded-full bg-[#1F4E79] flex items-center justify-center text-white font-bold">
-                                        {student.user?.name?.charAt(0).toUpperCase()}
+                                        {student.User?.name?.charAt(0).toUpperCase()}
                                     </div>
                                     <div>
-                                        <p className="font-medium text-gray-800">{student.user?.name}</p>
+                                        <p className="font-medium text-gray-800">{student.User?.name}</p>
                                         <p className="text-sm text-gray-500">ID: {student.student_id_card_no}</p>
                                     </div>
                                 </div>

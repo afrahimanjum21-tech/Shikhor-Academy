@@ -43,7 +43,7 @@ export const getSheet = async (req, res) => {
     return res.json({ data: { course, date, session: session || null, sheet } });
   } catch (error) {
     console.error('AttendanceController.getSheet error:', error);
-    return res.status(500).json({ message: 'Failed to fetch attendance sheet', error: error.message });
+    return res.status(500).json({ message: 'Failed to fetch attendance sheet' });
   }
 };
 
@@ -107,7 +107,7 @@ export const monthlySheet = async (req, res) => {
     return res.json({ course_id, month, year, dates, sheet });
   } catch (error) {
     console.error('AttendanceController.monthlySheet error:', error);
-    return res.status(500).json({ message: 'Failed to fetch monthly sheet', error: error.message });
+    return res.status(500).json({ message: 'Failed to fetch monthly sheet' });
   }
 };
 
@@ -134,7 +134,7 @@ export const store = async (req, res) => {
     return res.json({ message: 'Attendance saved successfully', count: attendanceData.length });
   } catch (error) {
     console.error('AttendanceController.store error:', error);
-    return res.status(500).json({ message: 'Failed to save attendance', error: error.message });
+    return res.status(500).json({ message: 'Failed to save attendance' });
   }
 };
 
@@ -157,7 +157,7 @@ export const saveCell = async (req, res) => {
     return res.json({ message: 'Cell updated successfully', data: attendance });
   } catch (error) {
     console.error('AttendanceController.saveCell error:', error);
-    return res.status(500).json({ message: 'Failed to update cell', error: error.message });
+    return res.status(500).json({ message: 'Failed to update cell' });
   }
 };
 
@@ -180,7 +180,7 @@ export const leaveRequests = async (req, res) => {
     return res.json({ data: requests });
   } catch (error) {
     console.error('AttendanceController.leaveRequests error:', error);
-    return res.status(500).json({ message: 'Failed to fetch leave requests', error: error.message });
+    return res.status(500).json({ message: 'Failed to fetch leave requests' });
   }
 };
 
@@ -218,7 +218,7 @@ export const approveLeave = async (req, res) => {
     return res.json({ message: 'Leave approved successfully', data: attendance });
   } catch (error) {
     console.error('AttendanceController.approveLeave error:', error);
-    return res.status(500).json({ message: 'Failed to approve leave', error: error.message });
+    return res.status(500).json({ message: 'Failed to approve leave' });
   }
 };
 
@@ -255,7 +255,7 @@ export const rejectLeave = async (req, res) => {
     return res.json({ message: 'Leave rejected', data: attendance });
   } catch (error) {
     console.error('AttendanceController.rejectLeave error:', error);
-    return res.status(500).json({ message: 'Failed to reject leave', error: error.message });
+    return res.status(500).json({ message: 'Failed to reject leave' });
   }
 };
 
@@ -293,7 +293,7 @@ export const reviewLeave = async (req, res) => {
     return res.json({ message: 'Leave reviewed and approved', data: attendance });
   } catch (error) {
     console.error('AttendanceController.reviewLeave error:', error);
-    return res.status(500).json({ message: 'Failed to review leave', error: error.message });
+    return res.status(500).json({ message: 'Failed to review leave' });
   }
 };
 
@@ -331,7 +331,7 @@ export const studentStats = async (req, res) => {
     });
   } catch (error) {
     console.error('AttendanceController.studentStats error:', error);
-    return res.status(500).json({ message: 'Failed to fetch attendance stats', error: error.message });
+    return res.status(500).json({ message: 'Failed to fetch attendance stats' });
   }
 };
 
@@ -359,10 +359,22 @@ export const requestLeave = async (req, res) => {
       leave_requested_at: new Date(),
     });
 
+    try {
+      await NotificationService.createForAdmins({
+        type: 'leave',
+        title: 'New Leave Request',
+        body: `Leave request for ${date}: ${reason}`,
+        actionUrl: '/admin/attendance/leave-requests',
+        actionLabel: 'Review Leave',
+      });
+    } catch (notifErr) {
+      console.error('Failed to notify admins of leave request:', notifErr);
+    }
+
     return res.status(201).json({ message: 'Leave request submitted', data: attendance });
   } catch (error) {
     console.error('AttendanceController.requestLeave error:', error);
-    return res.status(500).json({ message: 'Failed to submit leave request', error: error.message });
+    return res.status(500).json({ message: 'Failed to submit leave request' });
   }
 };
 
@@ -389,7 +401,7 @@ export const punchIn = async (req, res) => {
     return res.json({ message: 'Punched in successfully', data: attendance });
   } catch (error) {
     console.error('AttendanceController.punchIn error:', error);
-    return res.status(500).json({ message: 'Failed to punch in', error: error.message });
+    return res.status(500).json({ message: 'Failed to punch in' });
   }
 };
 
@@ -400,12 +412,12 @@ export const punchOut = async (req, res) => {
       return res.status(404).json({ message: 'Student profile not found' });
     }
 
-    const { date } = req.body;
+    const { date, session } = req.body;
     const today = date || new Date().toISOString().split('T')[0];
     const now = new Date().toTimeString().split(' ')[0];
 
     const attendance = await models.Attendance.findOne({
-      where: { student_id: student.id, date: today },
+      where: { student_id: student.id, date: today, session: session || null },
     });
 
     if (!attendance) {
@@ -418,6 +430,6 @@ export const punchOut = async (req, res) => {
     return res.json({ message: 'Punched out successfully', data: attendance });
   } catch (error) {
     console.error('AttendanceController.punchOut error:', error);
-    return res.status(500).json({ message: 'Failed to punch out', error: error.message });
+    res.status(500).json({ message: 'Failed to punch out' });
   }
 };

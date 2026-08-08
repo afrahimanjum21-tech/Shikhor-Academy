@@ -36,6 +36,7 @@ import FacultyCertification from './FacultyCertification.js';
 import FacultySocialLink from './FacultySocialLink.js';
 import FacultyGallery from './FacultyGallery.js';
 import FacultyBatch from './FacultyBatch.js';
+import MediaAsset from './MediaAsset.js';
 
 const models = {
   User, Student, TeacherProfile, Batch, Course, CourseCategory,
@@ -46,6 +47,7 @@ const models = {
   SiteSetting, StudentDocument, Faculty, FacultyCategory, Department,
   Subject, FacultySubject, FacultyQualification, FacultyAchievement,
   FacultyCertification, FacultySocialLink, FacultyGallery, FacultyBatch,
+  MediaAsset,
 };
 
 Object.values(models).forEach(model => {

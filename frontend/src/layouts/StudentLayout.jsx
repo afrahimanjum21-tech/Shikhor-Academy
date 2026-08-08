@@ -45,7 +45,7 @@ export default function StudentLayout() {
     ];
 
     const rawPhotoPath = user?.profile_photo_url || user?.profile_photo_path || user?.student_profile?.admission?.photo_path;
-    const photoUrl = buildAssetUrl(rawPhotoPath?.startsWith('http') ? rawPhotoPath : rawPhotoPath);
+    const photoUrl = buildAssetUrl(rawPhotoPath);
 
     return (
         <div className="flex h-screen bg-[#F8FAFC] font-sans overflow-hidden">
@@ -92,10 +92,8 @@ export default function StudentLayout() {
                 <main className="flex-1 overflow-auto p-3 md:p-8 bg-[#F8FAFC]">
                     <div className="max-w-6xl mx-auto space-y-3 md:space-y-4">
                         <NoticeTicker notices={notices} />
-                            <ErrorBoundary key={location.pathname}>
-                                <motion.div key={location.pathname} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-                                    <Outlet />
-                                </motion.div>
+                            <ErrorBoundary>
+                                <Outlet />
                             </ErrorBoundary>
                     </div>
                 </main>

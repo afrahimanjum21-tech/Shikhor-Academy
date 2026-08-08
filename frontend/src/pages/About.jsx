@@ -15,11 +15,18 @@ export default function About() {
     const content = settings?.about_content || "";
     const { title, subtitle, body } = useMemo(() => splitIntro(content), [content]);
 
-    const stats = [
-        { icon: Users, value: settings?.student_count ?? 0, label: "Happy Students", className: "bg-blue-50 border-blue-100 text-blue-700" },
-        { icon: Award, value: settings?.years_experience ?? 0, label: "Years Experience", className: "bg-emerald-50 border-emerald-100 text-emerald-700" },
-        { icon: TrendingUp, value: settings?.success_rate != null ? `${settings.success_rate}%` : "0%", label: "Success Rate", className: "bg-amber-50 border-amber-100 text-amber-700" },
-    ];
+    const stats = useMemo(() => {
+        const studentCount = settings?.student_count > 0 ? settings.student_count : (settings?.real_student_count ?? 0);
+        const years = settings?.years_experience > 0
+            ? settings.years_experience
+            : (settings?.established_year ? Math.max(new Date().getFullYear() - settings.established_year, 0) : 0);
+
+        return [
+            { icon: Users, value: studentCount, label: "Happy Students", className: "bg-blue-50 border-blue-100 text-blue-700" },
+            { icon: Award, value: years, label: "Years Experience", className: "bg-emerald-50 border-emerald-100 text-emerald-700" },
+            { icon: TrendingUp, value: settings?.success_rate != null ? `${settings.success_rate}%` : "0%", label: "Success Rate", className: "bg-amber-50 border-amber-100 text-amber-700" },
+        ];
+    }, [settings]);
 
     return (
         <div className="min-h-screen font-sans relative overflow-hidden">

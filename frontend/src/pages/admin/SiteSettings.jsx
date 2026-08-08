@@ -31,6 +31,7 @@ const defaultForm = {
     about_content: "",
     student_count: 0,
     years_experience: 0,
+    established_year: "",
     success_rate: 0,
     admission_email: "",
     messages_email: "",
@@ -184,10 +185,11 @@ export default function SiteSettings() {
                         <Field label="Map Embed URL" value={form.map_embed_url || ""} onChange={(v) => update("map_embed_url", v)} textarea />
                     </Section>
 
-                    <Section icon={<Building2 size={20} />} title="About Page Stats" subtitle="Counters shown on the About page.">
+                    <Section icon={<Building2 size={20} />} title="About Page Stats" subtitle="Counters shown on the About page. Student count falls back to the live registered-student count when left 0; years are auto-computed from the established year when not set.">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <Field label="Student Count" type="number" value={form.student_count ?? ""} onChange={(v) => update("student_count", v)} />
                             <Field label="Years Experience" type="number" value={form.years_experience ?? ""} onChange={(v) => update("years_experience", v)} />
+                            <Field label="Established Year" type="number" value={form.established_year ?? ""} onChange={(v) => update("established_year", v)} placeholder="e.g. 2015" />
                             <Field label="Success Rate" value={form.success_rate || ""} onChange={(v) => update("success_rate", v)} placeholder="95%" />
                         </div>
                     </Section>

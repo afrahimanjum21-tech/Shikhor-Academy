@@ -8,11 +8,13 @@ import { Award, FileText, CheckCircle, Clock, ChevronDown, ChevronUp } from "luc
 const statusIcon = {
     submitted: <Clock size={14} className="text-blue-500" />,
     reviewed: <CheckCircle size={14} className="text-green-500" />,
+    graded: <CheckCircle size={14} className="text-green-500" />,
 };
 
 const statusLabel = {
     submitted: "Pending Review",
     reviewed: "Reviewed",
+    graded: "Reviewed",
 };
 
 export default function StudentAssignmentResults() {
@@ -96,7 +98,7 @@ export default function StudentAssignmentResults() {
                                             <div className="flex items-center gap-1.5 flex-shrink-0">
                                                 {statusIcon[r.status] || null}
                                                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                                                    r.status === "reviewed" ? "bg-green-100 text-green-700" :
+                                                    r.status === "reviewed" || r.status === "graded" ? "bg-green-100 text-green-700" :
                                                     r.status === "submitted" ? "bg-blue-100 text-blue-700" :
                                                     "bg-gray-100 text-gray-600"
                                                 }`}>

@@ -37,7 +37,10 @@ export const buildAssetUrl = (path) => {
     // ডবল স্ল্যাশ এড়াতে leading slash কেটে দেওয়া
     const cleanPath = path.replace(/^\/+/, '');
     // storage/app/public/ এ থাকা ফাইলগুলোর জন্য /storage/ prefix দরকার (symlink)
-    if (cleanPath.startsWith('faculty/') || cleanPath.startsWith('teacher_photos/') || cleanPath.startsWith('gallery/') || cleanPath.startsWith('elearning/') || cleanPath.startsWith('assignments/') || cleanPath.startsWith('assignment_submissions/') || cleanPath.startsWith('study_materials/') || cleanPath.startsWith('uploads/')) {
+    if (cleanPath.startsWith('uploads/')) {
+        return `${BACKEND_URL}/${cleanPath}`;
+    }
+    if (cleanPath.startsWith('faculty/') || cleanPath.startsWith('teacher_photos/') || cleanPath.startsWith('gallery/') || cleanPath.startsWith('elearning/') || cleanPath.startsWith('assignments/') || cleanPath.startsWith('assignment_submissions/') || cleanPath.startsWith('study_materials/')) {
         return `${BACKEND_URL}/storage/${cleanPath}`;
     }
     return `${BACKEND_URL}/${cleanPath}`;

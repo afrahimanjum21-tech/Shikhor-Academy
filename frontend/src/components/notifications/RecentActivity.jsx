@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import api from "../../services/api";
 
 const typeIcons = {
@@ -17,10 +17,7 @@ const typeIcons = {
 
 export default function RecentActivity({ limit = 5 }) {
     const [activities, setActivities] = useState([]);
-    const [oldestCreatedAt, setOldestCreatedAt] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [countdown, setCountdown] = useState("");
-    const intervalRef = useRef(null);
 
     useEffect(() => {
         api.get("/recent-activity")
@@ -31,31 +28,6 @@ export default function RecentActivity({ limit = 5 }) {
             .catch(() => {})
             .finally(() => setLoading(false));
     }, [limit]);
-
-    useEffect(() => {
-        if (!oldestCreatedAt) { setCountdown(""); return; }
-
-        const update = () => {
-            const expiresAt = new Date(oldestCreatedAt).getTime() + 30 * 24 * 60 * 60 * 1000;
-            const now = Date.now();
-            const diff = expiresAt - now;
-            if (diff <= 0) { setCountdown("Resetting..."); return; }
-
-            const days = Math.floor(diff / (24 * 60 * 60 * 1000));
-            const hours = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
-            const mins = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
-            const secs = Math.floor((diff % (60 * 1000)) / 1000);
-
-            if (days > 0) setCountdown(`${days}d ${hours}h ${mins}m ${secs}s`);
-            else if (hours > 0) setCountdown(`${hours}h ${mins}m ${secs}s`);
-            else if (mins > 0) setCountdown(`${mins}m ${secs}s`);
-            else setCountdown(`${secs}s`);
-        };
-
-        update();
-        intervalRef.current = setInterval(update, 1000);
-        return () => clearInterval(intervalRef.current);
-    }, [oldestCreatedAt]);
 
     if (loading) {
         return (
@@ -72,11 +44,6 @@ export default function RecentActivity({ limit = 5 }) {
         <div className="bg-white rounded-xl border border-gray-200">
             <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
                 <h3 className="text-sm font-semibold text-gray-900">Recent Activity</h3>
-                {countdown && (
-                    <span className="text-[11px] text-gray-400 font-mono">
-                        Resets in {countdown}
-                    </span>
-                )}
             </div>
             {activities.length === 0 ? (
                 <div className="text-center py-8">
@@ -99,7 +66,7 @@ export default function RecentActivity({ limit = 5 }) {
                                 )}
                             </div>
                             <span className="text-[11px] text-gray-400 whitespace-nowrap flex-shrink-0 ml-2">
-                                {act.time_ago || formatTime(act.created_at)}
+                                {act.time_ago || formatTime(act.createdAt || act.created_at)}
                             </span>
                         </div>
                     ))}

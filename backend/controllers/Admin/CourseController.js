@@ -32,7 +32,7 @@ export const index = async (req, res) => {
     });
     res.json({ data: courses });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch courses', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch courses' });
   }
 };
 
@@ -73,7 +73,7 @@ export const store = async (req, res) => {
 
     res.status(201).json({ message: 'Course created successfully', data: course });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to create course', error: error.message });
+    res.status(500).json({ message: 'Failed to create course' });
   }
 };
 
@@ -93,7 +93,7 @@ export const show = async (req, res) => {
 
     res.json({ data: course });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch course', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch course' });
   }
 };
 
@@ -146,7 +146,7 @@ export const update = async (req, res) => {
 
     res.json({ message: 'Course updated successfully', data: course });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to update course', error: error.message });
+    res.status(500).json({ message: 'Failed to update course' });
   }
 };
 
@@ -207,7 +207,7 @@ export const destroy = async (req, res) => {
 
     res.json({ message: 'Course and related data deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to delete course', error: error.message });
+    res.status(500).json({ message: 'Failed to delete course' });
   }
 };
 
@@ -220,7 +220,7 @@ export const toggleActive = async (req, res) => {
     await course.update({ is_active: !course.is_active });
     res.json({ message: `Course ${course.is_active ? 'activated' : 'deactivated'}`, data: course });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to toggle active status', error: error.message });
+    res.status(500).json({ message: 'Failed to toggle active status' });
   }
 };
 
@@ -233,6 +233,6 @@ export const toggleFeatured = async (req, res) => {
     await course.update({ is_featured: !course.is_featured });
     res.json({ message: `Course ${course.is_featured ? 'featured' : 'unfeatured'}`, data: course });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to toggle featured status', error: error.message });
+    res.status(500).json({ message: 'Failed to toggle featured status' });
   }
 };

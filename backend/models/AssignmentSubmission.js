@@ -10,7 +10,13 @@ const AssignmentSubmission = sequelize.define('AssignmentSubmission', {
   marks_obtained: { type: DataTypes.FLOAT },
   feedback: { type: DataTypes.TEXT },
   status: { type: DataTypes.STRING(20), defaultValue: 'submitted' },
-  submitted_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+   submitted_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+}, {
+  indexes: [
+    { fields: ['assignment_id'] },
+    { fields: ['student_id'] },
+    { fields: ['status'] },
+  ],
 });
 
 AssignmentSubmission.associate = (models) => {

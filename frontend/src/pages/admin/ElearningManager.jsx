@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { buildAssetUrl } from "../../services/config";
-import { Plus, Trash2, Pencil, X, Youtube, Facebook, Image as ImageIcon, Lock, LockOpen, Eye } from "lucide-react";
+import { Plus, Trash2, Pencil, X, Youtube, Facebook, Image as ImageIcon, Lock, LockOpen, Eye, Users } from "lucide-react";
 import notify from "../../services/notification";
 import { useConfirm } from "../../components/common/ConfirmDialog";
+import AccessTargetSelect, { accessLabel } from "../../components/common/AccessTargetSelect";
 import logger from '../../services/logger';
  
 export default function ElearningManager() {
     const confirm = useConfirm();
     const [videos, setVideos] = useState([]);
+    const [batches, setBatches] = useState([]);
+    const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);     // null = add, object = edit
@@ -20,6 +23,7 @@ export default function ElearningManager() {
             title: '', description: '', teacher: '', duration: '',
             video_url: '', is_locked: false, is_active: true,
             sort_order: 0, thumbnail: null, removeThumbnail: false,
+            access_type: 'all', batch_id: '', course_id: '', class_name: '',
         };
     }
 
@@ -35,7 +39,15 @@ export default function ElearningManager() {
         }
     };
 
-    useEffect(() => { fetchVideos(); }, []);
+    useEffect(() => {
+        fetchVideos();
+        api.get('/admin/batches')
+            .then(res => setBatches(res.data || []))
+            .catch(err => logger.error("Failed to load batches:", err));
+        api.get('/admin/courses')
+            .then(res => setCourses(res.data || []))
+            .catch(err => logger.error("Failed to load courses:", err));
+    }, []);
 
     const openAdd = () => {
         setEditing(null);
@@ -56,6 +68,10 @@ export default function ElearningManager() {
             sort_order: vid.sort_order || 0,
             thumbnail: null,
             removeThumbnail: false,
+            access_type: vid.access_type || (vid.batch_id ? 'batch' : 'all'),
+            batch_id: vid.batch_id || '',
+            course_id: vid.course_id || '',
+            class_name: vid.class_name || '',
         });
         setIsModalOpen(true);
     };
@@ -77,6 +93,10 @@ export default function ElearningManager() {
             formData.append('is_locked', form.is_locked ? '1' : '0');
             formData.append('is_active', form.is_active ? '1' : '0');
             formData.append('sort_order', form.sort_order || 0);
+            formData.append('access_type', form.access_type || 'all');
+            formData.append('batch_id', form.batch_id || '');
+            formData.append('course_id', form.course_id || '');
+            formData.append('class_name', form.class_name || '');
             if (form.thumbnail) formData.append('thumbnail', form.thumbnail);
 
             // কাস্টম thumbnail মুছে ফেলার জন্য
@@ -152,6 +172,11 @@ export default function ElearningManager() {
                                 </span>
                                 {vid.is_locked && (
                                     <span className="absolute top-2 right-2 bg-black/60 text-white p-1 rounded"><Lock size={14}/></span>
+                                )}
+                                {vid.access_type && vid.access_type !== 'all' && (
+                                    <span className="absolute bottom-2 left-2 bg-[#1F4E79]/90 text-white text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                                        <Users size={10}/> {accessLabel(vid)}
+                                    </span>
                                 )}
                                 {!vid.is_active && (
                                     <span className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-sm font-bold">Inactive</span>
@@ -269,6 +294,14 @@ export default function ElearningManager() {
                                 <input type="number" value={form.sort_order} onChange={e => setForm({...form, sort_order: e.target.value})}
                                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1F4E79]" />
                             </div>
+
+                            {/* Access — who can watch this video */}
+                            <AccessTargetSelect
+                                value={form}
+                                batches={batches}
+                                courses={courses}
+                                onChange={patch => setForm({ ...form, ...patch })}
+                            />
 
                             {/* Toggles */}
                             <div className="flex gap-6 pt-1">

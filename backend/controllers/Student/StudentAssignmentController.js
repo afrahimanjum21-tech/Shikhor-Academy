@@ -15,7 +15,12 @@ export const index = async (req, res) => {
       },
       include: [
         { model: models.Batch, attributes: ['id', 'name'] },
-        { model: models.User, as: 'Teacher', attributes: ['id', 'name'] },
+        {
+          model: models.User,
+          as: 'Teacher',
+          attributes: ['id', 'name', 'profile_photo_path'],
+          include: [{ model: models.TeacherProfile, attributes: ['designation', 'subject'] }],
+        },
         {
           model: models.AssignmentSubmission,
           where: { student_id: student.id },
@@ -25,19 +30,31 @@ export const index = async (req, res) => {
       order: [['createdAt', 'DESC']],
     });
 
+    // Group into the shape the student panel renders:
+    // [{ teacher: {id, name, profile_photo_url, designation, subject}, assignments: [...] }]
     const grouped = {};
     assignments.forEach((assignment) => {
-      const teacherName = assignment.Teacher?.name || 'Unknown';
-      if (!grouped[teacherName]) {
-        grouped[teacherName] = [];
+      const teacher = assignment.Teacher || {};
+      const teacherId = teacher.id || 'unknown';
+      if (!grouped[teacherId]) {
+        grouped[teacherId] = {
+          teacher: {
+            id: teacherId,
+            name: teacher.name || 'Unknown',
+            profile_photo_url: teacher.profile_photo_path || null,
+            designation: teacher.TeacherProfile?.designation || null,
+            subject: teacher.TeacherProfile?.subject || null,
+          },
+          assignments: [],
+        };
       }
-      grouped[teacherName].push(assignment);
+      grouped[teacherId].assignments.push(assignment);
     });
 
-    res.json({ data: grouped });
+    res.json({ data: Object.values(grouped) });
   } catch (error) {
     console.error('StudentAssignmentController.index error:', error);
-    res.status(500).json({ message: 'Failed to fetch assignments', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch assignments' });
   }
 };
 
@@ -82,7 +99,7 @@ export const submit = async (req, res) => {
     res.status(201).json({ message: 'Assignment submitted successfully', data: submission });
   } catch (error) {
     console.error('StudentAssignmentController.submit error:', error);
-    res.status(500).json({ message: 'Failed to submit assignment', error: error.message });
+    res.status(500).json({ message: 'Failed to submit assignment' });
   }
 };
 
@@ -96,23 +113,59 @@ export const results = async (req, res) => {
     const submissions = await models.AssignmentSubmission.findAll({
       where: {
         student_id: student.id,
-        status: 'graded',
       },
       include: [
         {
           model: models.Assignment,
           include: [
             { model: models.Batch, attributes: ['id', 'name'] },
-            { model: models.User, as: 'Teacher', attributes: ['id', 'name'] },
+            {
+              model: models.User,
+              as: 'Teacher',
+              attributes: ['id', 'name', 'profile_photo_path'],
+              include: [{ model: models.TeacherProfile, attributes: ['designation', 'subject'] }],
+            },
           ],
         },
       ],
       order: [['submitted_at', 'DESC']],
     });
 
-    res.json({ data: submissions });
+    // Group into the shape the student panel renders:
+    // [{ teacher: {id, name, profile_photo_url, designation, subject}, results: [...] }]
+    const grouped = {};
+    submissions.forEach((submission) => {
+      const json = submission.toJSON();
+      const assignment = json.Assignment || {};
+      const teacher = assignment.Teacher || {};
+      const teacherId = teacher.id || 'unknown';
+      if (!grouped[teacherId]) {
+        grouped[teacherId] = {
+          teacher: {
+            id: teacherId,
+            name: teacher.name || 'Unknown',
+            profile_photo_url: teacher.profile_photo_path || null,
+            designation: teacher.TeacherProfile?.designation || null,
+            subject: teacher.TeacherProfile?.subject || null,
+          },
+          results: [],
+        };
+      }
+      grouped[teacherId].results.push({
+        id: json.id,
+        title: assignment.title || 'Untitled Assignment',
+        subject: assignment.subject || null,
+        total_marks: assignment.total_marks ?? null,
+        marks_obtained: json.marks_obtained ?? null,
+        status: json.status || 'submitted',
+        submitted_at: json.submitted_at || null,
+        feedback: json.feedback || null,
+      });
+    });
+
+    res.json({ data: Object.values(grouped) });
   } catch (error) {
     console.error('StudentAssignmentController.results error:', error);
-    res.status(500).json({ message: 'Failed to fetch results', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch results' });
   }
 };

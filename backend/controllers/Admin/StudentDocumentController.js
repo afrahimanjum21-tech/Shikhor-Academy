@@ -4,38 +4,33 @@ import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
 export const index = async (req, res) => {
   try {
-    const { student_id } = req.query;
+    const student = await models.Student.findOne({ where: { user_id: req.params.id } });
 
-    const whereClause = {};
-    if (student_id) {
-      whereClause.student_id = student_id;
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
     }
 
     const documents = await models.StudentDocument.findAll({
-      where: whereClause,
+      where: { student_id: student.id },
       include: [{ model: models.Student }],
       order: [['createdAt', 'DESC']],
     });
 
     res.json({ data: documents });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch documents', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch documents' });
   }
 };
 
 export const store = async (req, res) => {
   try {
-    const { student_id, name, type } = req.body;
-
-    if (!student_id) {
-      return res.status(400).json({ message: 'Student ID is required' });
-    }
+    const { name, type } = req.body;
 
     if (!req.file) {
       return res.status(400).json({ message: 'File is required' });
     }
 
-    const student = await models.Student.findByPk(student_id);
+    const student = await models.Student.findOne({ where: { user_id: req.params.id } });
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
@@ -46,7 +41,7 @@ export const store = async (req, res) => {
     const mime_type = req.file.mimetype;
 
     const document = await models.StudentDocument.create({
-      student_id,
+      student_id: student.id,
       name: name || original_name,
       type,
       file_path,
@@ -56,13 +51,20 @@ export const store = async (req, res) => {
 
     res.status(201).json({ message: 'Document uploaded successfully', data: document });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to upload document', error: error.message });
+    res.status(500).json({ message: 'Failed to upload document' });
   }
 };
 
 export const destroy = async (req, res) => {
   try {
-    const document = await models.StudentDocument.findByPk(req.params.id);
+    const student = await models.Student.findOne({ where: { user_id: req.params.id } });
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    const document = await models.StudentDocument.findOne({
+      where: { id: req.params.documentId, student_id: student.id },
+    });
     if (!document) {
       return res.status(404).json({ message: 'Document not found' });
     }
@@ -74,7 +76,7 @@ export const destroy = async (req, res) => {
 
     res.json({ message: 'Document deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to delete document', error: error.message });
+    res.status(500).json({ message: 'Failed to delete document' });
   }
 };
 
@@ -98,6 +100,6 @@ export const studentDocuments = async (req, res) => {
 
     res.json({ data: documents });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch documents', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch documents' });
   }
 };

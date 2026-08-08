@@ -15,7 +15,7 @@ export const show = async (req, res) => {
 
     res.json({ data });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch settings', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch settings' });
   }
 };
 
@@ -85,6 +85,6 @@ export const update = async (req, res) => {
 
     res.json({ message: 'Settings updated successfully', data: result });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to update settings', error: error.message });
+    res.status(500).json({ message: 'Failed to update settings' });
   }
 };

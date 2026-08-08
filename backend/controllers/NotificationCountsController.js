@@ -6,6 +6,27 @@ export const counts = async (req, res) => {
     const user = req.user;
     const counts = {};
 
+    // The frontend sends since_<page> timestamps (last time the user viewed
+    // that page). Counts must only include items created/updated AFTER that
+    // timestamp, otherwise bubbles reappear after viewing a page.
+    const since = {};
+    Object.entries(req.query).forEach(([key, value]) => {
+      if (key.startsWith('since_') && value) {
+        const date = new Date(value);
+        if (!Number.isNaN(date.getTime())) {
+          since[key.slice(6)] = date;
+        }
+      }
+    });
+
+    // Returns a where-filter for items newer than the most recent view of any
+    // of the given page keys (or an empty filter if never viewed).
+    const after = (field, ...pageKeys) => {
+      const dates = pageKeys.map((k) => since[k]).filter(Boolean);
+      if (dates.length === 0) return {};
+      return { [field]: { [Op.gt]: new Date(Math.max(...dates.map(d => d.getTime()))) } };
+    };
+
     const unreadNotifications = await models.Notification.count({
       where: { user_id: user.id, read_at: null },
     });
@@ -14,11 +35,11 @@ export const counts = async (req, res) => {
 
     if (user.role === 'admin' || user.role === 'super_admin') {
       const [pendingAdmissions, holdAdmissions, pendingPayments, pendingLeaveRequests, unreadMessages] = await Promise.all([
-        models.AdmissionApplication.count({ where: { status: 'pending' } }),
-        models.AdmissionApplication.count({ where: { status: 'hold' } }),
-        models.Payment.count({ where: { status: 'pending' } }),
-        models.Attendance.count({ where: { leave_status: 'pending' } }),
-        models.ContactMessage.count({ where: { is_read: false } }),
+        models.AdmissionApplication.count({ where: { status: 'pending', ...after('createdAt', 'admissions') } }),
+        models.AdmissionApplication.count({ where: { status: 'hold', ...after('createdAt', 'admissions') } }),
+        models.Payment.count({ where: { status: 'pending', ...after('createdAt', 'payments') } }),
+        models.Attendance.count({ where: { leave_status: 'pending', ...after('createdAt', 'leaves') } }),
+        models.ContactMessage.count({ where: { is_read: false, ...after('createdAt', 'messages') } }),
       ]);
 
       counts.pending_admissions = pendingAdmissions;
@@ -38,7 +59,7 @@ export const counts = async (req, res) => {
 
       const [pendingSubmissions, totalStudents] = await Promise.all([
         models.AssignmentSubmission.count({
-          where: { status: 'submitted' },
+          where: { status: 'submitted', ...after('updatedAt', 'reviews') },
           include: [{
             model: models.Assignment,
             where: { teacher_id: teacherId },
@@ -51,6 +72,7 @@ export const counts = async (req, res) => {
       ]);
 
       counts.pending_submissions = pendingSubmissions;
+      counts.pending_reviews = pendingSubmissions;
       counts.total_students = totalStudents;
     }
 
@@ -58,16 +80,53 @@ export const counts = async (req, res) => {
       const student = await models.Student.findOne({ where: { user_id: user.id } });
 
       if (student) {
-        const [pendingPayments, gradedResults] = await Promise.all([
-          models.Payment.count({
-            where: { student_id: student.id, status: 'due' },
+        const batchId = student.current_batch_id || null;
+        const today = new Date().toISOString().split('T')[0];
+
+        const [
+          pendingFees,
+          gradedResults,
+          publishedResults,
+          routines,
+          upcomingEvents,
+          attendanceRecords,
+          activities,
+          videos,
+          materials,
+          albums,
+          assignments,
+        ] = await Promise.all([
+          models.Payment.count({ where: { student_id: student.id, status: 'due', ...after('createdAt', 'fees') } }),
+          models.AssignmentSubmission.count({ where: { student_id: student.id, status: 'graded', ...after('updatedAt', 'results') } }),
+          models.ExamResult.count({
+            where: { student_id: student.id, ...after('createdAt', 'exam_results') },
+            include: [{ model: models.Exam, where: { is_published: true }, attributes: [] }],
           }),
-          models.AssignmentSubmission.count({
-            where: { student_id: student.id, status: 'graded' },
-          }),
+          models.Routine.count({ where: { batch_id: batchId, status: 'published', ...after('updatedAt', 'routine') } }),
+          models.AcademicEvent.count({ where: { date: { [Op.gte]: today }, ...after('createdAt', 'calendar') } }),
+          models.Attendance.count({ where: { student_id: student.id, ...after('createdAt', 'attendance') } }),
+          models.AcademicEvent.count({ where: { type: 'event', ...after('createdAt', 'extra_curricular', 'attitude') } }),
+          models.ElearningVideo.count({ where: { is_active: true, ...after('createdAt', 'e_learning') } }),
+          models.StudyMaterial.count({ where: { ...after('createdAt', 'library') } }),
+          models.Album.count({ where: { ...after('createdAt', 'gallery') } }),
+          models.Assignment.count({ where: { batch_id: batchId, ...after('createdAt', 'assignments') } }),
         ]);
 
-        counts.due_payments = pendingPayments;
+        // Keys consumed by the student sidebar / notification context
+        counts.pending_fees = pendingFees;
+        counts.recently_reviewed = gradedResults;
+        counts.new_exam_results = publishedResults;
+        counts.updated_routine = routines;
+        counts.new_events = upcomingEvents;
+        counts.attendance_updates = attendanceRecords;
+        counts.new_activities = activities;
+        counts.new_videos = videos;
+        counts.new_materials = materials;
+        counts.new_albums = albums;
+        counts.pending_assignments = assignments;
+
+        // Keep the legacy keys too
+        counts.due_payments = pendingFees;
         counts.graded_results = gradedResults;
       }
     }
@@ -75,6 +134,6 @@ export const counts = async (req, res) => {
     res.json({ data: counts });
   } catch (error) {
     console.error('NotificationCountsController.counts error:', error);
-    res.status(500).json({ message: 'Failed to fetch counts', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch counts' });
   }
 };

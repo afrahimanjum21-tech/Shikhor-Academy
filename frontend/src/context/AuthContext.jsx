@@ -24,6 +24,17 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(localStorage.getItem('ACCESS_TOKEN'));
 
     useEffect(() => {
+        const handleStorageChange = (e) => {
+            if (e.key === 'ACCESS_TOKEN' && !e.newValue) {
+                setUser(null);
+                setToken(null);
+            }
+        };
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, []);
+
+    useEffect(() => {
         if (!token) return;
 
         api.get('/user')
@@ -31,7 +42,12 @@ export const AuthProvider = ({ children }) => {
                 setUser(data);
                 localStorage.setItem('USER', JSON.stringify(data));
             })
-            .catch(() => {});
+            .catch(() => {
+                if (!localStorage.getItem('ACCESS_TOKEN')) {
+                    setUser(null);
+                    setToken(null);
+                }
+            });
     }, [token]);
 
     const login = async (credentials) => {

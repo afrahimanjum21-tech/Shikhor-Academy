@@ -31,6 +31,8 @@ function getRankLabel(gpa) {
     return { label: "Active", color: "text-gray-300" };
 }
 
+const payload = (response) => response?.data?.data ?? response?.data;
+
 function HeroBadge({ icon: Icon, children }) {
     return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm text-white/90 text-[11px] md:text-xs font-medium border border-white/10 whitespace-nowrap">
@@ -81,16 +83,16 @@ export default function StudentProfile() {
                 api.get("/student/documents"),
             ]);
 
-            if (dashRes.status === "fulfilled") setDashboard(dashRes.value.data);
-            if (attRes.status === "fulfilled") setAttendance(attRes.value.data);
-            if (payRes.status === "fulfilled") setPayments(payRes.value.data);
-            if (resRes.status === "fulfilled") setResults(resRes.value.data);
+            if (dashRes.status === "fulfilled") setDashboard(payload(dashRes.value));
+            if (attRes.status === "fulfilled") setAttendance(payload(attRes.value));
+            if (payRes.status === "fulfilled") setPayments(payload(payRes.value));
+            if (resRes.status === "fulfilled") setResults(payload(resRes.value));
             if (actRes.status === "fulfilled") {
-                const data = actRes.value.data;
+                const data = payload(actRes.value);
                 setActivities(Array.isArray(data) ? data : data?.items || []);
             }
-            if (routineRes.status === "fulfilled") setRoutine(routineRes.value.data);
-            if (docRes.status === "fulfilled") setDocuments(docRes.value.data);
+            if (routineRes.status === "fulfilled") setRoutine(payload(routineRes.value));
+            if (docRes.status === "fulfilled") setDocuments(payload(docRes.value));
         } catch (err) {
             setError("Failed to load profile data. Please try again.");
         } finally {
@@ -111,29 +113,34 @@ export default function StudentProfile() {
 
     const profile = user.student_profile || {};
     const rawPhotoPath = user.profile_photo_url || user.profile_photo_path || profile.admission?.photo_path;
-    const photoUrl = buildAssetUrl(rawPhotoPath?.startsWith("http") ? rawPhotoPath : rawPhotoPath);
+    const photoUrl = buildAssetUrl(rawPhotoPath);
     const dash = dashboard?.student || {};
     const att = attendance || dashboard?.attendance || {};
-    const pay = payments || dashboard?.payments || {};
+    const pay = payments || dashboard?.payment || dashboard?.payments || {};
     const routineMeta = routine?.meta || {};
     const courseName = dash.course || profile.batch?.course?.title || profile.admission?.course?.title || "Not Assigned";
     const batchName = dash.batch || profile.batch?.name || "Not Assigned";
-    const attPercent = att.percentage ?? "-";
-    const feeStatus = pay.total_due > 0 ? (pay.total_due >= pay.course_fee ? "Overdue" : "Partial") : "Paid";
+    const attPercent = att.percentage ?? att.attendancePercentage ?? "-";
+    const totalDue = pay.total_due ?? pay.totalDue ?? pay.currentDue ?? 0;
+    const courseFee = pay.course_fee ?? pay.monthlyFee ?? 0;
+    const feeStatus = totalDue > 0 ? (courseFee && totalDue >= courseFee ? "Overdue" : "Partial") : "Paid";
     const feeColor = feeStatus === "Paid" ? "text-emerald-500" : feeStatus === "Partial" ? "text-amber-500" : "text-red-500";
     const feeBg = feeStatus === "Paid" ? "bg-emerald-50" : feeStatus === "Partial" ? "bg-amber-50" : "bg-red-50";
 
     const gpa = useMemo(() => {
         if (!results?.length) return null;
-        const valid = results.filter(r => r.marks_obtained != null && r.total_marks != null);
+        const valid = results.filter(r => r.total_obtained != null && (r.exam?.total_marks ?? r.total_marks) != null);
         if (!valid.length) return null;
-        const avg = valid.reduce((s, r) => s + (r.marks_obtained / r.total_marks) * 5, 0) / valid.length;
+        const avg = valid.reduce((s, r) => s + (r.total_obtained / (r.exam?.total_marks ?? r.total_marks)) * 5, 0) / valid.length;
         return avg.toFixed(2);
     }, [results]);
 
     const totalSubjects = useMemo(() => {
         if (!results?.length) return null;
-        const subjects = new Set(results.map(r => r.subject).filter(Boolean));
+        const subjects = new Set(results.flatMap(r => {
+            const list = r.exam?.subjects || r.subject || [];
+            return Array.isArray(list) ? list : [list];
+        }).filter(Boolean));
         return subjects.size || null;
     }, [results]);
 
@@ -174,10 +181,10 @@ export default function StudentProfile() {
     const guardianRows = [
         { icon: User, label: "Father's Name", value: profile.father_name },
         { icon: BriefcaseIcon, label: "Father's Occupation", value: profile.father_occupation },
-        { icon: Phone, label: "Father's Mobile", value: profile.father_mobile },
+        { icon: Phone, label: "Father's Mobile", value: profile.father_phone },
         { icon: User, label: "Mother's Name", value: profile.mother_name },
         { icon: BriefcaseIcon, label: "Mother's Occupation", value: profile.mother_occupation },
-        { icon: Phone, label: "Mother's Mobile", value: profile.mother_mobile },
+        { icon: Phone, label: "Mother's Mobile", value: profile.mother_phone },
     ];
 
     const summaryItems = useMemo(() => [
@@ -682,14 +689,17 @@ function ActivityCard({ activities, loading, navigate }) {
                     <div className="relative">
                         <div className="absolute left-[17px] top-3 bottom-3 w-px bg-gray-100" />
                         <div className="space-y-0">
-                            {activities.slice(0, 3).map((act, i) => (
-                                <TimelineItem key={i}
-                                    action={act.title || act.action || "Activity"}
-                                    time={act.time_ago || act.created_at ? new Date(act.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A"}
-                                    index={i}
-                                    isLast={i === Math.min(activities.length, 3) - 1}
-                                />
-                            ))}
+                            {activities.slice(0, 3).map((act, i) => {
+                                const created = act.createdAt || act.created_at;
+                                return (
+                                    <TimelineItem key={i}
+                                        action={act.title || act.action || "Activity"}
+                                        time={act.time_ago || (created ? new Date(created).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A")}
+                                        index={i}
+                                        isLast={i === Math.min(activities.length, 3) - 1}
+                                    />
+                                );
+                            })}
                         </div>
                     </div>
                 )}

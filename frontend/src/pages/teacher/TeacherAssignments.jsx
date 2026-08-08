@@ -16,6 +16,7 @@ export default function TeacherAssignments() {
     const [formData, setFormData] = useState({ title: '', description: '', batch_id: '', subject: '', due_date: '', total_marks: 100, attachment: null });
     const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [gradingData, setGradingData] = useState({});
     const { markViewed } = useNotificationCounts();
 
     useEffect(() => {
@@ -27,7 +28,7 @@ export default function TeacherAssignments() {
     const fetchAssignments = async () => {
         try {
             const { data } = await api.get('/teacher/assignments');
-            setAssignments(data.data || data);
+            setAssignments(data);
         } catch (error) {
             logger.error('Failed to fetch assignments:', error);
         }
@@ -98,12 +99,17 @@ export default function TeacherAssignments() {
     };
 
     const handleGrade = async (submissionId, marks, feedback) => {
+        if (parseFloat(marks) < 0) {
+            notify.error('Marks cannot be negative');
+            return;
+        }
         try {
             await api.post(`/teacher/assignments/submissions/${submissionId}/grade`, {
-                marks_obtained: marks,
+                marks_obtained: parseFloat(marks),
                 feedback
             });
             await fetchAssignmentDetails(selectedAssignment.id);
+            setGradingData({});
         } catch (error) {
             logger.error('Failed to grade submission:', error);
             notify.error('Failed to grade submission');
@@ -169,7 +175,7 @@ export default function TeacherAssignments() {
                                     <option value="">Select a batch</option>
                                     {batches.map((assignment) => (
                                         <option key={assignment.id} value={assignment.batch_id}>
-                                            {assignment.batch?.name} - {assignment.subject}
+                                            {assignment.name} - {assignment.subject}
                                         </option>
                                     ))}
                                 </select>
@@ -253,7 +259,7 @@ export default function TeacherAssignments() {
                             <div className="space-y-2">
                                 <div className="flex items-center gap-2 text-sm text-gray-600">
                                     <Calendar size={16} />
-                                    <span>Due: {new Date(assignment.due_date).toLocaleDateString()}</span>
+                                    <span>Due: {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : 'N/A'}</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm text-gray-600">
                                     <Award size={16} />
@@ -261,14 +267,11 @@ export default function TeacherAssignments() {
                                 </div>
                                 <div className="flex items-center gap-2 text-sm text-gray-600">
                                     <Users size={16} />
-                                    <span>{assignment.submissions?.length || 0} Submissions</span>
+                                    <span>{assignment.submission_count || 0} Submissions</span>
                                 </div>
-                                {assignment.teacher && (
+                                {assignment.Teacher && (
                                     <div className="flex items-center gap-2 text-xs text-gray-400 pt-1 border-t border-gray-100">
-                                        <span>Created by <strong>{assignment.teacher?.name}</strong></span>
-                                        {assignment.teacher?.teacher_profile?.designation && (
-                                            <span>· {assignment.teacher.teacher_profile.designation}</span>
-                                        )}
+                                        <span>Created by <strong>{assignment.Teacher?.name}</strong></span>
                                     </div>
                                 )}
                             </div>
@@ -285,24 +288,24 @@ export default function TeacherAssignments() {
                     <div className="mb-6 space-y-2">
                         <p className="text-gray-600">{selectedAssignment.description}</p>
                         <div className="flex gap-4 text-sm text-gray-600">
-                            <span><Calendar size={16} className="inline mr-1" /> Due: {new Date(selectedAssignment.due_date).toLocaleDateString()}</span>
+                            <span><Calendar size={16} className="inline mr-1" /> Due: {selectedAssignment.due_date ? new Date(selectedAssignment.due_date).toLocaleDateString() : 'N/A'}</span>
                             <span><Award size={16} className="inline mr-1" /> {selectedAssignment.total_marks} Marks</span>
                         </div>
                     </div>
 
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Submissions</h3>
-                    {selectedAssignment.submissions?.length > 0 ? (
+                    {selectedAssignment.AssignmentSubmissions?.length > 0 ? (
                         <div className="space-y-4">
-                            {selectedAssignment.submissions.map((submission) => (
+                            {selectedAssignment.AssignmentSubmissions?.map((submission) => (
                                 <div key={submission.id} className="p-4 bg-gray-50 rounded-lg border border-gray-100">
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-3">
                                             <div className="h-10 w-10 rounded-full bg-[#1F4E79] flex items-center justify-center text-white font-bold">
-                                                {submission.student?.user?.name?.charAt(0).toUpperCase()}
+                                                {submission.Student?.User?.name?.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
-                                                <p className="font-medium text-gray-800">{submission.student?.user?.name}</p>
-                                                <p className="text-xs text-gray-500">ID: {submission.student?.student_id_card_no}</p>
+                                                <p className="font-medium text-gray-800">{submission.Student?.User?.name}</p>
+                                                <p className="text-xs text-gray-500">ID: {submission.Student?.student_id_card_no}</p>
                                             </div>
                                         </div>
                                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -324,23 +327,23 @@ export default function TeacherAssignments() {
                                                 <input
                                                     type="number"
                                                     placeholder="Marks"
-                                                    defaultValue={submission.marks_obtained}
+                                                    value={gradingData[submission.id]?.marks ?? submission.marks_obtained ?? ''}
+                                                    onChange={(e) => setGradingData({ ...gradingData, [submission.id]: { ...gradingData[submission.id], marks: e.target.value } })}
                                                     max={selectedAssignment.total_marks}
                                                     className="w-24 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-[#1F4E79] focus:border-transparent"
-                                                    id={`marks-${submission.id}`}
                                                 />
                                                 <input
                                                     type="text"
                                                     placeholder="Feedback"
-                                                    defaultValue={submission.feedback}
+                                                    value={gradingData[submission.id]?.feedback ?? submission.feedback ?? ''}
+                                                    onChange={(e) => setGradingData({ ...gradingData, [submission.id]: { ...gradingData[submission.id], feedback: e.target.value } })}
                                                     className="flex-1 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-[#1F4E79] focus:border-transparent"
-                                                    id={`feedback-${submission.id}`}
                                                 />
                                                 <button
                                                     onClick={() => {
-                                                        const marks = document.getElementById(`marks-${submission.id}`).value;
-                                                        const feedback = document.getElementById(`feedback-${submission.id}`).value;
-                                                        handleGrade(submission.id, parseFloat(marks), feedback);
+                                                        const marks = gradingData[submission.id]?.marks ?? submission.marks_obtained ?? '';
+                                                        const feedback = gradingData[submission.id]?.feedback ?? submission.feedback ?? '';
+                                                        handleGrade(submission.id, marks, feedback);
                                                     }}
                                                     className="px-3 py-1 bg-[#1F4E79] text-white rounded hover:bg-[#1a3d66] transition-colors flex items-center gap-1"
                                                 >

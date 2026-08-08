@@ -17,7 +17,7 @@ export const show = async (req, res) => {
     res.json({ data: user });
   } catch (error) {
     console.error('TeacherProfileController.show error:', error);
-    res.status(500).json({ message: 'Failed to fetch profile', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch profile' });
   }
 };
 
@@ -59,7 +59,7 @@ export const update = async (req, res) => {
     res.json({ message: 'Profile updated successfully', data: updatedUser });
   } catch (error) {
     console.error('TeacherProfileController.update error:', error);
-    res.status(500).json({ message: 'Failed to update profile', error: error.message });
+    res.status(500).json({ message: 'Failed to update profile' });
   }
 };
 
@@ -85,7 +85,7 @@ export const updatePhoto = async (req, res) => {
     res.json({ message: 'Photo updated successfully', data: { profile_photo_path: user.profile_photo_path } });
   } catch (error) {
     console.error('TeacherProfileController.updatePhoto error:', error);
-    res.status(500).json({ message: 'Failed to update photo', error: error.message });
+    res.status(500).json({ message: 'Failed to update photo' });
   }
 };
 
@@ -121,6 +121,6 @@ export const changePassword = async (req, res) => {
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
     console.error('TeacherProfileController.changePassword error:', error);
-    res.status(500).json({ message: 'Failed to change password', error: error.message });
+    res.status(500).json({ message: 'Failed to change password' });
   }
 };

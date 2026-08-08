@@ -215,14 +215,14 @@ export default function AdmissionManager() {
                             <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                                 <h4 className="text-xs font-semibold text-gray-500 uppercase">Father</h4>
                                 <InfoRow label="Name" value={a.father_name} />
-                                {a.father_mobile && <InfoRow label="Mobile" value={a.father_mobile} />}
+                                {a.father_phone && <InfoRow label="Mobile" value={a.father_phone} />}
                                 {a.father_email && <InfoRow label="Email" value={a.father_email} />}
                                 {a.father_occupation && <InfoRow label="Occupation" value={a.father_occupation} />}
                                 <div className="border-t border-gray-200 pt-3">
                                     <h4 className="text-xs font-semibold text-gray-500 uppercase">Mother</h4>
                                 </div>
                                 <InfoRow label="Name" value={a.mother_name} />
-                                {a.mother_mobile && <InfoRow label="Mobile" value={a.mother_mobile} />}
+                                {a.mother_phone && <InfoRow label="Mobile" value={a.mother_phone} />}
                                 {a.mother_email && <InfoRow label="Email" value={a.mother_email} />}
                                 {a.mother_occupation && <InfoRow label="Occupation" value={a.mother_occupation} />}
                             </div>

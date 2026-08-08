@@ -2,6 +2,7 @@ import models from '../../models/index.js';
 import { Op } from 'sequelize';
 import MediaService from '../../services/media/MediaService.js';
 import MediaDeleteService from '../../services/media/MediaDeleteService.js';
+import NotificationService from '../../services/NotificationService.js';
 
 export const index = async (req, res) => {
   try {
@@ -35,7 +36,7 @@ export const index = async (req, res) => {
     res.json({ data: materials });
   } catch (error) {
     console.error('TeacherMaterialController.index error:', error);
-    res.status(500).json({ message: 'Failed to fetch materials', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch materials' });
   }
 };
 
@@ -84,10 +85,33 @@ export const store = async (req, res) => {
       ],
     });
 
+    try {
+      if (material.batch_id) {
+        await NotificationService.createForBatch({
+          batchId: material.batch_id,
+          type: 'material',
+          title: 'New Study Material',
+          body: `"${material.title}" has been uploaded${subject ? ` (${subject})` : ''}.`,
+          actionUrl: '/student/library',
+          actionLabel: 'View Library',
+        });
+      } else {
+        await NotificationService.createForAllStudents({
+          type: 'material',
+          title: 'New Study Material',
+          body: `"${material.title}" has been uploaded${subject ? ` (${subject})` : ''}.`,
+          actionUrl: '/student/library',
+          actionLabel: 'View Library',
+        });
+      }
+    } catch (notifErr) {
+      console.error('Failed to send material notification:', notifErr);
+    }
+
     res.status(201).json({ message: 'Material created successfully', data: result });
   } catch (error) {
     console.error('TeacherMaterialController.store error:', error);
-    res.status(500).json({ message: 'Failed to create material', error: error.message });
+    res.status(500).json({ message: 'Failed to create material' });
   }
 };
 
@@ -142,7 +166,7 @@ export const update = async (req, res) => {
     res.json({ message: 'Material updated successfully', data: result });
   } catch (error) {
     console.error('TeacherMaterialController.update error:', error);
-    res.status(500).json({ message: 'Failed to update material', error: error.message });
+    res.status(500).json({ message: 'Failed to update material' });
   }
 };
 
@@ -167,6 +191,6 @@ export const destroy = async (req, res) => {
     res.json({ message: 'Material deleted successfully' });
   } catch (error) {
     console.error('TeacherMaterialController.destroy error:', error);
-    res.status(500).json({ message: 'Failed to delete material', error: error.message });
+    res.status(500).json({ message: 'Failed to delete material' });
   }
 };

@@ -2,6 +2,7 @@ import models from '../../models/index.js';
 import { Op } from 'sequelize';
 import MediaService from '../../services/media/MediaService.js';
 import MediaDeleteService from '../../services/media/MediaDeleteService.js';
+import NotificationService from '../../services/NotificationService.js';
 
 export const index = async (req, res) => {
   try {
@@ -16,21 +17,27 @@ export const index = async (req, res) => {
       order: [['createdAt', 'DESC']],
     });
 
-    const data = await Promise.all(assignments.map(async (assignment) => {
-      const submissionCount = await models.AssignmentSubmission.count({
-        where: { assignment_id: assignment.id },
-      });
+    const assignmentIds = assignments.map(a => a.id);
+    const submissionCounts = assignmentIds.length > 0 ? await models.AssignmentSubmission.count({
+      where: { assignment_id: { [Op.in]: assignmentIds } },
+      attributes: ['assignment_id'],
+      group: ['assignment_id'],
+    }) : [];
 
+    const countMap = {};
+    submissionCounts.forEach(sc => { countMap[sc.assignment_id] = parseInt(sc.count); });
+
+    const data = assignments.map((assignment) => {
       return {
         ...assignment.toJSON(),
-        submission_count: submissionCount,
+        submission_count: countMap[assignment.id] || 0,
       };
-    }));
+    });
 
     res.json({ data });
   } catch (error) {
     console.error('TeacherAssignmentController.index error:', error);
-    res.status(500).json({ message: 'Failed to fetch assignments', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch assignments' });
   }
 };
 
@@ -76,10 +83,25 @@ export const store = async (req, res) => {
       ],
     });
 
+    if (assignment.batch_id) {
+      try {
+        await NotificationService.createForBatch({
+          batchId: assignment.batch_id,
+          type: 'assignment',
+          title: 'New Assignment',
+          body: `"${assignment.title}"${due_date ? ` is due ${due_date}` : ''}.`,
+          actionUrl: '/student/assignments',
+          actionLabel: 'View Assignment',
+        });
+      } catch (notifErr) {
+        console.error('Failed to send assignment notification:', notifErr);
+      }
+    }
+
     res.status(201).json({ message: 'Assignment created successfully', data: result });
   } catch (error) {
     console.error('TeacherAssignmentController.store error:', error);
-    res.status(500).json({ message: 'Failed to create assignment', error: error.message });
+    res.status(500).json({ message: 'Failed to create assignment' });
   }
 };
 
@@ -108,7 +130,7 @@ export const show = async (req, res) => {
     res.json({ data: assignment });
   } catch (error) {
     console.error('TeacherAssignmentController.show error:', error);
-    res.status(500).json({ message: 'Failed to fetch assignment', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch assignment' });
   }
 };
 
@@ -162,7 +184,7 @@ export const update = async (req, res) => {
     res.json({ message: 'Assignment updated successfully', data: result });
   } catch (error) {
     console.error('TeacherAssignmentController.update error:', error);
-    res.status(500).json({ message: 'Failed to update assignment', error: error.message });
+    res.status(500).json({ message: 'Failed to update assignment' });
   }
 };
 
@@ -194,7 +216,7 @@ export const destroy = async (req, res) => {
     res.json({ message: 'Assignment deleted successfully' });
   } catch (error) {
     console.error('TeacherAssignmentController.destroy error:', error);
-    res.status(500).json({ message: 'Failed to delete assignment', error: error.message });
+    res.status(500).json({ message: 'Failed to delete assignment' });
   }
 };
 
@@ -227,9 +249,25 @@ export const gradeSubmission = async (req, res) => {
     submission.status = 'graded';
     await submission.save();
 
+    try {
+      const student = await models.Student.findByPk(submission.student_id, { attributes: ['user_id'] });
+      if (student?.user_id) {
+        await NotificationService.create({
+          userId: student.user_id,
+          type: 'assignment',
+          title: 'Assignment Graded',
+          body: `Your submission for "${submission.Assignment?.title || 'an assignment'}" has been graded (${marks_obtained} marks).`,
+          actionUrl: '/student/assignment-results',
+          actionLabel: 'View Result',
+        });
+      }
+    } catch (notifErr) {
+      console.error('Failed to send grade notification:', notifErr);
+    }
+
     res.json({ message: 'Submission graded successfully', data: submission });
   } catch (error) {
     console.error('TeacherAssignmentController.gradeSubmission error:', error);
-    res.status(500).json({ message: 'Failed to grade submission', error: error.message });
+    res.status(500).json({ message: 'Failed to grade submission' });
   }
 };

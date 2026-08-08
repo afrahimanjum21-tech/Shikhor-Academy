@@ -23,8 +23,8 @@ const sequelize = DB_URL
         freezeTableName: false,
       },
       pool: {
-        max: 5,
-        min: 0,
+        max: 20,
+        min: 2,
         acquire: 30000,
         idle: 10000,
       },
@@ -44,8 +44,8 @@ const sequelize = DB_URL
           freezeTableName: false,
         },
         pool: {
-          max: 5,
-          min: 0,
+          max: 20,
+          min: 2,
           acquire: 30000,
           idle: 10000,
         },

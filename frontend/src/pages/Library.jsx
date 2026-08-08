@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import { buildAssetUrl } from "../services/config";
-import { FileText, Download, Search, Link as LinkIcon, ExternalLink, LogIn, BookOpen, ArrowRight } from "lucide-react";
+import { FileText, Download, Search, Link as LinkIcon, ExternalLink, LogIn, BookOpen, ArrowRight, Lock } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -21,11 +21,28 @@ export default function Library({ requireAuth = false }) {
 
     useEffect(() => { markViewed('library'); }, [markViewed]);
 
-    const filtered = materials.filter(m => m.title.toLowerCase().includes(searchTerm.toLowerCase()));
-    const getUrl = (path) => buildAssetUrl(path);
+    const filtered = materials.filter(m => (m.title || "").toLowerCase().includes(searchTerm.toLowerCase()));
+    // Cache-buster: guarantees the browser re-fetches the file, so the
+    // Content-Disposition title always reaches the PDF viewer.
+    const getUrl = (path) => {
+        if (!path) return null;
+        const separator = path.includes("?") ? "&" : "?";
+        return buildAssetUrl(path) + separator + "v=" + encodeURIComponent(itemVersion(path));
+    };
+    const itemVersion = (path) => {
+        const item = materials.find(m => m.file_path === path);
+        return item ? (item.updatedAt || item.id || "1") : "1";
+    };
 
     const isPublicLockedPage = requireAuth;
     const isLoggedIn = !!token;
+
+    const accessHint = (item) => {
+        if (item.access_type === 'batch') return item.Batch?.name ? `For ${item.Batch.name} only` : 'Batch locked';
+        if (item.access_type === 'class') return item.class_name ? `For ${item.class_name} class only` : 'Class locked';
+        if (item.access_type === 'course') return item.Course?.title ? `For ${item.Course.title} only` : 'Course locked';
+        return 'Restricted';
+    };
 
     return (
         <div className="min-h-screen relative overflow-hidden">
@@ -161,15 +178,27 @@ export default function Library({ requireAuth = false }) {
                                                 )}
 
                                                 {item.type === 'file' ? (
-                                                    <a href={getUrl(item.file_path)} target="_blank" rel="noreferrer"
-                                                        className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#1F4E79] hover:underline">
-                                                        <Download size={16} /> Download
-                                                    </a>
+                                                    item.is_unlocked ? (
+                                                        <a href={getUrl(item.file_path)} target="_blank" rel="noreferrer"
+                                                            className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#1F4E79] hover:underline">
+                                                            <Download size={16} /> Download
+                                                        </a>
+                                                    ) : (
+                                                        <span className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-red-400">
+                                                            <Lock size={14} /> {accessHint(item)}
+                                                        </span>
+                                                    )
                                                 ) : (
-                                                    <a href={item.url} target="_blank" rel="noreferrer"
-                                                        className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:underline">
-                                                        <ExternalLink size={16} /> Open Link
-                                                    </a>
+                                                    item.is_unlocked ? (
+                                                        <a href={item.url} target="_blank" rel="noreferrer"
+                                                            className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:underline">
+                                                            <ExternalLink size={16} /> Open Link
+                                                        </a>
+                                                    ) : (
+                                                        <span className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-red-400">
+                                                            <Lock size={14} /> {accessHint(item)}
+                                                        </span>
+                                                    )
                                                 )}
                                             </div>
                                         </div>

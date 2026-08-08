@@ -41,17 +41,17 @@ export default function TeacherBatches() {
                                 {assignment.subject}
                             </span>
                         </div>
-                        <h3 className="text-lg font-bold text-gray-800 mb-2">{assignment.batch?.name}</h3>
-                        <p className="text-sm text-gray-600 mb-4">{assignment.batch?.course?.title}</p>
+                        <h3 className="text-lg font-bold text-gray-800 mb-2">{assignment.name}</h3>
+                        <p className="text-sm text-gray-600 mb-4">{assignment.course?.title}</p>
                         <div className="space-y-2">
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                 <Users size={16} />
-                                <span>{assignment.batch?.students?.length || 0} Students</span>
+                                <span>{assignment.student_count || 0} Students</span>
                             </div>
-                            {assignment.batch?.start_time && (
+                            {assignment.start_time && (
                                 <div className="flex items-center gap-2 text-sm text-gray-600">
                                     <Clock size={16} />
-                                    <span>{assignment.batch.start_time} - {assignment.batch.end_time}</span>
+                                    <span>{assignment.start_time} - {assignment.end_time}</span>
                                 </div>
                             )}
                         </div>

@@ -17,7 +17,7 @@ export const index = async (req, res) => {
     });
     res.json({ data: categories });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch categories', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch categories' });
   }
 };
 
@@ -47,7 +47,7 @@ export const store = async (req, res) => {
 
     res.status(201).json({ message: 'Category created successfully', data: category });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to create category', error: error.message });
+    res.status(500).json({ message: 'Failed to create category' });
   }
 };
 
@@ -63,7 +63,7 @@ export const show = async (req, res) => {
 
     res.json({ data: category });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch category', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch category' });
   }
 };
 
@@ -96,7 +96,7 @@ export const update = async (req, res) => {
 
     res.json({ message: 'Category updated successfully', data: category });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to update category', error: error.message });
+    res.status(500).json({ message: 'Failed to update category' });
   }
 };
 
@@ -116,7 +116,7 @@ export const destroy = async (req, res) => {
 
     res.json({ message: 'Category deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to delete category', error: error.message });
+    res.status(500).json({ message: 'Failed to delete category' });
   }
 };
 
@@ -143,7 +143,7 @@ export const reorder = async (req, res) => {
 
     res.json({ message: 'Order updated successfully', data: categories });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to reorder categories', error: error.message });
+    res.status(500).json({ message: 'Failed to reorder categories' });
   }
 };
 
@@ -158,7 +158,7 @@ export const toggleActive = async (req, res) => {
 
     res.json({ message: `Category ${category.is_active ? 'activated' : 'deactivated'}`, data: category });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to toggle active status', error: error.message });
+    res.status(500).json({ message: 'Failed to toggle active status' });
   }
 };
 
@@ -173,6 +173,6 @@ export const toggleVisible = async (req, res) => {
 
     res.json({ message: `Category ${category.is_visible ? 'visible' : 'hidden'}`, data: category });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to toggle visibility', error: error.message });
+    res.status(500).json({ message: 'Failed to toggle visibility' });
   }
 };

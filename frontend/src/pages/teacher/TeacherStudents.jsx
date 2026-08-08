@@ -27,7 +27,7 @@ export default function TeacherStudents() {
     const filteredStudents = students.filter(student => {
         const searchLower = searchTerm.toLowerCase();
         return (
-            student.user?.name?.toLowerCase().includes(searchLower) ||
+            student.User?.name?.toLowerCase().includes(searchLower) ||
             student.student_id_card_no?.toLowerCase().includes(searchLower) ||
             student.roll?.toLowerCase().includes(searchLower)
         );
@@ -61,14 +61,14 @@ export default function TeacherStudents() {
                     <div key={student.id} className="bg-white rounded-xl shadow border border-gray-200 p-6 hover:shadow-md transition-shadow">
                         <div className="flex items-start gap-4">
                             <div className="h-12 w-12 rounded-full bg-[#1F4E79] flex items-center justify-center text-white font-bold text-lg overflow-hidden shrink-0">
-                                {student.user?.profile_photo_url ? (
-                                    <img src={buildAssetUrl(student.user.profile_photo_url)} alt="" className="w-full h-full object-cover" />
+                                {student.User?.profile_photo_path ? (
+                                    <img src={buildAssetUrl(student.User.profile_photo_path)} alt="" className="w-full h-full object-cover" />
                                 ) : (
-                                    student.user?.name?.charAt(0).toUpperCase()
+                                    student.User?.name?.charAt(0).toUpperCase()
                                 )}
                             </div>
                             <div className="flex-1">
-                                <h3 className="font-bold text-gray-800">{student.user?.name}</h3>
+                                <h3 className="font-bold text-gray-800">{student.User?.name}</h3>
                                 <p className="text-sm text-gray-500">ID: {student.student_id_card_no}</p>
                                 {student.roll && <p className="text-sm text-gray-500">Roll: {student.roll}</p>}
                             </div>
@@ -76,7 +76,7 @@ export default function TeacherStudents() {
                         <div className="mt-4 space-y-2">
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                 <Users size={16} />
-                                <span>{student.batch?.name}</span>
+                                <span>{student.Batch?.name}</span>
                             </div>
                             {student.guardian_phone && (
                                 <div className="flex items-center gap-2 text-sm text-gray-600">

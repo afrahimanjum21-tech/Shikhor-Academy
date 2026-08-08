@@ -1,6 +1,6 @@
-const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
 
-const IMAGE_EXTENSIONS = ['.jpeg', '.jpg', '.png', '.gif', '.webp', '.svg'];
+const IMAGE_EXTENSIONS = ['.jpeg', '.jpg', '.png', '.gif', '.webp'];
 
 const DOCUMENT_TYPES = [
   'application/pdf',
@@ -23,38 +23,6 @@ const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg', 'video/x-msvideo'];
 const VIDEO_EXTENSIONS = ['.mp4', '.webm', '.ogg', '.avi'];
 
 export const MEDIA_CONFIG = {
-  cloudinary: {
-    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
-    apiKey: process.env.CLOUDINARY_API_KEY,
-    apiSecret: process.env.CLOUDINARY_API_SECRET,
-    folders: {
-      courses: 'courses',
-      gallery: 'gallery',
-      faculty: 'faculty',
-      elearning: 'elearning',
-      admission: 'admission',
-      users: 'users',
-      site: 'site',
-    },
-    transformations: {
-      thumbnail: { width: 400, height: 300, crop: 'fill', quality: 'auto' },
-      preview: { width: 200, height: 150, crop: 'fill', quality: 'auto' },
-    },
-  },
-
-  supabase: {
-    url: process.env.SUPABASE_URL,
-    anonKey: process.env.SUPABASE_ANON_KEY,
-    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    buckets: {
-      documents: 'documents',
-      assignments: 'assignments',
-      submissions: 'submissions',
-      materials: 'materials',
-    },
-    signedUrlExpiry: 3600,
-  },
-
   fileSizeLimits: {
     image: 5 * 1024 * 1024,
     document: 20 * 1024 * 1024,
@@ -62,9 +30,9 @@ export const MEDIA_CONFIG = {
   },
 
   typeMap: {
-    image: { mime: IMAGE_TYPES, ext: IMAGE_EXTENSIONS, provider: 'cloudinary' },
-    document: { mime: DOCUMENT_TYPES, ext: DOCUMENT_EXTENSIONS, provider: 'supabase' },
-    video: { mime: VIDEO_TYPES, ext: VIDEO_EXTENSIONS, provider: 'supabase' },
+    image: { mime: IMAGE_TYPES, ext: IMAGE_EXTENSIONS, provider: 'local' },
+    document: { mime: DOCUMENT_TYPES, ext: DOCUMENT_EXTENSIONS, provider: 'local' },
+    video: { mime: VIDEO_TYPES, ext: VIDEO_EXTENSIONS, provider: 'local' },
   },
 };
 

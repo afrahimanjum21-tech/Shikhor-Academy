@@ -14,7 +14,14 @@ const Attendance = sequelize.define('Attendance', {
   leave_reason: { type: DataTypes.TEXT },
   leave_requested_at: { type: DataTypes.DATE },
   leave_approved_at: { type: DataTypes.DATE },
-  leave_approved_by: { type: DataTypes.INTEGER },
+   leave_approved_by: { type: DataTypes.INTEGER },
+}, {
+  indexes: [
+    { fields: ['student_id'] },
+    { fields: ['date'] },
+    { fields: ['course_id'] },
+    { fields: ['student_id', 'date'] },
+  ],
 });
 
 Attendance.associate = (models) => {

@@ -14,12 +14,14 @@ const Faculty = sequelize.define('Faculty', {
   faculty_category_id: { type: DataTypes.INTEGER },
   specialization: { type: DataTypes.STRING },
   qualification: { type: DataTypes.STRING },
-  teaching_experience: { type: DataTypes.STRING },
+  teaching_experience: { type: DataTypes.INTEGER },
   biography: { type: DataTypes.TEXT },
   awards: { type: DataTypes.JSON },
   achievements: { type: DataTypes.JSON },
   certifications: { type: DataTypes.JSON },
   publications: { type: DataTypes.JSON },
+  qualifications: { type: DataTypes.JSON },
+  social_links: { type: DataTypes.JSON },
   research: { type: DataTypes.TEXT },
   official_email: { type: DataTypes.STRING },
   official_phone: { type: DataTypes.STRING(20) },
@@ -36,16 +38,12 @@ const Faculty = sequelize.define('Faculty', {
 
 }, { paranoid: true });
 Faculty.associate = (models) => {
-  Faculty.belongsTo(models.User, { foreignKey: 'user_id' });
-  Faculty.belongsTo(models.Department, { foreignKey: 'department_id' });
-  Faculty.belongsTo(models.FacultyCategory, { foreignKey: 'faculty_category_id' });
-  Faculty.belongsToMany(models.Subject, { through: models.FacultySubject, foreignKey: 'faculty_id' });
-  Faculty.hasMany(models.FacultyQualification, { foreignKey: 'faculty_id' });
-  Faculty.hasMany(models.FacultyAchievement, { foreignKey: 'faculty_id' });
-  Faculty.hasMany(models.FacultyCertification, { foreignKey: 'faculty_id' });
-  Faculty.hasMany(models.FacultySocialLink, { foreignKey: 'faculty_id' });
-  Faculty.hasMany(models.FacultyGallery, { foreignKey: 'faculty_id' });
-  Faculty.belongsToMany(models.Batch, { through: models.FacultyBatch, foreignKey: 'faculty_id' });
+  Faculty.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
+  Faculty.belongsTo(models.Department, { foreignKey: 'department_id', as: 'department' });
+  Faculty.belongsTo(models.FacultyCategory, { foreignKey: 'faculty_category_id', as: 'category' });
+  Faculty.belongsToMany(models.Subject, { through: models.FacultySubject, foreignKey: 'faculty_id', otherKey: 'subject_id', as: 'subjects' });
+  Faculty.hasMany(models.FacultyGallery, { foreignKey: 'faculty_id', as: 'galleries' });
+  Faculty.belongsToMany(models.Batch, { through: models.FacultyBatch, foreignKey: 'faculty_id', otherKey: 'batch_id', as: 'batches' });
 };
 
 export default Faculty;

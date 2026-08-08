@@ -11,7 +11,13 @@ const Notification = sequelize.define('Notification', {
   action_url: { type: DataTypes.STRING },
   action_label: { type: DataTypes.STRING },
   level: { type: DataTypes.STRING(20) },
-  read_at: { type: DataTypes.DATE },
+   read_at: { type: DataTypes.DATE },
+}, {
+  indexes: [
+    { fields: ['user_id'] },
+    { fields: ['read_at'] },
+    { fields: ['user_id', 'read_at'] },
+  ],
 });
 
 Notification.associate = (models) => {

@@ -175,7 +175,7 @@ export default function AdminDashboard() {
                             <p className="text-xs text-blue-600 font-medium mt-1">Total Students</p>
                         </div>
                         <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/50">
-                            <p className="text-2xl font-bold text-emerald-700">{stats.total_faculty + stats.total_teachers}</p>
+                            <p className="text-2xl font-bold text-emerald-700">{stats.total_staff ?? (stats.total_faculty + stats.total_teachers)}</p>
                             <p className="text-xs text-emerald-600 font-medium mt-1">Total Staff</p>
                         </div>
                         <div className="p-4 rounded-xl bg-gradient-to-br from-orange-50 to-orange-100/50">

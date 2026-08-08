@@ -1,6 +1,5 @@
 import MediaValidator from './MediaValidator.js';
-import CloudinaryService from './CloudinaryService.js';
-import SupabaseStorageService from './SupabaseStorageService.js';
+import LocalFileService from './LocalFileService.js';
 import { MEDIA_CONFIG, detectFileType } from '../../config/media.js';
 import logger from '../logger.js';
 import fs from 'fs';
@@ -13,7 +12,6 @@ function cleanupTempFile(file) {
       logger.debug('MediaService', `Cleaned up temp file: ${file.path}`);
     }
   } catch {
-    // best-effort
   }
 }
 
@@ -29,23 +27,21 @@ class MediaService {
     }
 
     try {
-      const provider = this._resolveProvider(validation.detectedType);
       const uploadOptions = { ...options };
+      if (!uploadOptions.folder) {
+        uploadOptions.folder = options.folder || 'general';
+      }
 
       let result;
-      if (validation.detectedType === 'image') {
-        if (!uploadOptions.folder) {
-          uploadOptions.folder = options.folder || 'site';
-        }
-        result = await CloudinaryService.upload(file, uploadOptions);
+      if (file.buffer) {
+        result = await LocalFileService.uploadBuffer(
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+          uploadOptions
+        );
       } else {
-        if (!uploadOptions.bucket) {
-          uploadOptions.bucket = options.bucket || this._defaultBucket(validation.detectedType);
-        }
-        if (!uploadOptions.folder) {
-          uploadOptions.folder = options.folder || 'general';
-        }
-        result = await SupabaseStorageService.upload(file, uploadOptions);
+        result = await LocalFileService.upload(file, uploadOptions);
       }
 
       cleanupTempFile(file);
@@ -74,31 +70,16 @@ class MediaService {
       throw error;
     }
 
-    if (detectedType === 'image') {
-      return CloudinaryService.uploadBuffer(buffer, options);
+    if (!options.folder) {
+      options.folder = 'general';
     }
 
-    return SupabaseStorageService.uploadBuffer(buffer, fileName, mimeType, options);
+    return LocalFileService.uploadBuffer(buffer, fileName, mimeType, options);
   }
 
   async delete(mediaUrl, provider) {
     if (!mediaUrl) return null;
-
-    const resolvedProvider = provider || this._detectProviderFromUrl(mediaUrl);
-
-    if (resolvedProvider === 'cloudinary') {
-      const publicId = CloudinaryService.extractPublicId(mediaUrl);
-      if (!publicId) return null;
-      return CloudinaryService.destroy(publicId);
-    }
-
-    if (resolvedProvider === 'supabase') {
-      const filePath = SupabaseStorageService.extractPath(mediaUrl);
-      if (!filePath) return null;
-      return SupabaseStorageService.removeByFullPath(filePath);
-    }
-
-    return null;
+    return LocalFileService.delete(mediaUrl);
   }
 
   async replace(oldMediaUrl, newFile, options = {}) {
@@ -113,26 +94,6 @@ class MediaService {
     }
 
     return uploadResult;
-  }
-
-  _resolveProvider(detectedType) {
-    const typeConfig = MEDIA_CONFIG.typeMap[detectedType];
-    return typeConfig?.provider || 'supabase';
-  }
-
-  _defaultBucket(detectedType) {
-    const bucketMap = {
-      document: 'documents',
-      video: 'materials',
-    };
-    return bucketMap[detectedType] || 'documents';
-  }
-
-  _detectProviderFromUrl(url) {
-    if (!url) return null;
-    if (url.includes('cloudinary.com')) return 'cloudinary';
-    if (url.includes('supabase.co')) return 'supabase';
-    return null;
   }
 
   _getExtension(filename) {

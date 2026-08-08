@@ -26,6 +26,7 @@ export default function Login() {
                 const storedUser = JSON.parse(localStorage.getItem('USER'));
                 if (storedUser.role === 'admin' || storedUser.role === 'super_admin') navigate("/admin/dashboard");
                 else if (storedUser.role === 'student') navigate(location.state?.from || "/student/dashboard");
+                else if (storedUser.role === 'teacher') navigate(location.state?.from || "/teacher/dashboard");
                 else navigate("/");
             } else {
                 setError(result.error);

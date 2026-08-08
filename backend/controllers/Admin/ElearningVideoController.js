@@ -1,6 +1,48 @@
 import models from '../../models/index.js';
+import { Op } from 'sequelize';
 import MediaService from '../../services/media/MediaService.js';
 import MediaDeleteService from '../../services/media/MediaDeleteService.js';
+import NotificationService from '../../services/NotificationService.js';
+import { resolveStudentAccess, isUnlocked, normalizeAccessType } from '../../services/accessControl.js';
+
+const normalizeId = (value) => {
+  if (value === undefined || value === null || value === '' || value === 'null') return null;
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+};
+
+// Turns an access selection into clean column values. Switching the access
+// type clears the other columns so stale restrictions can't leak through.
+const buildAccess = async (body) => {
+  const accessType = normalizeAccessType(body.access_type);
+
+  if (accessType === 'batch') {
+    const batchId = normalizeId(body.batch_id);
+    if (batchId === null) return { access_type: 'all', batch_id: null, course_id: null, class_name: null };
+    const batch = await models.Batch.findByPk(batchId);
+    if (!batch) return { error: 'Selected batch does not exist' };
+    return { access_type: accessType, batch_id: batchId, course_id: null, class_name: null };
+  }
+
+  if (accessType === 'course') {
+    const courseId = normalizeId(body.course_id);
+    if (courseId === null) return { access_type: 'all', batch_id: null, course_id: null, class_name: null };
+    const course = await models.Course.findByPk(courseId);
+    if (!course) return { error: 'Selected course does not exist' };
+    return { access_type: accessType, batch_id: null, course_id: courseId, class_name: null };
+  }
+
+  if (accessType === 'class') {
+    return {
+      access_type: accessType,
+      batch_id: null,
+      course_id: null,
+      class_name: String(body.class_name || '').trim() || null,
+    };
+  }
+
+  return { access_type: 'all', batch_id: null, course_id: null, class_name: null };
+};
 
 const parseVideoUrl = (url) => {
   const result = { video_id: null, platform: null };
@@ -37,23 +79,41 @@ const parseVideoUrl = (url) => {
 export const index = async (req, res) => {
   try {
     const videos = await models.ElearningVideo.findAll({
+      include: [
+        { model: models.Batch, attributes: ['id', 'name'] },
+        { model: models.Course, attributes: ['id', 'title'] },
+      ],
       order: [['sort_order', 'ASC'], ['createdAt', 'DESC']],
     });
     res.json({ data: videos });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch videos', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch videos' });
   }
 };
 
 export const publicIndex = async (req, res) => {
   try {
+    const student = await resolveStudentAccess(req);
+
+    // Every active video is listed; is_unlocked tells the UI whether the
+    // current student may actually watch it based on batch/class/course rules.
     const videos = await models.ElearningVideo.findAll({
       where: { is_active: true },
+      include: [
+        { model: models.Batch, attributes: ['id', 'name'] },
+        { model: models.Course, attributes: ['id', 'title'] },
+      ],
       order: [['sort_order', 'ASC'], ['createdAt', 'DESC']],
+    });
+
+    videos.forEach(v => {
+      v.dataValues.is_unlocked = isUnlocked(v, student);
+      // Don't hand out the embed URL of locked videos.
+      if (!v.dataValues.is_unlocked) v.dataValues.video_url = null;
     });
     res.json({ data: videos });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch videos', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch videos' });
   }
 };
 
@@ -66,6 +126,11 @@ export const store = async (req, res) => {
     }
     if (!video_url) {
       return res.status(400).json({ message: 'Video URL is required' });
+    }
+
+    const access = await buildAccess(req.body);
+    if (access.error) {
+      return res.status(400).json({ message: access.error });
     }
 
     const { video_id, platform } = parseVideoUrl(video_url);
@@ -84,11 +149,56 @@ export const store = async (req, res) => {
       is_locked: is_locked === true || is_locked === 'true',
       is_active: is_active !== false && is_active !== 'false',
       sort_order: sort_order || 0,
+      ...access,
     });
+
+    if (video.is_active) {
+      try {
+        if (video.access_type === 'batch' && video.batch_id) {
+          await NotificationService.createForBatch({
+            batchId: video.batch_id,
+            type: 'video',
+            title: 'New Video Lesson',
+            body: `"${video.title}" is now available in E-Learning.`,
+            actionUrl: '/student/e-learning',
+            actionLabel: 'Watch Video',
+          });
+        } else if (video.access_type === 'all') {
+          await NotificationService.createForAllStudents({
+            type: 'video',
+            title: 'New Video Lesson',
+            body: `"${video.title}" is now available in E-Learning.`,
+            actionUrl: '/student/e-learning',
+            actionLabel: 'Watch Video',
+          });
+        } else if (video.access_type === 'course' && video.course_id) {
+          const batchIds = await models.Batch.findAll({
+            where: { course_id: video.course_id },
+            attributes: ['id'],
+          }).then(rows => rows.map(r => r.id));
+          if (batchIds.length > 0) {
+            const students = await models.Student.findAll({
+              where: { current_batch_id: { [Op.in]: batchIds } },
+              attributes: ['user_id'],
+            });
+            await NotificationService.createForStudents({
+              userIds: students.map(s => s.user_id),
+              type: 'video',
+              title: 'New Video Lesson',
+              body: `"${video.title}" is now available in E-Learning.`,
+              actionUrl: '/student/e-learning',
+              actionLabel: 'Watch Video',
+            });
+          }
+        }
+      } catch (notifErr) {
+        console.error('Failed to send video notification:', notifErr);
+      }
+    }
 
     res.status(201).json({ message: 'Video created successfully', data: video });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to create video', error: error.message });
+    res.status(500).json({ message: 'Failed to create video' });
   }
 };
 
@@ -102,7 +212,7 @@ export const show = async (req, res) => {
 
     res.json({ data: video });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch video', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch video' });
   }
 };
 
@@ -121,8 +231,17 @@ export const update = async (req, res) => {
     if (teacher !== undefined) updateData.teacher = teacher;
     if (duration !== undefined) updateData.duration = duration;
     if (sort_order !== undefined) updateData.sort_order = sort_order;
-    if (is_locked !== undefined) updateData.is_locked = is_locked === true || is_locked === 'true';
-    if (is_active !== undefined) updateData.is_active = is_active === true || is_active === 'true';
+    if (is_locked !== undefined) updateData.is_locked = is_locked === true || is_locked === '1' || is_locked === 'true';
+    if (is_active !== undefined) updateData.is_active = is_active === true || is_active === '1' || is_active === 'true';
+
+    if (req.body.access_type !== undefined || req.body.batch_id !== undefined ||
+        req.body.course_id !== undefined || req.body.class_name !== undefined) {
+      const access = await buildAccess(req.body);
+      if (access.error) {
+        return res.status(400).json({ message: access.error });
+      }
+      Object.assign(updateData, access);
+    }
 
     if (video_url !== undefined) {
       updateData.video_url = video_url;
@@ -139,11 +258,18 @@ export const update = async (req, res) => {
       updateData.thumbnail_path = result.url;
     }
 
+    if (req.body.remove_thumbnail === '1') {
+      if (video.thumbnail_path) {
+        await MediaDeleteService.deleteByUrl(video.thumbnail_path).catch(err => console.warn('Media cleanup:', err.message));
+      }
+      updateData.thumbnail_path = null;
+    }
+
     await video.update(updateData);
 
     res.json({ message: 'Video updated successfully', data: video });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to update video', error: error.message });
+    res.status(500).json({ message: 'Failed to update video' });
   }
 };
 
@@ -161,6 +287,6 @@ export const destroy = async (req, res) => {
 
     res.json({ message: 'Video deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to delete video', error: error.message });
+    res.status(500).json({ message: 'Failed to delete video' });
   }
 };

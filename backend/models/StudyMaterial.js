@@ -12,10 +12,14 @@ const StudyMaterial = sequelize.define('StudyMaterial', {
   uploaded_by: { type: DataTypes.INTEGER },
   type: { type: DataTypes.STRING(50) },
   url: { type: DataTypes.STRING },
+  access_type: { type: DataTypes.STRING(20), defaultValue: 'all' },
+  course_id: { type: DataTypes.INTEGER, allowNull: true },
+  class_name: { type: DataTypes.STRING, allowNull: true },
 });
 
 StudyMaterial.associate = (models) => {
   StudyMaterial.belongsTo(models.Batch, { foreignKey: 'batch_id' });
+  StudyMaterial.belongsTo(models.Course, { foreignKey: 'course_id' });
   StudyMaterial.belongsTo(models.User, { foreignKey: 'uploaded_by', as: 'Uploader' });
 };
 

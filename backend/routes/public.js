@@ -19,8 +19,9 @@ const router = Router();
 
 const admissionLimiter = rateLimit({ windowMs: 60 * 1000, max: 2, message: { message: 'Too many requests, please try again later' } });
 const contactLimiter = rateLimit({ windowMs: 60 * 1000, max: 3, message: { message: 'Too many requests, please try again later' } });
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { message: 'Too many login attempts, please try again later' } });
 
-router.post('/login', AuthController.login);
+router.post('/login', loginLimiter, AuthController.login);
 router.post('/admission/submit', admissionLimiter, uploadPhoto('admission_photos', 2).single('photo'), AdmissionController.submit);
 router.post('/contact', contactLimiter, ContactController.submit);
 

@@ -3,6 +3,10 @@ import bcrypt from 'bcryptjs';
 import models from '../../models/index.js';
 import authConfig from '../../config/auth.js';
 
+// Pre-computed hash used only to equalize bcrypt timing when the email
+// doesn't exist, so response time cannot be used to enumerate accounts.
+const DUMMY_HASH = bcrypt.hashSync('timing-equalizer-not-a-real-password', 12);
+
 export async function login(req, res) {
   try {
     const { email, password } = req.body;
@@ -13,16 +17,11 @@ export async function login(req, res) {
 
     const user = await models.User.findOne({ where: { email } });
 
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
+    // Same error (and same bcrypt cost) for: unknown email, wrong password,
+    // and deactivated account — no account enumeration, no timing oracle.
+    const passwordOk = await bcrypt.compare(password, user ? user.password : DUMMY_HASH);
 
-    if (!user.is_active) {
-      return res.status(403).json({ message: 'Account is deactivated. Contact administrator.' });
-    }
-
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) {
+    if (!user || !passwordOk || !user.is_active) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 

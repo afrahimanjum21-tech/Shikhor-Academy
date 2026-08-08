@@ -1,5 +1,6 @@
 import { MEDIA_CONFIG, detectFileType } from '../../config/media.js';
 import logger from '../logger.js';
+import fs from 'fs';
 
 const SIGNATURES = {
   jpeg: [[0xFF, 0xD8, 0xFF]],
@@ -7,7 +8,6 @@ const SIGNATURES = {
   png: [[0x89, 0x50, 0x4E, 0x47]],
   gif: [[0x47, 0x49, 0x46, 0x38, 0x37, 0x61], [0x47, 0x49, 0x46, 0x38, 0x39, 0x61]],
   webp: [[0x52, 0x49, 0x46, 0x46, null, null, null, null, 0x57, 0x45, 0x42, 0x50]],
-  svg: [[0x3C, 0x73, 0x76, 0x67], [0x3C, 0x3F, 0x78, 0x6D]],
   pdf: [[0x25, 0x50, 0x44, 0x46]],
   doc: [[0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]],
   docx: [[0x50, 0x4B, 0x03, 0x04]],
@@ -27,7 +27,7 @@ const SIGNATURES = {
 
 const EXT_TO_MAGIC_KEY = {
   '.jpeg': 'jpeg', '.jpg': 'jpg', '.png': 'png', '.gif': 'gif',
-  '.webp': 'webp', '.svg': 'svg',
+  '.webp': 'webp',
   '.pdf': 'pdf',
   '.doc': 'doc', '.docx': 'docx',
   '.xls': 'xls', '.xlsx': 'xlsx',
@@ -51,6 +51,16 @@ function checkSignature(buffer, signatures) {
 
 function getBufferFromFile(file) {
   if (file.buffer) return file.buffer;
+  // Disk storage (local dev): read the written file so the magic-byte check
+  // applies in every environment, not only on serverless memory storage.
+  if (file.path) {
+    try {
+      return fs.readFileSync(file.path);
+    } catch (readError) {
+      logger.warn('MediaValidator', `Failed to read ${file.path} for validation: ${readError.message}`);
+      return null;
+    }
+  }
   return null;
 }
 

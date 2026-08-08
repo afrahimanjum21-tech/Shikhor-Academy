@@ -7,7 +7,7 @@ export const index = async (req, res) => {
     });
     res.json({ data: notices });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch notices', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch notices' });
   }
 };
 
@@ -28,7 +28,7 @@ export const store = async (req, res) => {
 
     res.status(201).json({ message: 'Notice created successfully', data: notice });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to create notice', error: error.message });
+    res.status(500).json({ message: 'Failed to create notice' });
   }
 };
 
@@ -40,7 +40,7 @@ export const show = async (req, res) => {
     }
     res.json({ data: notice });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch notice', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch notice' });
   }
 };
 
@@ -62,7 +62,7 @@ export const update = async (req, res) => {
 
     res.json({ message: 'Notice updated successfully', data: notice });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to update notice', error: error.message });
+    res.status(500).json({ message: 'Failed to update notice' });
   }
 };
 
@@ -77,6 +77,6 @@ export const destroy = async (req, res) => {
 
     res.json({ message: 'Notice deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to delete notice', error: error.message });
+    res.status(500).json({ message: 'Failed to delete notice' });
   }
 };

@@ -44,7 +44,7 @@ class MediaReplaceService {
         const result = await this.replace(oldUrl, newFile, options);
         results.push({ oldUrl, success: true, result });
       } catch (error) {
-        results.push({ oldUrl, success: false, error: error.message });
+        results.push({ oldUrl, success: false });
       }
     }
 

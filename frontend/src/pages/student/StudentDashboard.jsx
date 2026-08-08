@@ -25,7 +25,7 @@ export default function StudentDashboard() {
             .finally(() => setLoading(false));
     }, []);
 
-    const attendance = dashboard?.attendance || { total: 0, present: 0, percentage: 0 };
+    const attendance = dashboard?.attendance || { total_classes: 0, present: 0, percentage: 0 };
     const payments = dashboard?.payments || { total_due: 0, due_months: [], pending_count: 0 };
     const student = dashboard?.student || {};
     const upcoming = dashboard?.upcoming || [];
@@ -98,7 +98,7 @@ export default function StudentDashboard() {
                         />
                     </div>
                     <p className="text-xs text-gray-400 mt-3">
-                        <span className="font-bold text-gray-700">{attendance.present}</span> attended out of {attendance.total} days
+                        <span className="font-bold text-gray-700">{attendance.present}</span> attended out of {attendance.total_classes ?? attendance.total ?? 0} days
                     </p>
                 </div>
 

@@ -105,9 +105,9 @@ export default function StudentAcademicHistory() {
                     </div>
                     <div className="px-6 md:px-7 py-5 md:py-6 space-y-0 divide-y divide-gray-50">
                         <DetailRow label="Father" value={prof.father_name || 'N/A'} />
-                        <DetailRow label="Father Mobile" value={prof.father_mobile || 'N/A'} />
+                        <DetailRow label="Father Mobile" value={prof.father_phone || 'N/A'} />
                         <DetailRow label="Mother" value={prof.mother_name || 'N/A'} />
-                        <DetailRow label="Mother Mobile" value={prof.mother_mobile || 'N/A'} />
+                        <DetailRow label="Mother Mobile" value={prof.mother_phone || 'N/A'} />
                         <DetailRow label="Date of Birth" value={prof.dob || 'N/A'} />
                         <DetailRow label="Gender" value={prof.gender || 'N/A'} />
                         <DetailRow label="Blood Group" value={prof.blood_group || 'N/A'} />

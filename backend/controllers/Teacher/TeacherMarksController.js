@@ -25,7 +25,7 @@ export const getExams = async (req, res) => {
     res.json({ data: exams });
   } catch (error) {
     console.error('TeacherMarksController.getExams error:', error);
-    res.status(500).json({ message: 'Failed to fetch exams', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch exams' });
   }
 };
 
@@ -76,7 +76,7 @@ export const getStudentsForExam = async (req, res) => {
     res.json({ data: { exam, students: data } });
   } catch (error) {
     console.error('TeacherMarksController.getStudentsForExam error:', error);
-    res.status(500).json({ message: 'Failed to fetch students for exam', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch students for exam' });
   }
 };
 
@@ -107,20 +107,37 @@ export const saveMarks = async (req, res) => {
       return res.status(403).json({ message: 'You are not assigned to this exam\'s course' });
     }
 
+    // Never write results for students who are not actually enrolled in the
+    // course the exam belongs to.
+    const studentIds = marks.map(m => m.student_id);
+    const validStudents = await models.Student.findAll({
+      where: { id: { [Op.in]: studentIds }, current_batch_id: { [Op.in]: courseIds } },
+      attributes: ['id'],
+    });
+    if (validStudents.length !== studentIds.length) {
+      return res.status(400).json({ message: 'Some students are not enrolled in this exam\'s course' });
+    }
+
     const results = await Promise.all(marks.map(async (entry) => {
       const totalObtained = GradeService.calculateTotalObtained(entry.marks_details);
       const totalMarks = exam.total_marks || 100;
       const gradeInfo = GradeService.calculate(totalObtained, totalMarks);
 
-      const [result] = await models.ExamResult.upsert({
-        exam_id,
-        student_id: entry.student_id,
+      const values = {
         marks_details: entry.marks_details,
         total_obtained: totalObtained,
         grade: gradeInfo.grade,
         gpa: gradeInfo.gpa,
         teacher_comment: entry.teacher_comment || null,
+      };
+
+      // Explicit find-or-update: upsert has no conflict target unless the
+      // unique (exam_id, student_id) index exists, so it could duplicate rows.
+      const [result] = await models.ExamResult.findOrCreate({
+        where: { exam_id, student_id: entry.student_id },
+        defaults: values,
       });
+      await result.update(values);
 
       return result;
     }));
@@ -128,6 +145,6 @@ export const saveMarks = async (req, res) => {
     res.json({ message: 'Marks saved successfully', count: results.length });
   } catch (error) {
     console.error('TeacherMarksController.saveMarks error:', error);
-    res.status(500).json({ message: 'Failed to save marks', error: error.message });
+    res.status(500).json({ message: 'Failed to save marks' });
   }
 };

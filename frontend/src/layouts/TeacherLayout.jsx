@@ -76,8 +76,8 @@ export default function TeacherLayout() {
                     </div>
                 </header>
                 <main className="flex-1 overflow-auto p-3 md:p-8 bg-[#F8FAFC]">
-                    <ErrorBoundary key={location.pathname}>
-                        <motion.div key={location.pathname} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="max-w-6xl mx-auto"><Outlet /></motion.div>
+                    <ErrorBoundary>
+                        <div className="max-w-6xl mx-auto"><Outlet /></div>
                     </ErrorBoundary>
                 </main>
             </div>

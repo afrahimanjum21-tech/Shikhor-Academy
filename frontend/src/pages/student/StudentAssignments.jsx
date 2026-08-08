@@ -9,11 +9,13 @@ import logger from '../../services/logger';
 const statusIcon = {
     submitted: <Clock size={14} className="text-blue-500" />,
     reviewed: <CheckCircle size={14} className="text-green-500" />,
+    graded: <CheckCircle size={14} className="text-green-500" />,
 };
 
 const statusLabel = {
     submitted: "Submitted (Pending Review)",
     reviewed: "Reviewed",
+    graded: "Reviewed",
 };
 
 export default function StudentAssignments() {

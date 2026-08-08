@@ -33,6 +33,15 @@ const AdmissionApplication = sequelize.define('AdmissionApplication', {
   ssc_roll: { type: DataTypes.STRING(20) },
   ssc_registration: { type: DataTypes.STRING(20) },
   ssc_gpa: { type: DataTypes.STRING(10) },
+  father_phone: { type: DataTypes.STRING(20) },
+  father_occupation: { type: DataTypes.STRING },
+  mother_phone: { type: DataTypes.STRING(20) },
+  mother_occupation: { type: DataTypes.STRING },
+  permanent_address: { type: DataTypes.TEXT },
+  shift: { type: DataTypes.STRING(20) },
+  section: { type: DataTypes.STRING(20) },
+  group_name: { type: DataTypes.STRING(50) },
+  subject: { type: DataTypes.STRING },
 });
 
 AdmissionApplication.associate = (models) => {

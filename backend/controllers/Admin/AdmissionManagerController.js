@@ -18,7 +18,7 @@ const getMailTransport = () => {
 const sendCredentialsEmail = async (admission, user, plainPassword) => {
   try {
     const transport = getMailTransport();
-    const fromAddress = process.env.MAIL_FROM_ADDRESS || 'noreply@uttoron.com';
+    const fromAddress = process.env.MAIL_FROM_ADDRESS || 'afrahimanjum21@gmail.com';
     const fromName = process.env.MAIL_FROM_NAME || 'Uttoron Coaching Centre';
 
     await transport.sendMail({
@@ -40,6 +40,57 @@ const sendCredentialsEmail = async (admission, user, plainPassword) => {
   }
 };
 
+const generateStudentId = async () => {
+  const year = new Date().getFullYear();
+  const count = await models.Student.count();
+  return `UCC-${year}-${String(count + 1).padStart(4, '0')}`;
+};
+
+const findDefaultBatchId = async (courseId) => {
+  if (!courseId) return null;
+  const batch = await models.Batch.findOne({
+    where: { course_id: courseId },
+    order: [['id', 'ASC']],
+  });
+  return batch?.id || null;
+};
+
+const buildStudentFromAdmission = async (admission, userId) => ({
+  user_id: userId,
+  admission_id: admission.id,
+  student_id_card_no: await generateStudentId(),
+  current_batch_id: await findDefaultBatchId(admission.course_id),
+  guardian_phone: admission.guardian_phone,
+  admission_date: new Date().toISOString().split('T')[0],
+  gender: admission.gender,
+  nationality: admission.nationality,
+  religion: admission.religion,
+  blood_group: admission.blood_group,
+  dob: admission.dob,
+  father_name: admission.father_name,
+  father_phone: admission.father_phone,
+  father_occupation: admission.father_occupation,
+  mother_name: admission.mother_name,
+  mother_phone: admission.mother_phone,
+  mother_occupation: admission.mother_occupation,
+  present_address: admission.address,
+  permanent_address: admission.permanent_address,
+  emergency_contact_phone: admission.emergency_contact,
+  emergency_contact_name: admission.guardian_name,
+  emergency_contact_relation: admission.guardian_relation,
+  last_school: admission.last_school,
+  jsc_roll: admission.jsc_roll,
+  jsc_registration: admission.jsc_registration,
+  jsc_gpa: admission.jsc_gpa,
+  ssc_roll: admission.ssc_roll,
+  ssc_registration: admission.ssc_registration,
+  ssc_gpa: admission.ssc_gpa,
+  shift: admission.shift,
+  section: admission.section,
+  group_name: admission.group_name,
+  subject: admission.subject,
+});
+
 export const index = async (req, res) => {
   try {
     const admissions = await models.AdmissionApplication.findAll({
@@ -59,7 +110,7 @@ export const index = async (req, res) => {
 
     res.json({ data });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch admissions', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch admissions' });
   }
 };
 
@@ -81,7 +132,10 @@ export const approve = async (req, res) => {
       return res.status(400).json({ message: 'Email is required to create a student account' });
     }
 
-    let user = await models.User.findOne({ where: { email: userEmail } });
+    let user = await models.User.findOne({
+      where: { email: userEmail },
+      paranoid: false,
+    });
     let plainPassword;
     let isNewUser = false;
 
@@ -99,30 +153,15 @@ export const approve = async (req, res) => {
         phone: admission.phone,
         profile_photo_path: admission.photo_path,
       });
+    } else if (user.deletedAt) {
+      await user.restore();
     }
+    
+    let student = await models.Student.findOne({ where: { user_id: user.id } });
 
-    const student = await models.Student.create({
-      user_id: user.id,
-      admission_id: admission.id,
-      guardian_phone: admission.guardian_phone,
-      admission_date: new Date().toISOString().split('T')[0],
-      gender: admission.gender,
-      nationality: admission.nationality,
-      religion: admission.religion,
-      blood_group: admission.blood_group,
-      dob: admission.dob,
-      father_name: admission.father_name,
-      mother_name: admission.mother_name,
-      present_address: admission.address,
-      last_school: admission.last_school,
-      emergency_contact_phone: admission.emergency_contact,
-      jsc_roll: admission.jsc_roll,
-      jsc_registration: admission.jsc_registration,
-      jsc_gpa: admission.jsc_gpa,
-      ssc_roll: admission.ssc_roll,
-      ssc_registration: admission.ssc_registration,
-      ssc_gpa: admission.ssc_gpa,
-    });
+    if (!student) {
+      student = await models.Student.create(await buildStudentFromAdmission(admission, user.id));
+    }
 
     await admission.update({ status: 'approved' });
 
@@ -135,7 +174,8 @@ export const approve = async (req, res) => {
       data: { admission, user, student },
     });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to approve admission', error: error.message });
+    console.error('AdmissionManagerController.approve error:', error);
+    res.status(500).json({ message: `Failed to approve admission: ${error.message}` });
   }
 };
 
@@ -197,28 +237,7 @@ export const bulkAction = async (req, res) => {
           profile_photo_path: admission.photo_path,
         });
 
-        await models.Student.create({
-          user_id: user.id,
-          admission_id: admission.id,
-          guardian_phone: admission.guardian_phone,
-          admission_date: new Date().toISOString().split('T')[0],
-          gender: admission.gender,
-          nationality: admission.nationality,
-          religion: admission.religion,
-          blood_group: admission.blood_group,
-          dob: admission.dob,
-          father_name: admission.father_name,
-          mother_name: admission.mother_name,
-          present_address: admission.address,
-          last_school: admission.last_school,
-          emergency_contact_phone: admission.emergency_contact,
-          jsc_roll: admission.jsc_roll,
-          jsc_registration: admission.jsc_registration,
-          jsc_gpa: admission.jsc_gpa,
-          ssc_roll: admission.ssc_roll,
-          ssc_registration: admission.ssc_registration,
-          ssc_gpa: admission.ssc_gpa,
-        });
+        await models.Student.create(await buildStudentFromAdmission(admission, user.id));
 
         sendCredentialsEmail(admission, user, plainPassword);
       }
@@ -228,7 +247,7 @@ export const bulkAction = async (req, res) => {
       message: `${validIds.length} admission(s) updated to ${status}`,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Bulk action failed', error: error.message });
+    res.status(500).json({ message: 'Bulk action failed' });
   }
 };
 
@@ -262,6 +281,6 @@ export const singleAction = async (req, res) => {
       message: `Admission ${status === 'rejected' ? 'rejected' : 'put on hold'} successfully`,
     });
   } catch (error) {
-    res.status(500).json({ message: `Failed to ${req.params.action} admission`, error: error.message });
+    res.status(500).json({ message: `Failed to ${req.params.action} admission` });
   }
 };

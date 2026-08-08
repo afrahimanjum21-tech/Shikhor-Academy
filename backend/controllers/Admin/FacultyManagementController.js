@@ -3,6 +3,67 @@ import { Op } from 'sequelize';
 import MediaService from '../../services/media/MediaService.js';
 import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
+const toBool = (value) => value === true || value === 'true' || value === '1' || value === 1;
+
+const parseIdList = (value) => {
+  if (value == null) return null;
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [value];
+    } catch {
+      return value.split(',').filter(Boolean);
+    }
+  }
+  return [value];
+};
+
+const parseJsonField = (value) => {
+  if (value == null) return null;
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
+const applySubjects = async (faculty, subjects) => {
+  const ids = parseIdList(subjects);
+  if (ids) {
+    await faculty.setSubjects(Array.isArray(ids) ? ids : []);
+  }
+};
+
+const applyBatches = async (faculty, batches) => {
+  if (batches == null) return;
+  let list = parseJsonField(batches);
+  if (!Array.isArray(list)) list = null;
+  const ids = (list || []).map(b => b && b.batch_id).filter(Boolean);
+  await faculty.setBatches(ids);
+  if (ids.length > 0) {
+    const throughRows = await models.FacultyBatch.findAll({ where: { faculty_id: faculty.id } });
+    for (const row of throughRows) {
+      const match = (list || []).find(b => b && String(b.batch_id) === String(row.batch_id));
+      await row.update({ subject: match && match.subject ? match.subject : null });
+    }
+  }
+};
+
+const serializeFaculty = (faculty) => {
+  if (!faculty) return null;
+  const json = faculty.toJSON ? faculty.toJSON() : faculty;
+  if (Array.isArray(json.batches)) {
+    json.batches = json.batches.map(b => {
+      b.subject = b.FacultyBatch ? b.FacultyBatch.subject || null : b.subject || null;
+      delete b.FacultyBatch;
+      return b;
+    });
+  }
+  return json;
+};
+
 const makeSlug = (text) => {
   return text
     .toLowerCase()
@@ -13,26 +74,46 @@ const makeSlug = (text) => {
 };
 
 const facultyInclude = [
-  { model: models.Department },
-  { model: models.FacultyCategory },
-  { model: models.FacultyQualification },
-  { model: models.FacultyAchievement },
-  { model: models.FacultyCertification },
-  { model: models.FacultySocialLink },
-  { model: models.FacultyGallery },
-  { model: models.Subject, through: { attributes: [] } },
-  { model: models.Batch, through: { attributes: ['subject'] } },
+  { model: models.Department, as: 'department' },
+  { model: models.FacultyCategory, as: 'category' },
+  { model: models.Subject, as: 'subjects', through: { attributes: [] } },
+  { model: models.Batch, as: 'batches', through: { attributes: ['subject'] } },
+  { model: models.FacultyGallery, as: 'galleries' },
+  { model: models.User, as: 'user' },
 ];
 
 export const index = async (req, res) => {
   try {
+    const {
+      search, department_id, faculty_category_id,
+      is_featured, is_active, trashed,
+    } = req.query;
+
+    const where = {};
+    if (department_id) where.department_id = department_id;
+    if (faculty_category_id) where.faculty_category_id = faculty_category_id;
+    if (is_featured === 'true') where.is_featured = true;
+    else if (is_featured === 'false') where.is_featured = false;
+    if (is_active === 'true') where.is_active = true;
+    else if (is_active === 'false') where.is_active = false;
+
+    if (search) {
+      where[Op.or] = [
+        { full_name: { [Op.like]: `%${search}%` } },
+        { employee_id: { [Op.like]: `%${search}%` } },
+        { designation: { [Op.like]: `%${search}%` } },
+      ];
+    }
+
     const faculty = await models.Faculty.findAll({
+      where,
       include: facultyInclude,
       order: [['display_order', 'ASC'], ['full_name', 'ASC']],
+      paranoid: trashed === 'true' ? false : undefined,
     });
-    res.json({ data: faculty });
+    res.json({ data: faculty.map(serializeFaculty) });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch faculty', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch faculty' });
   }
 };
 
@@ -46,9 +127,9 @@ export const show = async (req, res) => {
       return res.status(404).json({ message: 'Faculty not found' });
     }
 
-    res.json({ data: faculty });
+    res.json({ data: serializeFaculty(faculty) });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch faculty', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch faculty' });
   }
 };
 
@@ -58,8 +139,10 @@ export const store = async (req, res) => {
       full_name, employee_id, gender, dob, designation, department_id,
       faculty_category_id, specialization, qualification, teaching_experience,
       biography, awards, achievements, certifications, publications, research,
+      qualifications, social_links,
       official_email, official_phone, public_profile_enabled, is_featured, is_active,
-      display_order, meta_title, meta_description, subject_ids, batch_ids,
+      display_order, meta_title, meta_description, subjects, subject_ids,
+      batches, batch_ids, create_user_account, email, password,
     } = req.body;
 
     if (!full_name) {
@@ -91,40 +174,52 @@ export const store = async (req, res) => {
     const faculty = await models.Faculty.create({
       full_name, employee_id, slug,
       profile_photo_path, cover_photo_path,
-      gender, dob, designation, department_id, faculty_category_id,
+      gender, dob, designation,
+      department_id: department_id || null,
+      faculty_category_id: faculty_category_id || null,
       specialization, qualification, teaching_experience, biography,
       awards: awards ? (typeof awards === 'string' ? JSON.parse(awards) : awards) : null,
       achievements: achievements ? (typeof achievements === 'string' ? JSON.parse(achievements) : achievements) : null,
       certifications: certifications ? (typeof certifications === 'string' ? JSON.parse(certifications) : certifications) : null,
       publications: publications ? (typeof publications === 'string' ? JSON.parse(publications) : publications) : null,
+      qualifications: parseJsonField(qualifications),
+      social_links: parseJsonField(social_links),
       research,
       official_email, official_phone,
-      public_profile_enabled: public_profile_enabled === true || public_profile_enabled === 'true',
-      is_featured: is_featured === true || is_featured === 'true',
-      is_active: is_active !== false && is_active !== 'false',
+      public_profile_enabled: toBool(public_profile_enabled),
+      is_featured: toBool(is_featured),
+      is_active: is_active === undefined ? true : toBool(is_active),
       display_order: display_order || 0,
       meta_title, meta_description,
     });
 
-    if (subject_ids) {
-      const ids = typeof subject_ids === 'string' ? JSON.parse(subject_ids) : subject_ids;
-      if (Array.isArray(ids) && ids.length > 0) {
-        await faculty.setSubjects(ids);
-      }
-    }
+    await applySubjects(faculty, subjects !== undefined ? subjects : subject_ids);
+    await applyBatches(faculty, batches !== undefined ? batches : batch_ids);
 
-    if (batch_ids) {
-      const ids = typeof batch_ids === 'string' ? JSON.parse(batch_ids) : batch_ids;
-      if (Array.isArray(ids) && ids.length > 0) {
-        await faculty.setBatches(ids);
+    if (toBool(create_user_account)) {
+      if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password are required to create a teacher account' });
       }
+      const existingUser = await models.User.findOne({ where: { email } });
+      if (existingUser) {
+        return res.status(400).json({ message: 'A user with this email already exists' });
+      }
+      const user = await models.User.create({
+        name: full_name,
+        email,
+        phone: official_phone,
+        password,
+        role: 'teacher',
+      });
+      await models.TeacherProfile.create({ user_id: user.id, designation });
+      await faculty.update({ user_id: user.id });
     }
 
     const result = await models.Faculty.findByPk(faculty.id, { include: facultyInclude });
 
-    res.status(201).json({ message: 'Faculty created successfully', data: result });
+    res.status(201).json({ message: 'Faculty created successfully', data: serializeFaculty(result) });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to create faculty', error: error.message });
+    res.status(500).json({ message: 'Failed to create faculty' });
   }
 };
 
@@ -139,8 +234,10 @@ export const update = async (req, res) => {
       full_name, employee_id, gender, dob, designation, department_id,
       faculty_category_id, specialization, qualification, teaching_experience,
       biography, awards, achievements, certifications, publications, research,
+      qualifications, social_links,
       official_email, official_phone, public_profile_enabled, is_featured, is_active,
-      display_order, meta_title, meta_description, subject_ids, batch_ids,
+      display_order, meta_title, meta_description, subjects, subject_ids,
+      batches, batch_ids, create_user_account, email, password,
     } = req.body;
 
     const updateData = {};
@@ -157,8 +254,8 @@ export const update = async (req, res) => {
     if (gender !== undefined) updateData.gender = gender;
     if (dob !== undefined) updateData.dob = dob;
     if (designation !== undefined) updateData.designation = designation;
-    if (department_id !== undefined) updateData.department_id = department_id;
-    if (faculty_category_id !== undefined) updateData.faculty_category_id = faculty_category_id;
+    if (department_id !== undefined) updateData.department_id = department_id || null;
+    if (faculty_category_id !== undefined) updateData.faculty_category_id = faculty_category_id || null;
     if (specialization !== undefined) updateData.specialization = specialization;
     if (qualification !== undefined) updateData.qualification = qualification;
     if (teaching_experience !== undefined) updateData.teaching_experience = teaching_experience;
@@ -166,17 +263,19 @@ export const update = async (req, res) => {
     if (research !== undefined) updateData.research = research;
     if (official_email !== undefined) updateData.official_email = official_email;
     if (official_phone !== undefined) updateData.official_phone = official_phone;
-    if (public_profile_enabled !== undefined) updateData.public_profile_enabled = public_profile_enabled === true || public_profile_enabled === 'true';
-    if (is_featured !== undefined) updateData.is_featured = is_featured === true || is_featured === 'true';
-    if (is_active !== undefined) updateData.is_active = is_active === true || is_active === 'true';
+    if (public_profile_enabled !== undefined) updateData.public_profile_enabled = toBool(public_profile_enabled);
+    if (is_featured !== undefined) updateData.is_featured = toBool(is_featured);
+    if (is_active !== undefined) updateData.is_active = toBool(is_active);
     if (display_order !== undefined) updateData.display_order = display_order;
     if (meta_title !== undefined) updateData.meta_title = meta_title;
     if (meta_description !== undefined) updateData.meta_description = meta_description;
 
-    if (awards !== undefined) updateData.awards = typeof awards === 'string' ? JSON.parse(awards) : awards;
-    if (achievements !== undefined) updateData.achievements = typeof achievements === 'string' ? JSON.parse(achievements) : achievements;
-    if (certifications !== undefined) updateData.certifications = typeof certifications === 'string' ? JSON.parse(certifications) : certifications;
-    if (publications !== undefined) updateData.publications = typeof publications === 'string' ? JSON.parse(publications) : publications;
+    if (awards !== undefined) updateData.awards = parseJsonField(awards);
+    if (achievements !== undefined) updateData.achievements = parseJsonField(achievements);
+    if (certifications !== undefined) updateData.certifications = parseJsonField(certifications);
+    if (publications !== undefined) updateData.publications = parseJsonField(publications);
+    if (qualifications !== undefined) updateData.qualifications = parseJsonField(qualifications);
+    if (social_links !== undefined) updateData.social_links = parseJsonField(social_links);
 
     if (req.files) {
       if (req.files.profile_photo) {
@@ -203,21 +302,49 @@ export const update = async (req, res) => {
 
     await faculty.update(updateData);
 
-    if (subject_ids !== undefined) {
-      const ids = typeof subject_ids === 'string' ? JSON.parse(subject_ids) : subject_ids;
-      await faculty.setSubjects(Array.isArray(ids) ? ids : []);
-    }
+    await applySubjects(faculty, subjects !== undefined ? subjects : subject_ids);
+    await applyBatches(faculty, batches !== undefined ? batches : batch_ids);
 
-    if (batch_ids !== undefined) {
-      const ids = typeof batch_ids === 'string' ? JSON.parse(batch_ids) : batch_ids;
-      await faculty.setBatches(Array.isArray(ids) ? ids : []);
+    if (faculty.user_id) {
+      const user = await models.User.findByPk(faculty.user_id);
+      if (user) {
+        const userChanges = {};
+        if (email && email !== user.email) {
+          const dup = await models.User.findOne({ where: { email } });
+          if (dup && dup.id !== user.id) {
+            return res.status(400).json({ message: 'A user with this email already exists' });
+          }
+          userChanges.email = email;
+        }
+        if (password) userChanges.password = password;
+        if (Object.keys(userChanges).length > 0) {
+          await user.update(userChanges);
+        }
+      }
+    } else if (toBool(create_user_account)) {
+      if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password are required to create a teacher account' });
+      }
+      const existingUser = await models.User.findOne({ where: { email } });
+      if (existingUser) {
+        return res.status(400).json({ message: 'A user with this email already exists' });
+      }
+      const user = await models.User.create({
+        name: faculty.full_name,
+        email,
+        password,
+        role: 'teacher',
+      });
+      await models.TeacherProfile.create({ user_id: user.id, designation: faculty.designation });
+      updateData.user_id = user.id;
+      await faculty.update({ user_id: user.id });
     }
 
     const result = await models.Faculty.findByPk(faculty.id, { include: facultyInclude });
 
-    res.json({ message: 'Faculty updated successfully', data: result });
+    res.json({ message: 'Faculty updated successfully', data: serializeFaculty(result) });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to update faculty', error: error.message });
+    res.status(500).json({ message: 'Failed to update faculty' });
   }
 };
 
@@ -234,11 +361,21 @@ export const destroy = async (req, res) => {
     if (faculty.cover_photo_path) {
       await MediaDeleteService.deleteByUrl(faculty.cover_photo_path).catch(err => console.warn('Media cleanup:', err.message));
     }
+
+    if (faculty.user_id) {
+      const teacher = await models.User.findOne({ where: { id: faculty.user_id, role: 'teacher' } });
+      if (teacher) {
+        await models.TeacherBatchAssignment.destroy({ where: { teacher_id: teacher.id } });
+        await models.TeacherProfile.destroy({ where: { user_id: teacher.id } });
+        await teacher.destroy();
+      }
+    }
+
     await faculty.destroy();
 
     res.json({ message: 'Faculty deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to delete faculty', error: error.message });
+    res.status(500).json({ message: 'Failed to delete faculty' });
   }
 };
 
@@ -257,9 +394,9 @@ export const restore = async (req, res) => {
 
     const result = await models.Faculty.findByPk(faculty.id, { include: facultyInclude });
 
-    res.json({ message: 'Faculty restored successfully', data: result });
+    res.json({ message: 'Faculty restored successfully', data: serializeFaculty(result) });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to restore faculty', error: error.message });
+    res.status(500).json({ message: 'Failed to restore faculty' });
   }
 };
 
@@ -288,7 +425,7 @@ export const forceDelete = async (req, res) => {
 
     res.json({ message: 'Faculty permanently deleted' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to force delete faculty', error: error.message });
+    res.status(500).json({ message: 'Failed to force delete faculty' });
   }
 };
 
@@ -303,7 +440,7 @@ export const toggleFeatured = async (req, res) => {
 
     res.json({ message: `Faculty ${faculty.is_featured ? 'featured' : 'unfeatured'}`, data: faculty });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to toggle featured status', error: error.message });
+    res.status(500).json({ message: 'Failed to toggle featured status' });
   }
 };
 
@@ -318,7 +455,7 @@ export const toggleActive = async (req, res) => {
 
     res.json({ message: `Faculty ${faculty.is_active ? 'activated' : 'deactivated'}`, data: faculty });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to toggle active status', error: error.message });
+    res.status(500).json({ message: 'Failed to toggle active status' });
   }
 };
 
@@ -346,7 +483,7 @@ export const reorder = async (req, res) => {
 
     res.json({ message: 'Order updated successfully', data: faculty });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to reorder faculty', error: error.message });
+    res.status(500).json({ message: 'Failed to reorder faculty' });
   }
 };
 
@@ -357,7 +494,7 @@ export const getDepartments = async (req, res) => {
     });
     res.json({ data: departments });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch departments', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch departments' });
   }
 };
 
@@ -368,7 +505,7 @@ export const getSubjects = async (req, res) => {
     });
     res.json({ data: subjects });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch subjects', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch subjects' });
   }
 };
 
@@ -380,7 +517,7 @@ export const getBatches = async (req, res) => {
     });
     res.json({ data: batches });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch batches', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch batches' });
   }
 };
 
@@ -391,7 +528,7 @@ export const getCategories = async (req, res) => {
     });
     res.json({ data: categories });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch categories', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch categories' });
   }
 };
 
@@ -419,7 +556,7 @@ export const storeCategory = async (req, res) => {
 
     res.status(201).json({ message: 'Category created successfully', data: category });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to create category', error: error.message });
+    res.status(500).json({ message: 'Failed to create category' });
   }
 };
 
@@ -450,7 +587,7 @@ export const updateCategory = async (req, res) => {
 
     res.json({ message: 'Category updated successfully', data: category });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to update category', error: error.message });
+    res.status(500).json({ message: 'Failed to update category' });
   }
 };
 
@@ -470,6 +607,6 @@ export const destroyCategory = async (req, res) => {
 
     res.json({ message: 'Category deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to delete category', error: error.message });
+    res.status(500).json({ message: 'Failed to delete category' });
   }
 };

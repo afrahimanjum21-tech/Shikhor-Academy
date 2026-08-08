@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
-import { Award, BookOpen, Users, Save } from "lucide-react";
+import { Award, BookOpen, Users, Save, FileText } from "lucide-react";
 import notify from "../../services/notification";
 import logger from '../../services/logger';
 
@@ -28,10 +28,10 @@ export default function TeacherMarks() {
         try {
             setLoading(true);
             const { data } = await api.get(`/teacher/exams/${examId}/students`);
-            setStudents(data.students);
+            setStudents(data.students || []);
             const initialMarks = {};
-            data.students.forEach(({ student, existing_result }) => {
-                initialMarks[student.id] = existing_result?.marks_details || {};
+            (data.students || []).forEach(({ student, result }) => {
+                initialMarks[student.id] = result?.marks_details || {};
             });
             setMarks(initialMarks);
         } catch (error) {
@@ -43,6 +43,8 @@ export default function TeacherMarks() {
 
     const handleExamChange = (examId) => {
         setSelectedExam(examId);
+        setMarks({});
+        setStudents([]);
         if (examId) {
             fetchStudents(examId);
         }
@@ -63,13 +65,13 @@ export default function TeacherMarks() {
 
         const marksData = Object.keys(marks).map(studentId => ({
             student_id: parseInt(studentId),
-            details: marks[studentId]
+            marks_details: marks[studentId]
         }));
 
         try {
             await api.post('/teacher/exams/marks', {
                 exam_id: selectedExam,
-                marks_data: marksData
+                marks: marksData
             });
             notify.success('Marks saved successfully');
         } catch (error) {
@@ -96,7 +98,7 @@ export default function TeacherMarks() {
                         <option value="">Select an exam</option>
                         {exams.map((exam) => (
                             <option key={exam.id} value={exam.id}>
-                                {exam.name} - {exam.course?.title} ({new Date(exam.date).toLocaleDateString()})
+                                {exam.name} - {exam.Course?.title} ({exam.date ? new Date(exam.date).toLocaleDateString() : 'N/A'})
                             </option>
                         ))}
                     </select>
@@ -135,10 +137,10 @@ export default function TeacherMarks() {
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="h-8 w-8 rounded-full bg-[#1F4E79] flex items-center justify-center text-white font-bold text-sm">
-                                                    {student.user?.name?.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-gray-800">{student.user?.name}</p>
+                                                {student.User?.name?.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-gray-800">{student.User?.name}</p>
                                                     <p className="text-xs text-gray-500">{student.student_id_card_no}</p>
                                                 </div>
                                             </div>
@@ -166,6 +168,13 @@ export default function TeacherMarks() {
             {loading && (
                 <div className="flex items-center justify-center h-64">
                     <div className="text-gray-500">Loading students...</div>
+                </div>
+            )}
+
+            {selectedExam && students.length === 0 && !loading && (
+                <div className="bg-white rounded-xl shadow border border-gray-200 p-12 text-center">
+                    <FileText className="mx-auto text-gray-400 mb-4" size={48} />
+                    <p className="text-gray-500">No students found for this exam</p>
                 </div>
             )}
         </div>

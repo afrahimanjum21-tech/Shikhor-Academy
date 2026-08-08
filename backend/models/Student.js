@@ -36,8 +36,13 @@ const Student = sequelize.define('Student', {
   ssc_gpa: { type: DataTypes.STRING(10) },
   shift: { type: DataTypes.STRING(20) },
   section: { type: DataTypes.STRING(20) },
-  group_name: { type: DataTypes.STRING(50) },
-  subject: { type: DataTypes.STRING },
+    group_name: { type: DataTypes.STRING(50) },
+    subject: { type: DataTypes.STRING },
+}, {
+    indexes: [
+        { fields: ['current_batch_id'] },
+        { fields: ['user_id'] },
+    ],
 });
 
 Student.associate = (models) => {

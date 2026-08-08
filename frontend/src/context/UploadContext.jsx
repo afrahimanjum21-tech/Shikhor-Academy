@@ -9,7 +9,7 @@ export const UploadProvider = ({ children }) => {
     const [isWidgetOpen, setIsWidgetOpen] = useState(true);
     const idCounter = useRef(0);
 
-    const startUpload = useCallback(({ title, type, file, url, onSuccess, onError }) => {
+    const startUpload = useCallback(({ title, type, file, url, access, materialId, onSuccess, onError }) => {
         const uploadId = ++idCounter.current;
 
         const formData = new FormData();
@@ -17,20 +17,29 @@ export const UploadProvider = ({ children }) => {
         formData.append('type', type);
 
         if (type === 'file') {
-            const fileExtension = file.name.split('.').pop();
-            const safeName = `upload_${Date.now()}.${fileExtension}`;
-            const renamedFile = new File([file], safeName, { type: file.type });
-            formData.append('file', renamedFile);
+            if (file) {
+                const fileExtension = file.name.split('.').pop();
+                const safeName = `upload_${Date.now()}.${fileExtension}`;
+                const renamedFile = new File([file], safeName, { type: file.type });
+                formData.append('file', renamedFile);
+            }
         } else {
             formData.append('url', url);
+        }
+
+        if (access) {
+            formData.append('access_type', access.access_type || 'all');
+            formData.append('batch_id', access.batch_id || '');
+            formData.append('course_id', access.course_id || '');
+            formData.append('class_name', access.class_name || '');
         }
 
         const newUpload = {
             id: uploadId,
             title,
             type,
-            fileName: type === 'file' ? file.name : url,
-            fileSize: type === 'file' ? file.size : null,
+            fileName: type === 'file' ? (file ? file.name : '') : url,
+            fileSize: type === 'file' && file ? file.size : null,
             progress: 0,
             status: 'uploading',
             error: null,
@@ -43,7 +52,7 @@ export const UploadProvider = ({ children }) => {
             setActiveUploads(prev => prev.map(u => u.id === uploadId ? { ...u, ...updates } : u));
         };
 
-        api.post('/admin/materials', formData, {
+        const options = {
             headers: { "Content-Type": "multipart/form-data" },
             timeout: 600000,
             maxContentLength: Infinity,
@@ -54,7 +63,13 @@ export const UploadProvider = ({ children }) => {
                     : 0;
                 updateUpload({ progress: percent });
             }
-        }).then(() => {
+        };
+
+        const request = materialId
+            ? api.put(`/admin/materials/${materialId}`, formData, options)
+            : api.post('/admin/materials', formData, options);
+
+        request.then(() => {
             updateUpload({ progress: 100, status: 'completed' });
             if (onSuccess) onSuccess();
         }).catch((err) => {

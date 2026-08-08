@@ -1,16 +1,20 @@
 import models from '../../models/index.js';
+import crypto from 'crypto';
 import MediaService from '../../services/media/MediaService.js';
 import MediaDeleteService from '../../services/media/MediaDeleteService.js';
+
+const USER_SAFE_ATTRIBUTES = { exclude: ['password'] };
 
 export const index = async (req, res) => {
   try {
     const teachers = await models.User.findAll({
       where: { role: 'teacher', deletedAt: null },
+      attributes: USER_SAFE_ATTRIBUTES,
       include: [
         { model: models.TeacherProfile },
         {
           model: models.TeacherBatchAssignment,
-          include: [{ model: models.Batch }],
+          include: [{ model: models.Batch, include: [{ model: models.Course }] }],
         },
         { model: models.Faculty },
       ],
@@ -19,7 +23,7 @@ export const index = async (req, res) => {
 
     res.json({ data: teachers });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch teachers', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch teachers' });
   }
 };
 
@@ -28,12 +32,18 @@ export const store = async (req, res) => {
     const {
       name, email, phone, password,
       designation, subject, bio, joining_date,
-      batch_ids, ...facultyFields
+      batch_ids, batch_assignments, ...facultyFields
     } = req.body;
+
+    // Never silently fall back to a public weak password — generate a random
+    // one and surface it once in the response so the admin can share it.
+    const generatedPassword = password
+      ? null
+      : (process.env.DEFAULT_USER_PASSWORD || crypto.randomBytes(5).toString('hex'));
 
     const user = await models.User.create({
       name, email, phone,
-      password: password || process.env.DEFAULT_USER_PASSWORD || '123456',
+      password: generatedPassword || password,
       role: 'teacher',
     });
 
@@ -45,12 +55,21 @@ export const store = async (req, res) => {
       joining_date: joining_date || new Date().toISOString().split('T')[0],
     });
 
-    if (Array.isArray(batch_ids) && batch_ids.length > 0) {
-      const assignments = batch_ids.map(batch_id => ({
+    let assignmentRows = [];
+    if (Array.isArray(batch_assignments)) {
+      assignmentRows = batch_assignments.map(a => ({
+        teacher_id: user.id,
+        batch_id: Number(a.batch_id),
+        subject: a.subject,
+      }));
+    } else if (Array.isArray(batch_ids)) {
+      assignmentRows = batch_ids.map(batch_id => ({
         teacher_id: user.id,
         batch_id,
       }));
-      await models.TeacherBatchAssignment.bulkCreate(assignments);
+    }
+    if (assignmentRows.length > 0) {
+      await models.TeacherBatchAssignment.bulkCreate(assignmentRows);
     }
 
     await models.Faculty.create({
@@ -60,9 +79,11 @@ export const store = async (req, res) => {
       employee_id: facultyFields.employee_id || `TCH-${String(user.id).padStart(4, '0')}`,
     });
 
-    res.status(201).json({ message: 'Teacher created successfully', data: user });
+    const { password: _pw, ...safeUser } = user.toJSON();
+    if (generatedPassword && !process.env.DEFAULT_USER_PASSWORD) safeUser.temp_password = generatedPassword;
+    res.status(201).json({ message: 'Teacher created successfully', data: safeUser });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to create teacher', error: error.message });
+    res.status(500).json({ message: 'Failed to create teacher' });
   }
 };
 
@@ -70,11 +91,12 @@ export const show = async (req, res) => {
   try {
     const teacher = await models.User.findOne({
       where: { id: req.params.id, role: 'teacher', deletedAt: null },
+      attributes: USER_SAFE_ATTRIBUTES,
       include: [
         { model: models.TeacherProfile },
         {
           model: models.TeacherBatchAssignment,
-          include: [{ model: models.Batch }],
+          include: [{ model: models.Batch, include: [{ model: models.Course }] }],
         },
         { model: models.Faculty },
       ],
@@ -86,7 +108,7 @@ export const show = async (req, res) => {
 
     res.json({ data: teacher });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch teacher', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch teacher' });
   }
 };
 
@@ -94,6 +116,7 @@ export const update = async (req, res) => {
   try {
     const teacher = await models.User.findOne({
       where: { id: req.params.id, role: 'teacher', deletedAt: null },
+      attributes: USER_SAFE_ATTRIBUTES,
       include: [
         { model: models.TeacherProfile },
         { model: models.Faculty },
@@ -104,7 +127,7 @@ export const update = async (req, res) => {
       return res.status(404).json({ message: 'Teacher not found' });
     }
 
-    const { name, email, phone, password, designation, subject, bio, joining_date, batch_ids, ...facultyFields } = req.body;
+    const { name, email, phone, password, designation, subject, bio, joining_date, batch_ids, batch_assignments, ...facultyFields } = req.body;
 
     const userData = {};
     if (name !== undefined) userData.name = name;
@@ -129,20 +152,29 @@ export const update = async (req, res) => {
       await teacher.Faculty.update(facultyData);
     }
 
-    if (Array.isArray(batch_ids)) {
+    if (Array.isArray(batch_ids) || Array.isArray(batch_assignments)) {
       await models.TeacherBatchAssignment.destroy({ where: { teacher_id: teacher.id } });
-      if (batch_ids.length > 0) {
-        const assignments = batch_ids.map(batch_id => ({
+      let rows = [];
+      if (Array.isArray(batch_assignments)) {
+        rows = batch_assignments.map(a => ({
+          teacher_id: teacher.id,
+          batch_id: Number(a.batch_id),
+          subject: a.subject,
+        }));
+      } else if (batch_ids.length > 0) {
+        rows = batch_ids.map(batch_id => ({
           teacher_id: teacher.id,
           batch_id,
         }));
-        await models.TeacherBatchAssignment.bulkCreate(assignments);
+      }
+      if (rows.length > 0) {
+        await models.TeacherBatchAssignment.bulkCreate(rows);
       }
     }
 
     res.json({ message: 'Teacher updated successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to update teacher', error: error.message });
+    res.status(500).json({ message: 'Failed to update teacher' });
   }
 };
 
@@ -169,7 +201,7 @@ export const updatePhoto = async (req, res) => {
 
     res.json({ message: 'Photo updated successfully', data: { profile_photo_path: result.url } });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to update photo', error: error.message });
+    res.status(500).json({ message: 'Failed to update photo' });
   }
 };
 
@@ -193,6 +225,6 @@ export const destroy = async (req, res) => {
 
     res.json({ message: 'Teacher deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to delete teacher', error: error.message });
+    res.status(500).json({ message: 'Failed to delete teacher' });
   }
 };

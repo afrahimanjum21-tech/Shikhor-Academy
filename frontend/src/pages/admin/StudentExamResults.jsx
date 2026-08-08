@@ -167,7 +167,7 @@ export default function StudentExamResults() {
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {Object.entries(result.marks_details).map(([subject, marks]) => {
-                                            const totalMarks = result.subject_marks?.[subject] || 100;
+                                            const totalMarks = result.exam?.subject_marks?.[subject] || result.subject_marks?.[subject] || 100;
                                             const percentage = totalMarks > 0 ? (marks / totalMarks) * 100 : 0;
                                             const pct = percentage >= 80 ? 'text-green-600' :
                                                 percentage >= 60 ? 'text-blue-600' :

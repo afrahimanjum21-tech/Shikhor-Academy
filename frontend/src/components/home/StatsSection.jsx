@@ -1,4 +1,4 @@
-import { Users, GraduationCap, TrendingUp, Calendar } from "lucide-react";
+import { Users, GraduationCap, TrendingUp, Calendar, BookOpen } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState, useRef } from "react";
 import api from "../../services/api";
@@ -54,6 +54,7 @@ function AnimatedCounter({ value }) {
 const statTemplates = {
   students: { icon: Users, label: "Students", desc: "Trusted by thousands", suffix: "+" },
   teachers: { icon: GraduationCap, label: "Teachers", desc: "Experienced & Dedicated", suffix: "+" },
+  courses: { icon: BookOpen, label: "Courses", desc: "Active programs", suffix: "+" },
   successRate: { icon: TrendingUp, label: "Success Rate", desc: "Proven Results", suffix: "%" },
   established: { icon: Calendar, label: "Established", suffix: "" },
 };
@@ -116,6 +117,14 @@ export default function StatsSection() {
       key: "teachers",
       ...statTemplates.teachers,
       value: settings.real_teacher_count,
+    });
+  }
+
+  if (settings?.real_course_count > 0) {
+    stats.push({
+      key: "courses",
+      ...statTemplates.courses,
+      value: settings.real_course_count,
     });
   }
 

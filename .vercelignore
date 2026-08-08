@@ -1,0 +1,15 @@
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+frontend/dist/
+.vercel
+backend/uploads/
+backend/public/uploads/
+backend/public/storage/
+backend/check-db.mjs
+backend/check-env.js
+backend/check_env.bat
+backend/connect-neon.js
+backend/test-connection.js
+backend/backend-test-neon.js
+*.log

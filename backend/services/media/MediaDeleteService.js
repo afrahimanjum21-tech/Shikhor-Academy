@@ -1,21 +1,9 @@
-import CloudinaryService from './CloudinaryService.js';
-import SupabaseStorageService from './SupabaseStorageService.js';
+import LocalFileService from './LocalFileService.js';
 
 class MediaDeleteService {
   async deleteByUrl(mediaUrl) {
     if (!mediaUrl) return null;
-
-    const provider = this._detectProvider(mediaUrl);
-
-    if (provider === 'cloudinary') {
-      return this._deleteFromCloudinary(mediaUrl);
-    }
-
-    if (provider === 'supabase') {
-      return this._deleteFromSupabase(mediaUrl);
-    }
-
-    return null;
+    return LocalFileService.delete(mediaUrl);
   }
 
   async deleteMultiple(urls) {
@@ -25,7 +13,7 @@ class MediaDeleteService {
         const result = await this.deleteByUrl(url);
         results.push({ url, success: true, result });
       } catch (error) {
-        results.push({ url, success: false, error: error.message });
+        results.push({ url, success: false });
       }
     }
     return results;
@@ -33,11 +21,8 @@ class MediaDeleteService {
 
   async deleteByRecord(record, pathField, providerField) {
     if (!record) return null;
-
     const mediaUrl = record[pathField];
     if (!mediaUrl) return null;
-
-    const provider = providerField ? record[providerField] : null;
     return this.deleteByUrl(mediaUrl);
   }
 
@@ -48,29 +33,10 @@ class MediaDeleteService {
         const result = await this.deleteByRecord(record, pathField);
         results.push({ record: record.id, success: true, result });
       } catch (error) {
-        results.push({ record: record.id, success: false, error: error.message });
+        results.push({ record: record.id, success: false });
       }
     }
     return results;
-  }
-
-  _deleteFromCloudinary(url) {
-    const publicId = CloudinaryService.extractPublicId(url);
-    if (!publicId) return null;
-    return CloudinaryService.destroy(publicId);
-  }
-
-  _deleteFromSupabase(url) {
-    const filePath = SupabaseStorageService.extractPath(url);
-    if (!filePath) return null;
-    return SupabaseStorageService.removeByFullPath(filePath);
-  }
-
-  _detectProvider(url) {
-    if (!url) return null;
-    if (url.includes('cloudinary.com')) return 'cloudinary';
-    if (url.includes('supabase.co')) return 'supabase';
-    return null;
   }
 }
 

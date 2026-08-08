@@ -33,10 +33,27 @@ export default function StudentAttendance() {
     useEffect(() => { markViewed('attendance'); }, [markViewed]);
 
     useEffect(() => {
-        api.get("/student/attendance/stats")
-            .then((res) => setStats(res.data))
-            .finally(() => setLoading(false));
+        loadStats();
     }, []);
+
+    const loadStats = async () => {
+        try {
+            const res = await api.get("/student/attendance/stats");
+            const s = res.data || {};
+            setStats({
+                total: s.total_classes ?? s.total ?? 0,
+                present: s.present ?? s.presentCount ?? 0,
+                absent: s.absent ?? s.absentCount ?? 0,
+                late: s.late ?? 0,
+                leave: s.leave ?? s.leaveCount ?? 0,
+                percentage: s.percentage ?? s.attendancePercentage ?? 0,
+            });
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to load attendance stats");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const submitLeave = async (event) => {
         event.preventDefault();
@@ -66,8 +83,7 @@ export default function StudentAttendance() {
                 session,
             });
             setMessage(data.message || "Attendance recorded");
-            const statsRes = await api.get("/student/attendance/stats");
-            setStats(statsRes.data);
+            await loadStats();
         } catch (err) {
             setError(err.response?.data?.message || "Failed to record attendance");
         } finally {

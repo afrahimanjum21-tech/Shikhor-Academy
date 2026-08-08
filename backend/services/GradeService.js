@@ -30,8 +30,12 @@ class GradeService {
   }
 
   static calculateTotalObtained(marksDetails) {
-    if (!marksDetails || !Array.isArray(marksDetails)) return 0;
-    return marksDetails.reduce((sum, subject) => sum + (parseFloat(subject.obtained) || 0), 0);
+    if (!marksDetails) return 0;
+    if (Array.isArray(marksDetails)) {
+      return marksDetails.reduce((sum, subject) => sum + (parseFloat(subject.obtained) || 0), 0);
+    }
+    // Object form: { subject: obtained }
+    return Object.values(marksDetails).reduce((sum, value) => sum + (parseFloat(value) || 0), 0);
   }
 
   static calculatePercentage(totalObtained, totalMarks) {

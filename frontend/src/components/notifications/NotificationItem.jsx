@@ -67,7 +67,7 @@ export default function NotificationItem({ notification, onMarkRead, onClose }) 
                     <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{notification.body}</p>
                 )}
                 <p className="text-[11px] text-gray-400 mt-1">
-                    {notification.time_ago || notification.created_at}
+                    {notification.time_ago || notification.createdAt || notification.created_at || ""}
                 </p>
             </div>
             {hover && !notification.is_read && (

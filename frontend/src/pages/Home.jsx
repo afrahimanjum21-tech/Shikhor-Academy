@@ -59,6 +59,7 @@ export default function Home() {
                         <img
                           src={buildAssetUrl(fac.profile_photo_path)}
                           alt={fac.full_name}
+                          loading="lazy"
                           className="w-full h-full object-cover"
                         />
                       ) : (
