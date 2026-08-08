@@ -33,7 +33,7 @@ export default function TuitionFees() {
         history: [],
     });
     const [loading, setLoading] = useState(true);
-    const [selectedMonth, setSelectedMonth] = useState("");
+    const [selectedMonths, setSelectedMonths] = useState([]);
     const [paying, setPaying] = useState(false);
     const [error, setError] = useState("");
 
@@ -42,7 +42,7 @@ export default function TuitionFees() {
         try {
             const { data: response } = await api.get("/student/payments");
             setData(response);
-            setSelectedMonth(response.due_months?.[0] || "");
+            setSelectedMonths(response.due_months?.[0] ? [response.due_months[0]] : []);
             setError("");
         } catch (err) {
             setError(err.response?.data?.message || "Unable to load payment information");
@@ -62,18 +62,32 @@ export default function TuitionFees() {
         [data.pending_payments]
     );
 
-    const startPayment = async (month = selectedMonth) => {
-        if (!month) return;
+    const selectableMonths = useMemo(
+        () => (data.due_months || []).filter((month) => !pendingMonths.has(month)),
+        [data.due_months, pendingMonths]
+    );
+
+    const toggleMonth = (month) => {
+        setSelectedMonths((prev) =>
+            prev.includes(month) ? prev.filter((m) => m !== month) : [...prev, month]
+        );
+    };
+
+    const startPayment = async (months = selectedMonths) => {
+        if (!months.length) return;
 
         setPaying(true);
         setError("");
 
         try {
-            const { data: response } = await api.post("/student/payment/initiate", { month });
-            if (!response.gateway_url) {
+            const { data: response } = await api.post("/student/payment/initiate", {
+                months,
+            });
+            const gateway = response?.gateway_url || response?.data?.gateway_url || response?.payment_url;
+            if (!gateway) {
                 throw new Error("Gateway URL was not returned");
             }
-            window.location.assign(response.gateway_url);
+            window.location.assign(gateway);
         } catch (err) {
             setError(err.response?.data?.message || err.message || "Unable to start online payment");
             setPaying(false);
@@ -102,26 +116,46 @@ export default function TuitionFees() {
                 </div>
 
                 <div className="w-full lg:w-auto flex flex-col sm:flex-row gap-3">
-                    <select
-                        value={selectedMonth}
-                        onChange={(event) => setSelectedMonth(event.target.value)}
-                        disabled={!data.due_months.length || paying}
-                        className="min-w-56 rounded border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-[#1F4E79] disabled:bg-gray-100"
-                    >
-                        {data.due_months.length === 0 && <option value="">No dues</option>}
-                        {data.due_months.map((month) => (
-                            <option key={month} value={month}>
-                                {month}{pendingMonths.has(month) ? " - pending" : ""}
-                            </option>
+                    <div className="flex flex-wrap gap-2">
+                        {selectableMonths.length === 0 && (
+                            <span className="rounded border border-gray-200 px-3 py-2.5 text-sm text-gray-400">
+                                No payable months
+                            </span>
+                        )}
+                        {selectableMonths.map((month) => {
+                            const checked = selectedMonths.includes(month);
+                            return (
+                                <button
+                                    key={month}
+                                    type="button"
+                                    onClick={() => toggleMonth(month)}
+                                    disabled={paying}
+                                    className={`rounded border px-3 py-2.5 text-sm font-semibold transition disabled:opacity-60 ${
+                                        checked
+                                            ? "border-[#1F4E79] bg-[#1F4E79] text-white"
+                                            : "border-gray-300 bg-white text-gray-700 hover:border-[#1F4E79]"
+                                    }`}
+                                >
+                                    {month}
+                                </button>
+                            );
+                        })}
+                        {[...pendingMonths].map((month) => (
+                            <span
+                                key={month}
+                                className="rounded border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm font-semibold text-blue-600"
+                            >
+                                {month} - pending
+                            </span>
                         ))}
-                    </select>
+                    </div>
                     <button
                         onClick={() => startPayment()}
-                        disabled={!selectedMonth || paying}
+                        disabled={!selectedMonths.length || paying}
                         className="bg-[#1F4E79] text-white px-6 py-2.5 rounded-lg font-bold hover:bg-[#163859] shadow-md flex items-center justify-center gap-2 transition disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         {paying ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />}
-                        Pay Online
+                        Pay Online{selectedMonths.length > 0 ? ` (${selectedMonths.length} month${selectedMonths.length > 1 ? "s" : ""} - ${money((data.course_fee || 0) * selectedMonths.length)})` : ""}
                     </button>
                 </div>
             </div>
@@ -175,8 +209,8 @@ export default function TuitionFees() {
                         {data.due_months.map((month) => (
                             <button
                                 key={month}
-                                onClick={() => startPayment(month)}
-                                disabled={paying}
+                                onClick={() => startPayment([month])}
+                                disabled={paying || pendingMonths.has(month)}
                                 className="bg-white text-left text-red-700 px-3 py-2 rounded border border-red-100 text-sm font-medium shadow-sm hover:border-red-300 disabled:opacity-60"
                             >
                                 <span>{month}</span>

@@ -53,7 +53,7 @@ export default function PaymentManager() {
     };
 
     const filteredPayments = payments.filter(p => 
-        p.student?.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.student || p.Student)?.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.trx_id?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -84,7 +84,7 @@ export default function PaymentManager() {
                     <tbody className="divide-y">
                         {filteredPayments.map(pay => (
                             <tr key={pay.id} className="hover:bg-gray-50 transition">
-                                <td className="p-3"><p className="font-bold text-gray-800">{pay.student?.user?.name}</p><p className="text-xs text-gray-500 font-mono">{pay.student?.student_id_card_no}</p></td>
+                                <td className="p-3"><p className="font-bold text-gray-800">{(pay.student || pay.Student)?.user?.name}</p><p className="text-xs text-gray-500 font-mono">{(pay.student || pay.Student)?.student_id_card_no}</p></td>
                                 <td className="p-3">{pay.month}</td>
                                 <td className="p-3 font-bold text-[#1F4E79]">BDT {Number(pay.amount || 0).toLocaleString("en-BD")}</td>
                                 <td className="p-3"><span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs border border-blue-100">{pay.method}</span></td>
@@ -103,8 +103,8 @@ export default function PaymentManager() {
                     <div key={pay.id} className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
                         <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
-                                <p className="font-bold text-gray-800 text-sm truncate">{pay.student?.user?.name}</p>
-                                <p className="text-[10px] text-gray-500 font-mono">{pay.student?.student_id_card_no}</p>
+                                <p className="font-bold text-gray-800 text-sm truncate">{(pay.student || pay.Student)?.user?.name}</p>
+                                <p className="text-[10px] text-gray-500 font-mono">{(pay.student || pay.Student)?.student_id_card_no}</p>
                             </div>
                             <button onClick={() => handleDelete(pay.id)} className="text-red-400 hover:text-red-600 p-1 flex-shrink-0"><Trash2 size={15}/></button>
                         </div>

@@ -55,8 +55,22 @@ export default function PaymentResult({ type = "pending" }) {
             try {
                 const { data } = await api.get("/student/payment/status", { params: { tran_id: tranId } });
                 if (!active) return;
-                setPayment(data);
-                setStatus(data.status === "paid" ? "success" : data.status === "pending" ? "pending" : type);
+                const list = Array.isArray(data) ? data : (data?.payments || [data]).filter(Boolean);
+                const matched = list.find((p) => p?.trx_id === tranId) || list[0] || null;
+                setPayment(matched);
+                // The backend only redirects to /payment/failed after it has
+                // verified the gateway's verdict server-side, so an explicit
+                // failure/cancel status on the URL is authoritative even when
+                // the DB row is still sitting in 'pending'.
+                const verdict = params.get("status");
+                const failedVerdicts = ["invalid_hash", "amount_mismatch", "not_pending", "unknown", "failed", "error"];
+                setStatus(
+                    matched?.status === "paid" ? "success"
+                    : failedVerdicts.includes(verdict) ? "failed"
+                    : verdict === "cancelled" ? "cancelled"
+                    : matched?.status === "pending" ? "pending"
+                    : type
+                );
             } catch (err) {
                 if (!active) return;
                 setError(err.response?.data?.message || "Unable to load payment status");

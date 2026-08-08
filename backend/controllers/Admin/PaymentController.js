@@ -1,5 +1,55 @@
 import models from '../../models/index.js';
-import { Op, fn, col, literal } from 'sequelize';
+import { Op } from 'sequelize';
+import NotificationService from '../../services/NotificationService.js';
+
+const normalizeUser = (student) => {
+  const data = student.toJSON ? student.toJSON() : { ...student };
+  data.user = data.user || data.User || null;
+  if (data.Batch) {
+    data.batch = data.Batch;
+    data.batch.course = data.Batch.Course || data.Batch.course || null;
+  }
+  delete data.User;
+  delete data.Batch;
+  return data;
+};
+
+const monthKey = (date) => {
+  const d = new Date(date);
+  return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+};
+
+const buildMonthlyBreakdown = (student, payments, monthlyFee) => {
+  const start = student.admission_date ? new Date(student.admission_date) : new Date();
+  const end = new Date();
+  const paidByMonth = new Map();
+
+  payments.forEach((payment) => {
+    const json = payment.toJSON ? payment.toJSON() : payment;
+    const key = json.month || (json.date ? monthKey(json.date) : null);
+    if (key) paidByMonth.set(key, json);
+  });
+
+  const monthly = [];
+  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+  const last = new Date(end.getFullYear(), end.getMonth(), 1);
+
+  while (cursor <= last) {
+    const month = monthKey(cursor);
+    const payment = paidByMonth.get(month);
+    monthly.push({
+      month,
+      amount: payment?.amount || monthlyFee,
+      status: payment?.status || 'due',
+      method: payment?.method || null,
+      trx_id: payment?.trx_id || null,
+      date: payment?.date || null,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return monthly;
+};
 
 export const index = async (req, res) => {
   try {
@@ -15,7 +65,8 @@ export const index = async (req, res) => {
 
     const { rows, count } = await models.Payment.findAndCountAll({
       where: whereClause,
-      include: [{ model: models.Student, include: [{ model: models.User, attributes: ['id', 'name', 'email'] }] }],
+      // Aliased 'student' (lowercase) so the admin UI can read pay.student.user.name
+      include: [{ model: models.Student, as: 'student', include: [{ model: models.User, attributes: ['id', 'name', 'email'] }] }],
       order: [['createdAt', 'DESC']],
       limit,
       offset,
@@ -30,7 +81,7 @@ export const index = async (req, res) => {
     });
   } catch (error) {
     console.error('PaymentController.index error:', error);
-    return res.status(500).json({ message: 'Failed to fetch payments', error: error.message });
+    return res.status(500).json({ message: 'Failed to fetch payments' });
   }
 };
 
@@ -52,10 +103,26 @@ export const store = async (req, res) => {
       date: date || new Date().toISOString().split('T')[0],
     });
 
+    try {
+      const student = await models.Student.findByPk(student_id, { attributes: ['user_id'] });
+      if (student?.user_id) {
+        await NotificationService.create({
+          userId: student.user_id,
+          type: 'payment',
+          title: 'Payment Recorded',
+          body: `A payment of ৳${amount} has been recorded${month ? ` for ${month}` : ''}.`,
+          actionUrl: '/student/fees',
+          actionLabel: 'View Fees',
+        });
+      }
+    } catch (notifErr) {
+      console.error('Failed to send payment notification:', notifErr);
+    }
+
     return res.status(201).json({ message: 'Payment recorded', data: payment });
   } catch (error) {
     console.error('PaymentController.store error:', error);
-    return res.status(500).json({ message: 'Failed to record payment', error: error.message });
+    return res.status(500).json({ message: 'Failed to record payment' });
   }
 };
 
@@ -70,7 +137,7 @@ export const destroy = async (req, res) => {
     return res.json({ message: 'Payment deleted' });
   } catch (error) {
     console.error('PaymentController.destroy error:', error);
-    return res.status(500).json({ message: 'Failed to delete payment', error: error.message });
+    return res.status(500).json({ message: 'Failed to delete payment' });
   }
 };
 
@@ -87,55 +154,62 @@ export const studentFinancialStatus = async (req, res) => {
       return res.status(404).json({ message: 'Student profile not found' });
     }
 
-    const admissionDate = student.admission_date;
     const monthlyFee = parseFloat(student.Batch?.Course?.fee) || 0;
 
-    if (!admissionDate || monthlyFee === 0) {
+    const paymentHistory = await models.Payment.findAll({
+      where: { student_id: student.id },
+      order: [['date', 'DESC']],
+      limit: 50,
+    });
+
+    const paymentRows = paymentHistory.map(payment => payment.toJSON());
+    const monthlyBreakdown = buildMonthlyBreakdown(student, paymentRows, monthlyFee);
+    const dueMonths = monthlyBreakdown.filter(m => m.status !== 'paid').map(m => m.month);
+    const pendingPayments = paymentRows.filter(p => p.status === 'pending');
+    const totalPaid = paymentRows
+      .filter(p => p.status === 'paid')
+      .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+    const totalDue = monthlyBreakdown
+      .filter(month => month.status !== 'paid')
+      .reduce((sum, month) => sum + parseFloat(month.amount || 0), 0);
+
+    if (!student.admission_date || monthlyFee === 0) {
       return res.json({
         data: {
+          course_fee: monthlyFee,
           monthlyFee,
-          totalDue: 0,
-          totalPaid: 0,
-          currentDue: 0,
+          total_paid: totalPaid,
+          totalPaid,
+          total_due: totalDue,
+          totalDue,
+          currentDue: totalDue,
+          due_months: dueMonths,
+          pending_payments: pendingPayments,
+          history: paymentRows,
+          paymentHistory: paymentRows,
           message: 'No fee structure set or admission date missing',
         },
       });
     }
 
-    const admission = new Date(admissionDate);
-    const now = new Date();
-    const totalMonths = (now.getFullYear() - admission.getFullYear()) * 12 + (now.getMonth() - admission.getMonth()) + 1;
-
-    const totalDue = totalMonths * monthlyFee;
-
-    const payments = await models.Payment.findAll({
-      where: { student_id: student.id, status: 'paid' },
-      attributes: [[fn('COALESCE', fn('SUM', col('amount')), 0), 'totalPaid']],
-      raw: true,
-    });
-
-    const totalPaid = parseFloat(payments[0]?.totalPaid) || 0;
-    const currentDue = Math.max(0, totalDue - totalPaid);
-
-    const paymentHistory = await models.Payment.findAll({
-      where: { student_id: student.id },
-      order: [['date', 'DESC']],
-      limit: 12,
-    });
-
     return res.json({
       data: {
+        course_fee: monthlyFee,
         monthlyFee,
-        totalMonths,
-        totalDue,
+        total_paid: totalPaid,
         totalPaid,
-        currentDue,
-        paymentHistory,
+        total_due: totalDue,
+        totalDue,
+        currentDue: totalDue,
+        due_months: dueMonths,
+        pending_payments: pendingPayments,
+        history: paymentRows,
+        paymentHistory: paymentRows,
       },
     });
   } catch (error) {
     console.error('PaymentController.studentFinancialStatus error:', error);
-    return res.status(500).json({ message: 'Failed to calculate financial status', error: error.message });
+    res.status(500).json({ message: 'Failed to calculate financial status' });
   }
 };
 
@@ -143,7 +217,8 @@ export const studentExamResults = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const student = await models.Student.findByPk(id, {
+    const student = await models.Student.findOne({
+      where: { user_id: id },
       include: [{ model: models.User, attributes: ['id', 'name', 'email', 'phone'] }],
     });
 
@@ -152,15 +227,34 @@ export const studentExamResults = async (req, res) => {
     }
 
     const results = await models.ExamResult.findAll({
-      where: { student_id: id },
-      include: [{ model: models.Exam }],
+      where: { student_id: student.id },
+      include: [{ model: models.Exam, include: [{ model: models.Course, attributes: ['id', 'title'] }] }],
       order: [[{ model: models.Exam }, 'date', 'DESC']],
     });
 
-    return res.json({ data: { student, results } });
+    const normalizedResults = results.map((result) => {
+      const data = result.toJSON();
+      data.exam = data.Exam || null;
+      if (data.exam?.Course) {
+        data.exam.course = data.exam.Course;
+        delete data.exam.Course;
+      }
+      delete data.Exam;
+      return data;
+    });
+
+    const gpas = normalizedResults.map(r => parseFloat(r.gpa)).filter(v => !Number.isNaN(v));
+    const summary = {
+      total_exams: normalizedResults.length,
+      average_gpa: gpas.length ? (gpas.reduce((sum, v) => sum + v, 0) / gpas.length).toFixed(2) : 0,
+      highest_gpa: gpas.length ? Math.max(...gpas).toFixed(2) : 0,
+      lowest_gpa: gpas.length ? Math.min(...gpas).toFixed(2) : 0,
+    };
+
+    return res.json({ student: normalizeUser(student), results: normalizedResults, summary });
   } catch (error) {
     console.error('PaymentController.studentExamResults error:', error);
-    return res.status(500).json({ message: 'Failed to fetch exam results', error: error.message });
+    return res.status(500).json({ message: 'Failed to fetch exam results' });
   }
 };
 
@@ -168,7 +262,8 @@ export const studentAttendance = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const student = await models.Student.findByPk(id, {
+    const student = await models.Student.findOne({
+      where: { user_id: id },
       include: [{ model: models.User, attributes: ['id', 'name', 'email', 'phone'] }],
     });
 
@@ -177,22 +272,36 @@ export const studentAttendance = async (req, res) => {
     }
 
     const attendance = await models.Attendance.findAll({
-      where: { student_id: id },
+      where: { student_id: student.id },
       order: [['date', 'DESC']],
       limit: 60,
     });
 
+    const records = attendance.map(record => record.toJSON());
     const stats = {
-      total: attendance.length,
-      present: attendance.filter(a => a.status === 'present').length,
-      absent: attendance.filter(a => a.status === 'absent').length,
-      leave: attendance.filter(a => a.status === 'leave').length,
+      total_classes: records.length,
+      present: records.filter(a => a.status === 'present').length,
+      absent: records.filter(a => a.status === 'absent').length,
+      late: records.filter(a => a.status === 'late').length,
+      leave: records.filter(a => a.status === 'leave').length,
     };
+    stats.percentage = stats.total_classes > 0 ? Math.round((stats.present / stats.total_classes) * 100) : 0;
 
-    return res.json({ data: { student, stats, attendance } });
+    const monthly_stats = {};
+    records.forEach((record) => {
+      const month = monthKey(record.date);
+      if (!monthly_stats[month]) {
+        monthly_stats[month] = { total: 0, present: 0, percentage: 0 };
+      }
+      monthly_stats[month].total += 1;
+      if (record.status === 'present') monthly_stats[month].present += 1;
+      monthly_stats[month].percentage = Math.round((monthly_stats[month].present / monthly_stats[month].total) * 100);
+    });
+
+    return res.json({ student: normalizeUser(student), summary: stats, records, monthly_stats });
   } catch (error) {
     console.error('PaymentController.studentAttendance error:', error);
-    return res.status(500).json({ message: 'Failed to fetch attendance', error: error.message });
+    return res.status(500).json({ message: 'Failed to fetch attendance' });
   }
 };
 
@@ -200,8 +309,12 @@ export const studentPaymentHistory = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const student = await models.Student.findByPk(id, {
-      include: [{ model: models.User, attributes: ['id', 'name', 'email', 'phone'] }],
+    const student = await models.Student.findOne({
+      where: { user_id: id },
+      include: [
+        { model: models.User, attributes: ['id', 'name', 'email', 'phone'] },
+        { model: models.Batch, include: [{ model: models.Course, attributes: ['id', 'title', 'fee'] }] },
+      ],
     });
 
     if (!student) {
@@ -209,13 +322,34 @@ export const studentPaymentHistory = async (req, res) => {
     }
 
     const payments = await models.Payment.findAll({
-      where: { student_id: id },
+      where: { student_id: student.id },
       order: [['date', 'DESC']],
     });
 
-    return res.json({ data: { student, payments } });
+    const paymentRows = payments.map(payment => payment.toJSON());
+    const courseFee = parseFloat(student.Batch?.Course?.fee || 0);
+    const monthlyBreakdown = buildMonthlyBreakdown(student, paymentRows, courseFee);
+    const paidMonths = monthlyBreakdown.filter(m => m.status === 'paid').map(m => m.month);
+    const dueMonths = monthlyBreakdown.filter(m => m.status !== 'paid').map(m => m.month);
+    const totalPaid = paymentRows
+      .filter(payment => payment.status === 'paid')
+      .reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
+    const totalDue = monthlyBreakdown
+      .filter(month => month.status !== 'paid')
+      .reduce((sum, month) => sum + parseFloat(month.amount || 0), 0);
+
+    return res.json({
+      student: normalizeUser(student),
+      course_fee: courseFee,
+      paid_months: paidMonths,
+      due_months: dueMonths,
+      total_paid: totalPaid,
+      total_due: totalDue,
+      monthly_breakdown: monthlyBreakdown,
+      payments: paymentRows,
+    });
   } catch (error) {
     console.error('PaymentController.studentPaymentHistory error:', error);
-    return res.status(500).json({ message: 'Failed to fetch payment history', error: error.message });
+    return res.status(500).json({ message: 'Failed to fetch payment history' });
   }
 };

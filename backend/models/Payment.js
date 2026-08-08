@@ -15,10 +15,20 @@ const Payment = sequelize.define('Payment', {
   ssl_store_amount: { type: DataTypes.DECIMAL(10, 2) },
   ssl_card_type: { type: DataTypes.STRING(50) },
   ssl_card_no: { type: DataTypes.STRING(20) },
+}, {
+  indexes: [
+    // NOT unique: multi-month payments share one trx_id across per-month
+    // rows (one gateway charge for several months). Uniqueness of a paid
+    // month is enforced by the (student_id, month) index instead.
+    { fields: ['trx_id'] },
+    { unique: true, fields: ['student_id', 'month'] },
+    { fields: ['status'] },
+  ],
 });
 
 Payment.associate = (models) => {
-  Payment.belongsTo(models.Student, { foreignKey: 'student_id' });
+  // Aliased lowercase 'student' so API consumers (admin UI) can read pay.student.user.name
+  Payment.belongsTo(models.Student, { foreignKey: 'student_id', as: 'student' });
 };
 
 export default Payment;
