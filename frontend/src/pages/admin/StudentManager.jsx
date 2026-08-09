@@ -85,12 +85,14 @@ export default function StudentManager() {
 
     const handleUpdate = async (e) => {
         e.preventDefault();
+        setSaving(true);
         try {
             await api.put(`/admin/student/${editingStudent.id}`, editForm);
             notify.success("Updated!");
             setIsEditOpen(false);
             fetchData();
         } catch (err) { notify.error("Failed"); }
+        finally { setSaving(false); }
     };
 
     const handleAdd = async (e) => {
@@ -451,7 +453,17 @@ export default function StudentManager() {
                 <input className="w-full border p-2 rounded text-sm" value={editForm.emergency_contact_relation || ''} onChange={e => setEditForm({...editForm, emergency_contact_relation: e.target.value})} placeholder="Relation (e.g. Father)"/>
                 <div className="flex justify-end gap-2 mt-4">
                     <button type="button" onClick={() => setIsEditOpen(false)} className="px-4 py-2 bg-gray-200 rounded text-sm font-bold">Cancel</button>
-                    <button type="submit" className="px-4 py-2 bg-[#1F4E79] text-white rounded text-sm font-bold">Update</button>
+                    <button type="submit" disabled={saving} className="px-4 py-2 bg-[#1F4E79] text-white rounded text-sm font-bold flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed">
+                        {saving ? (
+                            <>
+                                <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.175 5.824 3 7.938l3-2.707z" />
+                                </svg>
+                                Saving...
+                            </>
+                        ) : 'Update'}
+                    </button>
                 </div>
             </form>
                     </div>
