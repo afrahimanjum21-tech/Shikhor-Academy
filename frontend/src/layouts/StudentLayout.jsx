@@ -2,7 +2,7 @@ import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { LayoutDashboard, User, FileText, CalendarDays, Calendar, UserCheck, Banknote, Gamepad2, Monitor, Laptop, LogOut, Menu, X, Award, BookOpen, Image, ClipboardList } from "lucide-react"; 
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useNotificationCounts } from "../context/NotificationContext";
 import NotificationBadge from "../components/notifications/NotificationBadge";
 import NotificationBell from "../components/notifications/NotificationBell";
@@ -24,6 +24,10 @@ export default function StudentLayout() {
             .then(({ data }) => setNotices(Array.isArray(data) ? data.slice(0, 8) : []))
             .catch(() => {});
     }, []);
+
+    useEffect(() => {
+        setSidebarOpen(false);
+    }, [location.pathname]);
 
     const handleLogout = () => { logout(); navigate('/login'); };
 
@@ -49,9 +53,7 @@ export default function StudentLayout() {
 
     return (
         <div className="flex h-screen bg-[#F8FAFC] font-sans overflow-hidden">
-            <AnimatePresence>
-                {isSidebarOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 md:hidden" onClick={() => setSidebarOpen(false)} />}
-            </AnimatePresence>
+            {isSidebarOpen && <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 md:hidden" onClick={() => setSidebarOpen(false)} />}
 
             <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-white border-r border-gray-200 transition-transform duration-300 ease-in-out flex flex-col shadow-xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static md:flex-shrink-0`}>
                 <div className="h-14 md:h-16 flex items-center px-4 md:px-6 border-b border-gray-100">
