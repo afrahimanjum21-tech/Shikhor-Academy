@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import api from "../../services/api";
-import { buildAssetUrl } from "../../services/config";
+import { buildAuthenticatedAssetUrl } from "../../services/config";
 import { FileText, Upload, Trash2, Download, Eye, Plus, X, File, Image, FileSpreadsheet } from "lucide-react";
 import notify from "../../services/notification";
 import { useConfirm } from "../../components/common/ConfirmDialog";
@@ -68,7 +68,7 @@ export default function StudentDocumentsTab() {
         return FileText;
     };
 
-    const getFileUrl = (path) => buildAssetUrl(path);
+    const getFileUrl = (path) => buildAuthenticatedAssetUrl(path);
 
     if (loading) return <div className="p-10 text-center text-gray-400">Loading documents...</div>;
 

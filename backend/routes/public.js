@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as AdmissionController from '../controllers/Public/AdmissionController.js';
+import * as AdmissionEmailActionController from '../controllers/Public/AdmissionEmailActionController.js';
 import * as ContactController from '../controllers/Public/ContactController.js';
 import * as CourseController from '../controllers/Public/CourseController.js';
 import * as FacultyController from '../controllers/Public/FacultyController.js';
@@ -23,6 +24,7 @@ const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { m
 
 router.post('/login', loginLimiter, AuthController.login);
 router.post('/admission/submit', admissionLimiter, uploadPhoto('admission_photos', 2).single('photo'), AdmissionController.submit);
+router.get('/public/admissions/action', AdmissionEmailActionController.action);
 router.post('/contact', contactLimiter, ContactController.submit);
 
 router.get('/public/courses', CourseController.index);

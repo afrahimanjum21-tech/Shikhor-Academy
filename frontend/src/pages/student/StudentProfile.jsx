@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { buildAssetUrl } from "../../services/config";
+import { buildAssetUrl, buildAuthenticatedAssetUrl } from "../../services/config";
 import api from "../../services/api";
 import {
     User, Mail, Phone, MapPin, Calendar, GraduationCap, BookOpen,
@@ -60,43 +60,50 @@ export default function StudentProfile() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [dashboard, setDashboard] = useState(null);
-    const [attendance, setAttendance] = useState(null);
-    const [payments, setPayments] = useState(null);
     const [results, setResults] = useState(null);
     const [activities, setActivities] = useState([]);
     const [routine, setRoutine] = useState(null);
     const [documents, setDocuments] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [sections, setSections] = useState({
+        dashboard: "loading", results: "loading", activities: "loading", routine: "loading", documents: "loading",
+    });
     const [error, setError] = useState(null);
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        setError(null);
+    const fetchSection = async (key, request) => {
         try {
-            const [dashRes, attRes, payRes, resRes, actRes, routineRes, docRes] = await Promise.allSettled([
-                api.get("/student/dashboard"),
-                api.get("/student/attendance/stats"),
-                api.get("/student/payments"),
-                api.get("/student/results"),
-                api.get("/recent-activity"),
-                api.get("/student/routine"),
-                api.get("/student/documents"),
+            const res = await request;
+            setSections(prev => ({ ...prev, [key]: "done" }));
+            return { status: "fulfilled", value: res };
+        } catch (err) {
+            setSections(prev => ({ ...prev, [key]: "error" }));
+            return { status: "rejected", reason: err };
+        }
+    };
+
+    const fetchData = useCallback(async () => {
+        setError(null);
+        setSections({
+            dashboard: "loading", results: "loading", activities: "loading", routine: "loading", documents: "loading",
+        });
+        try {
+            const [dashRes, resRes, actRes, routineRes, docRes] = await Promise.allSettled([
+                fetchSection("dashboard", api.get("/student/dashboard")),
+                fetchSection("results", api.get("/student/results")),
+                fetchSection("activities", api.get("/recent-activity")),
+                fetchSection("routine", api.get("/student/routine")),
+                fetchSection("documents", api.get("/student/documents")),
             ]);
 
-            if (dashRes.status === "fulfilled") setDashboard(payload(dashRes.value));
-            if (attRes.status === "fulfilled") setAttendance(payload(attRes.value));
-            if (payRes.status === "fulfilled") setPayments(payload(payRes.value));
-            if (resRes.status === "fulfilled") setResults(payload(resRes.value));
+            if (dashRes.status === "fulfilled") setDashboard(payload(dashRes.value.value));
+            if (resRes.status === "fulfilled") setResults(payload(resRes.value.value));
             if (actRes.status === "fulfilled") {
-                const data = payload(actRes.value);
+                const data = payload(actRes.value.value);
                 setActivities(Array.isArray(data) ? data : data?.items || []);
             }
-            if (routineRes.status === "fulfilled") setRoutine(payload(routineRes.value));
-            if (docRes.status === "fulfilled") setDocuments(payload(docRes.value));
+            if (routineRes.status === "fulfilled") setRoutine(payload(routineRes.value.value));
+            if (docRes.status === "fulfilled") setDocuments(payload(docRes.value.value));
         } catch (err) {
             setError("Failed to load profile data. Please try again.");
-        } finally {
-            setLoading(false);
         }
     }, []);
 
@@ -115,8 +122,8 @@ export default function StudentProfile() {
     const rawPhotoPath = user.profile_photo_url || user.profile_photo_path || profile.admission?.photo_path;
     const photoUrl = buildAssetUrl(rawPhotoPath);
     const dash = dashboard?.student || {};
-    const att = attendance || dashboard?.attendance || {};
-    const pay = payments || dashboard?.payment || dashboard?.payments || {};
+    const att = dashboard?.attendance || {};
+    const pay = dashboard?.payment || dashboard?.payments || {};
     const routineMeta = routine?.meta || {};
     const courseName = dash.course || profile.batch?.course?.title || profile.admission?.course?.title || "Not Assigned";
     const batchName = dash.batch || profile.batch?.name || "Not Assigned";
@@ -175,7 +182,7 @@ export default function StudentProfile() {
         { icon: Mail, label: "Email", value: user.email },
         { icon: MapPin, label: "Present Address", value: profile.present_address },
         { icon: MapPin, label: "Permanent Address", value: profile.permanent_address },
-        { icon: Phone, label: "Emergency Contact", value: profile.emergency_name ? `${profile.emergency_name} (${profile.emergency_mobile || "N/A"})` : "N/A" },
+        { icon: Phone, label: "Emergency Contact", value: profile.emergency_contact_name ? `${profile.emergency_contact_name} (${profile.emergency_contact_phone || profile.emergency_mobile || profile.emergency_contact || "N/A"})` + (profile.emergency_contact_relation ? ' · ' + profile.emergency_contact_relation : '') : (profile.emergency_contact_phone || profile.emergency_mobile || profile.emergency_contact || "N/A") },
     ];
 
     const guardianRows = [
@@ -220,9 +227,7 @@ export default function StudentProfile() {
                     <div className="flex flex-col sm:flex-row items-start gap-4 md:gap-6">
                         <div className="relative shrink-0">
                             <div className="w-[72px] h-[72px] md:w-[88px] md:h-[88px] lg:w-[96px] lg:h-[96px] rounded-full ring-[3px] ring-white/80 shadow-xl overflow-hidden bg-gradient-to-br from-[#1F4E79] to-[#163859]">
-                                {loading ? (
-                                    <Skeleton className="w-full h-full rounded-full" />
-                                ) : photoUrl ? (
+                                {photoUrl ? (
                                     <img
                                         src={photoUrl} alt={user.name}
                                         className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
@@ -305,7 +310,7 @@ export default function StudentProfile() {
                             </div>
                             <div className="min-w-0">
                                 <p className="text-[10px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{item.label}</p>
-                                <p className="text-xs md:text-sm font-semibold text-gray-800 truncate">{item.value}</p>
+                                 <p className="text-xs md:text-sm font-semibold text-gray-800 whitespace-normal break-words leading-tight [overflow-wrap:anywhere]">{item.value ?? "-"}</p>
                             </div>
                         </div>
                     ))}
@@ -324,7 +329,7 @@ export default function StudentProfile() {
                             desc={attPercent !== "-" ? (att.percentage >= 80 ? "Excellent Attendance" : att.percentage >= 60 ? "Moderate" : "Needs Improvement") : "No data"}
                             icon={Percent}
                             color="text-emerald-500" bg="bg-emerald-50"
-                            loading={loading}
+                            loading={sections.dashboard === "loading"}
                         />
                         <StatCard
                             label="Current GPA"
@@ -332,7 +337,7 @@ export default function StudentProfile() {
                             desc={profile.ssc_gpa ? `SSC: ${profile.ssc_gpa}` : "Not available"}
                             icon={BarChart3}
                             color="text-blue-500" bg="bg-blue-50"
-                            loading={loading}
+                            loading={sections.results === "loading"}
                         />
                         <StatCard
                             label="Fee Status"
@@ -340,7 +345,7 @@ export default function StudentProfile() {
                             desc={feeStatus === "Paid" ? "No Dues" : feeStatus === "Partial" ? "Partial Due" : "Overdue"}
                             icon={CreditCard}
                             color={feeColor} bg={feeBg}
-                            loading={loading}
+                            loading={sections.dashboard === "loading"}
                         />
                         <StatCard
                             label="Subjects"
@@ -348,29 +353,29 @@ export default function StudentProfile() {
                             desc={totalSubjects ? "Currently Enrolled" : "Not available"}
                             icon={BookMarked}
                             color="text-violet-500" bg="bg-violet-50"
-                            loading={loading}
+                            loading={sections.results === "loading"}
                         />
                     </div>
 
                     {/* Profile Completion */}
-                    <ProfileCompletionCard profile={profile} loading={loading} />
+                    <ProfileCompletionCard profile={profile} user={user} loading={false} />
 
                     {/* Account */}
-                    <AccountCard profile={profile} user={user} loading={loading} memberSince={memberSince} />
+                    <AccountCard profile={profile} user={user} loading={false} memberSince={memberSince} />
                 </div>
 
                 {/* ===== RIGHT COLUMN ===== */}
                 <div className="space-y-5 md:space-y-6">
                     {/* Personal & Academic */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 lg:gap-8">
-                        <InfoCard icon={User} title="Personal Information" rows={personalRows} loading={loading} />
-                        <InfoCard icon={GraduationCap} title="Academic Information" rows={academicRows} loading={loading} />
+                        <InfoCard icon={User} title="Personal Information" rows={personalRows} loading={false} />
+                        <InfoCard icon={GraduationCap} title="Academic Information" rows={academicRows} loading={false} />
                     </div>
 
                     {/* Contact & Guardian */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 lg:gap-8">
-                        <InfoCard icon={MapPin} title="Contact Information" rows={contactRows} loading={loading} />
-                        <InfoCard icon={Users} title="Guardian Information" rows={guardianRows} loading={loading} />
+                        <InfoCard icon={MapPin} title="Contact Information" rows={contactRows} loading={false} />
+                        <InfoCard icon={Users} title="Guardian Information" rows={guardianRows} loading={false} />
                     </div>
 
                     {/* Documents */}
@@ -382,7 +387,7 @@ export default function StudentProfile() {
                             <h3 className="text-base md:text-lg font-bold text-gray-900">Documents</h3>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-                            {loading ? (
+                            {sections.documents === "loading" ? (
                                 <>
                                     <DocCardSkeleton />
                                     <DocCardSkeleton />
@@ -401,7 +406,7 @@ export default function StudentProfile() {
                                         key={doc.id}
                                         name={doc.name}
                                         type={doc.type}
-                                        fileUrl={buildAssetUrl(doc.file_path)}
+                                        fileUrl={buildAuthenticatedAssetUrl(doc.file_path)}
                                         loading={false}
                                     />
                                 ))
@@ -410,7 +415,7 @@ export default function StudentProfile() {
                     </div>
 
                     {/* Recent Activity */}
-                    <ActivityCard activities={activities} loading={loading} navigate={navigate} />
+                    <ActivityCard activities={activities} loading={sections.activities === "loading"} navigate={navigate} />
                 </div>
             </div>
         </div>
@@ -489,13 +494,13 @@ function InfoCard({ icon: Icon, title, rows, loading }) {
     );
 }
 
-function ProfileCompletionCard({ profile, loading }) {
+function ProfileCompletionCard({ profile, user, loading }) {
     const fields = useMemo(() => [
-        { key: "photo", label: "Profile Photo", done: !!profile?.admission?.photo_path || !!profile?.photo_path },
+        { key: "photo", label: "Profile Photo", done: !!(user?.profile_photo_path || user?.profile_photo_url || profile?.admission?.photo_path || profile?.photo_path) },
         { key: "email", label: "Email Address", done: true },
         { key: "blood", label: "Blood Group", done: !!profile?.blood_group },
         { key: "address", label: "Address", done: !!profile?.present_address },
-    ], [profile]);
+    ], [profile, user]);
 
     const completed = fields.filter((f) => f.done).length;
     const percent = fields.length > 0 ? Math.round((completed / fields.length) * 100) : 0;

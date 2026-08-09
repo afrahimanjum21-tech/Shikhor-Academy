@@ -1,6 +1,6 @@
 import models from '../../models/index.js';
 import NotificationService from '../../services/NotificationService.js';
-import { sendEmail } from '../../services/mailer.js';
+import { sendEmail, escapeHtml, resolveAdminRecipients } from '../../services/mailer.js';
 
 export async function submit(req, res) {
   try {
@@ -22,24 +22,20 @@ export async function submit(req, res) {
       actionLabel: 'View Message',
     });
 
-    const adminEmails = await models.User.findAll({
-      where: { role: ['admin', 'super_admin'], is_active: true },
-      attributes: ['email'],
-    });
-
-    const recipientEmails = adminEmails.map(u => u.email).filter(Boolean);
+    const recipientEmails = await resolveAdminRecipients('messages_email');
     if (recipientEmails.length > 0) {
+      const safe = escapeHtml;
       await sendEmail({
         to: recipientEmails.join(', '),
-        subject: `New Contact Message - ${name}`,
+        subject: `New Contact Message - ${safe(name)}`,
         html: `
           <h2>New Contact Message</h2>
-          <p><strong>Name:</strong> ${name}</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Phone:</strong> ${phone || 'N/A'}</p>
-          <p><strong>Subject:</strong> ${subject || 'N/A'}</p>
+          <p><strong>Name:</strong> ${safe(name)}</p>
+          <p><strong>Email:</strong> ${safe(email)}</p>
+          <p><strong>Phone:</strong> ${safe(phone) || 'N/A'}</p>
+          <p><strong>Subject:</strong> ${safe(subject) || 'N/A'}</p>
           <p><strong>Message:</strong></p>
-          <p>${message}</p>
+          <p>${safe(message).replace(/\n/g, '<br/>')}</p>
         `,
       });
     }
@@ -49,7 +45,7 @@ export async function submit(req, res) {
       subject: 'We Received Your Message - Uttoron Coaching Centre',
       html: `
         <h2>Thank You for Contacting Us!</h2>
-        <p>Dear ${name},</p>
+        <p>Dear ${escapeHtml(name)},</p>
         <p>We have received your message and will get back to you as soon as possible.</p>
         <p>Best Regards,<br/>Uttoron Coaching Centre</p>
       `,

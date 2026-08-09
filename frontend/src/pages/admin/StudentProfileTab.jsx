@@ -5,7 +5,7 @@ export default function StudentProfileTab() {
     if (!ctx) return <div className="p-10 text-center text-red-500">Context not available</div>;
 
     const { student, formData, isEditing, setIsEditing, photoFile, setPhotoFile,
-            photoUrl, batches, courses, handleUpdate, handleChange } = ctx;
+            photoUrl, batches, courses, handleUpdate, handleChange, saving } = ctx;
 
     return (
         <div className="space-y-6">
@@ -18,13 +18,25 @@ export default function StudentProfileTab() {
                 <div className="flex gap-2">
                     {isEditing ? (
                         <>
-                            <button onClick={() => { setIsEditing(false); setPhotoFile?.(null); }}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-bold text-sm transition-all">
+                            <button onClick={() => { !saving && setIsEditing(false); setPhotoFile?.(null); }}
+                                disabled={saving}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-bold text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed">
                                 Cancel
                             </button>
                             <button onClick={handleUpdate}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1F4E79] text-white hover:bg-[#163859] font-bold text-sm transition-all shadow-sm">
-                                Save Changes
+                                disabled={saving}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1F4E79] text-white hover:bg-[#163859] font-bold text-sm transition-all shadow-sm disabled:opacity-70 disabled:cursor-not-allowed">
+                                {saving ? (
+                                    <>
+                                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.175 5.824 3 7.938l3-2.707z" />
+                                        </svg>
+                                        Saving...
+                                    </>
+                                ) : (
+                                    'Save Changes'
+                                )}
                             </button>
                         </>
                     ) : (
@@ -68,10 +80,15 @@ export default function StudentProfileTab() {
                 <InfoCard title="Personal Information" rows={getPersonalRows(ctx, isEditing)} isEditing={isEditing} onChange={handleChange} formData={formData} />
                 <InfoCard title="Academic Information" rows={getAcademicRows(ctx, isEditing)} isEditing={isEditing} onChange={handleChange} formData={formData} />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-                <InfoCard title="Guardian Information" rows={getGuardianRows(ctx, isEditing)} isEditing={isEditing} onChange={handleChange} formData={formData} />
-                <InfoCard title="Address" rows={getAddressRows(ctx, isEditing)} isEditing={isEditing} onChange={handleChange} formData={formData} />
-            </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                 <InfoCard title="Guardian Information" rows={getGuardianRows(ctx, isEditing)} isEditing={isEditing} onChange={handleChange} formData={formData} />
+                 <InfoCard title="Address" rows={getAddressRows(ctx, isEditing)} isEditing={isEditing} onChange={handleChange} formData={formData} />
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                 <div className="md:col-span-2">
+                     <InfoCard title="Emergency Contact" rows={getEmergencyRows(ctx)} isEditing={isEditing} onChange={handleChange} formData={formData} />
+                 </div>
+             </div>
         </div>
     );
 }
@@ -138,6 +155,15 @@ function getAddressRows(ctx) {
     return [
         { label: "Present Address", name: "present_address", value: formData?.present_address, type: "text" },
         { label: "Permanent Address", name: "permanent_address", value: formData?.permanent_address, type: "text" },
+    ];
+}
+
+function getEmergencyRows(ctx) {
+    const { formData } = ctx;
+    return [
+        { label: "Emergency Contact Name", name: "emergency_contact_name", value: formData?.emergency_contact_name, type: "text" },
+        { label: "Emergency Contact Phone", name: "emergency_contact_phone", value: formData?.emergency_contact_phone, type: "text" },
+        { label: "Emergency Contact Relation", name: "emergency_contact_relation", value: formData?.emergency_contact_relation, type: "text", placeholder: "e.g. Father, Mother, Guardian" },
     ];
 }
 

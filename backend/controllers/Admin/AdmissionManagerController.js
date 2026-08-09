@@ -1,95 +1,12 @@
 import models from '../../models/index.js';
-import bcrypt from 'bcryptjs';
-import nodemailer from 'nodemailer';
 import { Op } from 'sequelize';
+import * as AdmissionService from '../../services/AdmissionService.js';
 
-const getMailTransport = () => {
-  return nodemailer.createTransport({
-    host: process.env.MAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.MAIL_PORT, 10) || 587,
-    secure: (process.env.MAIL_ENCRYPTION || 'tls') === 'ssl',
-    auth: {
-      user: process.env.MAIL_USERNAME,
-      pass: process.env.MAIL_PASSWORD,
-    },
-  });
+const responseForError = (error, fallback) => {
+  const status = error.status || 500;
+  if (status === 500) console.error(fallback, error);
+  return { status, message: status === 500 ? `Internal server error: ${error.message}` : error.message };
 };
-
-const sendCredentialsEmail = async (admission, user, plainPassword) => {
-  try {
-    const transport = getMailTransport();
-    const fromAddress = process.env.MAIL_FROM_ADDRESS || 'afrahimanjum21@gmail.com';
-    const fromName = process.env.MAIL_FROM_NAME || 'Uttoron Coaching Centre';
-
-    await transport.sendMail({
-      from: `"${fromName}" <${fromAddress}>`,
-      to: user.email,
-      subject: 'Admission Approved - Your Account Credentials',
-      html: `
-        <h2>Welcome to ${fromName}</h2>
-        <p>Dear ${admission.full_name},</p>
-        <p>Your admission has been approved. Here are your login credentials:</p>
-        <p><strong>Username (Email):</strong> ${user.email}</p>
-        <p><strong>Password:</strong> ${plainPassword}</p>
-        <p>Please log in and change your password.</p>
-        <p>Best regards,<br/>${fromName}</p>
-      `,
-    });
-  } catch (err) {
-    console.error('Failed to send credentials email:', err.message);
-  }
-};
-
-const generateStudentId = async () => {
-  const year = new Date().getFullYear();
-  const count = await models.Student.count();
-  return `UCC-${year}-${String(count + 1).padStart(4, '0')}`;
-};
-
-const findDefaultBatchId = async (courseId) => {
-  if (!courseId) return null;
-  const batch = await models.Batch.findOne({
-    where: { course_id: courseId },
-    order: [['id', 'ASC']],
-  });
-  return batch?.id || null;
-};
-
-const buildStudentFromAdmission = async (admission, userId) => ({
-  user_id: userId,
-  admission_id: admission.id,
-  student_id_card_no: await generateStudentId(),
-  current_batch_id: await findDefaultBatchId(admission.course_id),
-  guardian_phone: admission.guardian_phone,
-  admission_date: new Date().toISOString().split('T')[0],
-  gender: admission.gender,
-  nationality: admission.nationality,
-  religion: admission.religion,
-  blood_group: admission.blood_group,
-  dob: admission.dob,
-  father_name: admission.father_name,
-  father_phone: admission.father_phone,
-  father_occupation: admission.father_occupation,
-  mother_name: admission.mother_name,
-  mother_phone: admission.mother_phone,
-  mother_occupation: admission.mother_occupation,
-  present_address: admission.address,
-  permanent_address: admission.permanent_address,
-  emergency_contact_phone: admission.emergency_contact,
-  emergency_contact_name: admission.guardian_name,
-  emergency_contact_relation: admission.guardian_relation,
-  last_school: admission.last_school,
-  jsc_roll: admission.jsc_roll,
-  jsc_registration: admission.jsc_registration,
-  jsc_gpa: admission.jsc_gpa,
-  ssc_roll: admission.ssc_roll,
-  ssc_registration: admission.ssc_registration,
-  ssc_gpa: admission.ssc_gpa,
-  shift: admission.shift,
-  section: admission.section,
-  group_name: admission.group_name,
-  subject: admission.subject,
-});
 
 export const index = async (req, res) => {
   try {
@@ -117,65 +34,17 @@ export const index = async (req, res) => {
 export const approve = async (req, res) => {
   try {
     const { id } = req.params;
+    const { email } = req.body || {};
 
-    const admission = await models.AdmissionApplication.findByPk(id);
-    if (!admission) {
-      return res.status(404).json({ message: 'Admission application not found' });
-    }
-
-    if (!['pending', 'hold'].includes(admission.status)) {
-      return res.status(400).json({ message: `Admission is already ${admission.status}` });
-    }
-
-    const userEmail = req.body.email || admission.email;
-    if (!userEmail) {
-      return res.status(400).json({ message: 'Email is required to create a student account' });
-    }
-
-    let user = await models.User.findOne({
-      where: { email: userEmail },
-      paranoid: false,
-    });
-    let plainPassword;
-    let isNewUser = false;
-
-    if (!user) {
-      isNewUser = true;
-      plainPassword = Math.random().toString(36).slice(2, 10) +
-        Math.random().toString(36).toUpperCase().slice(2, 6);
-      const hashedPassword = await bcrypt.hash(plainPassword, 12);
-
-      user = await models.User.create({
-        name: admission.full_name,
-        email: userEmail,
-        password: hashedPassword,
-        role: 'student',
-        phone: admission.phone,
-        profile_photo_path: admission.photo_path,
-      });
-    } else if (user.deletedAt) {
-      await user.restore();
-    }
-    
-    let student = await models.Student.findOne({ where: { user_id: user.id } });
-
-    if (!student) {
-      student = await models.Student.create(await buildStudentFromAdmission(admission, user.id));
-    }
-
-    await admission.update({ status: 'approved' });
-
-    if (isNewUser && user.email) {
-      sendCredentialsEmail(admission, user, plainPassword);
-    }
+    const result = await AdmissionService.approveAdmission({ admissionId: id, email });
 
     res.json({
       message: 'Admission approved successfully',
-      data: { admission, user, student },
+      data: { admission: result.admission, user: result.user, student: result.student },
     });
   } catch (error) {
-    console.error('AdmissionManagerController.approve error:', error);
-    res.status(500).json({ message: `Failed to approve admission: ${error.message}` });
+    const { status, message } = responseForError(error, 'AdmissionManagerController.approve error:');
+    res.status(status).json({ message });
   }
 };
 
@@ -198,13 +67,7 @@ export const bulkAction = async (req, res) => {
       where: { id: { [Op.in]: ids } },
     });
 
-    let validStatuses;
-    if (status === 'hold') {
-      validStatuses = ['pending'];
-    } else {
-      validStatuses = ['pending', 'hold'];
-    }
-
+    const validStatuses = status === 'hold' ? ['pending'] : ['pending', 'hold'];
     const validAdmissions = admissions.filter(a => validStatuses.includes(a.status));
     const validIds = validAdmissions.map(a => a.id);
 
@@ -212,41 +75,31 @@ export const bulkAction = async (req, res) => {
       return res.status(400).json({ message: `No applicable admissions found for ${action}` });
     }
 
-    await models.AdmissionApplication.update(
-      { status },
-      { where: { id: { [Op.in]: validIds } } }
-    );
+    const apply = {
+      approved: AdmissionService.approveAdmission,
+      rejected: AdmissionService.rejectAdmission,
+      hold: AdmissionService.holdAdmission,
+    };
 
-    if (status === 'approved') {
-      for (const admission of validAdmissions) {
-        if (!admission.email) {
-          console.warn(`Skipping user creation for admission #${admission.id}: no email`);
-          continue;
-        }
-
-        const plainPassword = Math.random().toString(36).slice(2, 10) +
-          Math.random().toString(36).toUpperCase().slice(2, 6);
-        const hashedPassword = await bcrypt.hash(plainPassword, 12);
-
-        const user = await models.User.create({
-          name: admission.full_name,
-          email: admission.email,
-          password: hashedPassword,
-          role: 'student',
-          phone: admission.phone,
-          profile_photo_path: admission.photo_path,
-        });
-
-        await models.Student.create(await buildStudentFromAdmission(admission, user.id));
-
-        sendCredentialsEmail(admission, user, plainPassword);
+    let succeeded = 0;
+    let failed = 0;
+    for (const admission of validAdmissions) {
+      try {
+        await apply[status]({ admissionId: admission.id });
+        succeeded++;
+      } catch (error) {
+        failed++;
+        console.error(`Bulk ${action} failed for admission #${admission.id}:`, error.message);
       }
     }
 
     res.json({
-      message: `${validIds.length} admission(s) updated to ${status}`,
+      message: failed > 0
+        ? `${succeeded} admission(s) updated to ${status}, ${failed} failed`
+        : `${succeeded} admission(s) updated to ${status}`,
     });
   } catch (error) {
+    console.error('Bulk action failed:', error);
     res.status(500).json({ message: 'Bulk action failed' });
   }
 };
@@ -262,25 +115,17 @@ export const singleAction = async (req, res) => {
       return res.status(400).json({ message: 'Invalid action. Use: reject, hold' });
     }
 
-    const admission = await models.AdmissionApplication.findByPk(id);
-    if (!admission) {
-      return res.status(404).json({ message: 'Admission application not found' });
+    if (status === 'rejected') {
+      await AdmissionService.rejectAdmission({ admissionId: id });
+    } else {
+      await AdmissionService.holdAdmission({ admissionId: id });
     }
-
-    if (action === 'hold' && admission.status !== 'pending') {
-      return res.status(400).json({ message: 'Can only hold pending applications' });
-    }
-
-    if (action === 'reject' && !['pending', 'hold'].includes(admission.status)) {
-      return res.status(400).json({ message: `Admission is already ${admission.status}` });
-    }
-
-    await admission.update({ status });
 
     res.json({
       message: `Admission ${status === 'rejected' ? 'rejected' : 'put on hold'} successfully`,
     });
   } catch (error) {
-    res.status(500).json({ message: `Failed to ${req.params.action} admission` });
+    const { status, message } = responseForError(error, `Failed to ${req.params.action} admission:`);
+    res.status(status).json({ message });
   }
 };

@@ -54,6 +54,7 @@ const ContactMessages = lazy(() => import('../pages/admin/ContactMessages'));
 const StudentDashboard = lazy(() => import('../pages/student/StudentDashboard'));
 const StudentResults = lazy(() => import('../pages/student/StudentResults'));
 const StudentProfile = lazy(() => import('../pages/student/StudentProfile'));
+const StudentNotifications = lazy(() => import('../pages/student/StudentNotifications'));
 const ClassRoutine = lazy(() => import('../pages/student/ClassRoutine'));
 const AcademicCalendar = lazy(() => import('../pages/student/AcademicCalendar'));
 const StudentAttendanceReport = lazy(() => import('../pages/student/StudentAttendance'));
@@ -160,6 +161,7 @@ export default function AppRoutes() {
                 <Route element={<StudentLayout />}>
                     <Route path="/student/dashboard" element={<StudentDashboard />} />
                     <Route path="/student/profile" element={<StudentProfile />} />
+                    <Route path="/student/notifications" element={<StudentNotifications />} />
                     <Route path="/student/results" element={<StudentResults />} />
                     <Route path="/student/routine" element={<ClassRoutine />} />
                     <Route path="/student/calendar" element={<AcademicCalendar />} />

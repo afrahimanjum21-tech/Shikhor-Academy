@@ -1,6 +1,7 @@
 import models from '../../models/index.js';
 import MediaService from '../../services/media/MediaService.js';
 import MediaDeleteService from '../../services/media/MediaDeleteService.js';
+import { resetMailConfigCache } from '../../services/mailer.js';
 
 export const show = async (req, res) => {
   try {
@@ -78,6 +79,8 @@ export const update = async (req, res) => {
     }
 
     await setting.update(updateData);
+
+    resetMailConfigCache();
 
     const updated = await models.SiteSetting.instance();
     const result = updated.toJSON();

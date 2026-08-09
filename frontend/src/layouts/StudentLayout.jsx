@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { LayoutDashboard, User, FileText, CalendarDays, Calendar, UserCheck, Banknote, Gamepad2, Monitor, Laptop, LogOut, Menu, X, Award, BookOpen, Image, ClipboardList } from "lucide-react"; 
+import { LayoutDashboard, User, FileText, CalendarDays, Calendar, UserCheck, Banknote, Gamepad2, Monitor, Laptop, LogOut, Menu, X, Award, BookOpen, Image, ClipboardList, Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useNotificationCounts } from "../context/NotificationContext";
@@ -48,6 +48,7 @@ export default function StudentLayout() {
     const navItems = [
         { name: 'Dashboard', path: '/student/dashboard', icon: <LayoutDashboard size={20}/> },
         { name: 'My Profile', path: '/student/profile', icon: <User size={20}/> },
+        { name: 'My Activity', path: '/student/notifications', icon: <Bell size={20}/> },
         { name: 'Library', path: '/student/library', icon: <BookOpen size={20}/>, count: counts.new_materials || 0 },
         { name: 'Gallery', path: '/student/gallery', icon: <Image size={20}/>, count: counts.new_albums || 0 },
         { name: 'Result & Progress', path: '/student/results', icon: <Award size={20}/>, count: counts.new_exam_results || 0 },

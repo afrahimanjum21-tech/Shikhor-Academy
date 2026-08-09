@@ -31,8 +31,8 @@ export default function StudentManager() {
         dob: '', religion: 'islam', blood_group: '', nationality: 'Bangladeshi',
         father_name: '', father_phone: '', father_occupation: '',
         mother_name: '', mother_phone: '', mother_occupation: '',
-        present_address: '', permanent_address: '',
-        emergency_name: '', emergency_mobile: '',
+         present_address: '', permanent_address: '',
+        emergency_contact_name: '', emergency_contact_phone: '', emergency_contact_relation: '',
         last_school: '', jsc_gpa: '', ssc_gpa: '',
     });
     const [addPhoto, setAddPhoto] = useState(null);
@@ -75,7 +75,9 @@ export default function StudentManager() {
             phone: student.phone,
             student_id_card_no: prof.student_id_card_no || '',
             current_batch_id: prof.current_batch_id || '',
-            // অন্যান্য ফিল্ড প্রয়োজন হলে যোগ করা যাবে
+            emergency_contact_name: prof.emergency_contact_name || prof.emergency_name || '',
+            emergency_contact_phone: prof.emergency_contact_phone || prof.emergency_mobile || '',
+            emergency_contact_relation: prof.emergency_contact_relation || '',
         });
         setIsEditOpen(true);
         setOpenMenuId(null);
@@ -102,7 +104,7 @@ export default function StudentManager() {
             notify.success("Student created successfully!");
             setIsAddOpen(false);
             setAddPhoto(null);
-            setAddForm({ name: '', email: '', password: '', phone: '', student_id_card_no: '', current_batch_id: '', gender: '', guardian_phone: '', dob: '', religion: 'islam', blood_group: '', nationality: 'Bangladeshi', father_name: '', father_phone: '', father_occupation: '', mother_name: '', mother_phone: '', mother_occupation: '', present_address: '', permanent_address: '', emergency_name: '', emergency_mobile: '', last_school: '', jsc_gpa: '', ssc_gpa: '' });
+            setAddForm({ name: '', email: '', password: '', phone: '', student_id_card_no: '', current_batch_id: '', gender: '', guardian_phone: '', dob: '', religion: 'islam', blood_group: '', nationality: 'Bangladeshi', father_name: '', father_phone: '', father_occupation: '', mother_name: '', mother_phone: '', mother_occupation: '', present_address: '', permanent_address: '', emergency_contact_name: '', emergency_contact_phone: '', emergency_contact_relation: '', last_school: '', jsc_gpa: '', ssc_gpa: '' });
             fetchData();
         } catch (err) {
             const errors = err.response?.data?.errors;
@@ -387,11 +389,15 @@ export default function StudentManager() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-xs font-medium text-gray-600 mb-1">Emergency Contact Name</label>
-                                        <input className="w-full border p-2 rounded text-sm" value={addForm.emergency_name} onChange={e => setAddForm({...addForm, emergency_name: e.target.value})} />
+                                        <input className="w-full border p-2 rounded text-sm" value={addForm.emergency_contact_name || ''} onChange={e => setAddForm({...addForm, emergency_contact_name: e.target.value})} />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-medium text-gray-600 mb-1">Emergency Contact Mobile</label>
-                                        <input className="w-full border p-2 rounded text-sm" value={addForm.emergency_mobile} onChange={e => setAddForm({...addForm, emergency_mobile: e.target.value})} />
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Emergency Contact Phone</label>
+                                        <input className="w-full border p-2 rounded text-sm" value={addForm.emergency_contact_phone || ''} onChange={e => setAddForm({...addForm, emergency_contact_phone: e.target.value})} />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Emergency Contact Relation</label>
+                                        <input className="w-full border p-2 rounded text-sm" value={addForm.emergency_contact_relation || ''} onChange={e => setAddForm({...addForm, emergency_contact_relation: e.target.value})} placeholder="e.g. Father, Mother, Guardian" />
                                     </div>
                                 </div>
                             </div>
@@ -429,18 +435,25 @@ export default function StudentManager() {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 responsive-modal" onClick={(e) => e.stopPropagation()}>
                     <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-xl">
                         <h3 className="font-bold text-lg mb-4 text-[#1F4E79]">Quick Edit</h3>
-                        <form onSubmit={handleUpdate} className="space-y-3">
-                            <input className="w-full border p-2 rounded text-sm" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} placeholder="Name"/>
-                            <input className="w-full border p-2 rounded text-sm" value={editForm.student_id_card_no} onChange={e => setEditForm({...editForm, student_id_card_no: e.target.value})} placeholder="ID No"/>
-                            <select className="w-full border p-2 rounded text-sm bg-white" value={editForm.current_batch_id} onChange={e => setEditForm({...editForm, current_batch_id: e.target.value})}>
-                                <option value="">Select Batch</option>
-                                {batches.map(b => <option key={b.id} value={b.id}>{b.course?.title} - {b.name}</option>)}
-                            </select>
-                            <div className="flex justify-end gap-2 mt-4">
-                                <button type="button" onClick={() => setIsEditOpen(false)} className="px-4 py-2 bg-gray-200 rounded text-sm font-bold">Cancel</button>
-                                <button type="submit" className="px-4 py-2 bg-[#1F4E79] text-white rounded text-sm font-bold">Update</button>
-                            </div>
-                        </form>
+            <form onSubmit={handleUpdate} className="space-y-3">
+                <input className="w-full border p-2 rounded text-sm" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} placeholder="Name"/>
+                <input className="w-full border p-2 rounded text-sm" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} placeholder="Email"/>
+                <input className="w-full border p-2 rounded text-sm" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} placeholder="Phone"/>
+                <input className="w-full border p-2 rounded text-sm" value={editForm.student_id_card_no} onChange={e => setEditForm({...editForm, student_id_card_no: e.target.value})} placeholder="ID No"/>
+                <select className="w-full border p-2 rounded text-sm bg-white" value={editForm.current_batch_id} onChange={e => setEditForm({...editForm, current_batch_id: e.target.value})}>
+                    <option value="">Select Batch</option>
+                    {batches.map(b => <option key={b.id} value={b.id}>{b.course?.title} - {b.name}</option>)}
+                </select>
+                <hr className="my-2" />
+                <p className="text-xs font-semibold text-gray-500">Emergency Contact</p>
+                <input className="w-full border p-2 rounded text-sm" value={editForm.emergency_contact_name || ''} onChange={e => setEditForm({...editForm, emergency_contact_name: e.target.value})} placeholder="Emergency Contact Name"/>
+                <input className="w-full border p-2 rounded text-sm" value={editForm.emergency_contact_phone || ''} onChange={e => setEditForm({...editForm, emergency_contact_phone: e.target.value})} placeholder="Emergency Contact Phone"/>
+                <input className="w-full border p-2 rounded text-sm" value={editForm.emergency_contact_relation || ''} onChange={e => setEditForm({...editForm, emergency_contact_relation: e.target.value})} placeholder="Relation (e.g. Father)"/>
+                <div className="flex justify-end gap-2 mt-4">
+                    <button type="button" onClick={() => setIsEditOpen(false)} className="px-4 py-2 bg-gray-200 rounded text-sm font-bold">Cancel</button>
+                    <button type="submit" className="px-4 py-2 bg-[#1F4E79] text-white rounded text-sm font-bold">Update</button>
+                </div>
+            </form>
                     </div>
                 </div>
             )}

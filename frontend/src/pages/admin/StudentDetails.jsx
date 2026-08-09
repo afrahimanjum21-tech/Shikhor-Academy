@@ -54,6 +54,7 @@ export default function StudentDetails() {
     const [formData, setFormData] = useState({});
     const [photoFile, setPhotoFile] = useState(null);
     const [timestamp, setTimestamp] = useState(Date.now());
+    const [saving, setSaving] = useState(false);
 
     const currentPath = location.pathname;
     const activeTab = tabs.find(t => currentPath.endsWith(t.path))?.path || 'profile';
@@ -85,6 +86,9 @@ export default function StudentDetails() {
                     course_name: prof.batch?.course?.title || prof.admission?.course?.title || '',
                     course_id: prof.batch?.course_id || prof.admission?.course_id || '',
                     guardian_phone: prof.guardian_phone || '',
+                    emergency_contact_name: prof.emergency_contact_name || prof.emergency_name || '',
+                    emergency_contact_phone: prof.emergency_contact_phone || prof.emergency_mobile || '',
+                    emergency_contact_relation: prof.emergency_contact_relation || prof.emergency_relation || '',
                     father_name: prof.father_name || '',
                     father_phone: prof.father_phone || '',
                     father_occupation: prof.father_occupation || '',
@@ -128,6 +132,7 @@ export default function StudentDetails() {
         if(photoFile) data.append('photo', photoFile);
         data.append('_method', 'PUT');
 
+        setSaving(true);
         try {
             await api.post(`/admin/student/${id}`, data, {
                 headers: { "Content-Type": "multipart/form-data" }
@@ -141,6 +146,8 @@ export default function StudentDetails() {
         } catch (err) {
             logger.error(err);
             notify.error(err.response?.data?.message || "Failed to update");
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -286,7 +293,7 @@ export default function StudentDetails() {
                 ))}
             </div>
 
-            <Outlet context={{ student, formData, isEditing, setIsEditing, photoFile, setPhotoFile, photoUrl, timestamp, batches, courses, handleUpdate, handleChange, setFormData, prof }} />
+            <Outlet context={{ student, formData, isEditing, setIsEditing, photoFile, setPhotoFile, photoUrl, timestamp, batches, courses, handleUpdate, handleChange, setFormData, prof, saving }} />
         </div>
     );
 }

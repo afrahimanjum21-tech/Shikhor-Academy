@@ -56,6 +56,9 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 const dbConnectionPromise = sequelize.authenticate().then(() => {
   console.log('Database connected');
+  return models.SiteSetting.findOne({ where: { id: 1 } })
+    .then(() => undefined)
+    .catch(err => console.error('Failed to load site settings at boot:', err.message));
 }).catch(err => {
   console.error('Database connection failed:', err.message);
 });
@@ -106,17 +109,23 @@ app.use('/uploads', async (req, res, next) => {
 app.use('/uploads', async (req, res, next) => {
   try {
     if (!req.path.startsWith('/students/')) return next();
+    // <a href> navigation cannot send an Authorization header, so also accept
+    // the JWT as a ?token= query parameter (used for student document links).
     const authHeader = req.headers.authorization;
+    const queryToken = typeof req.query.token === 'string' ? req.query.token : null;
+    const candidate = authHeader?.startsWith('Bearer ')
+      ? authHeader.split(' ')[1]
+      : queryToken;
     let decoded = null;
-    if (authHeader?.startsWith('Bearer ')) {
+    if (candidate) {
       try {
-        decoded = jwt.verify(authHeader.split(' ')[1], authConfig.jwtSecret);
+        decoded = jwt.verify(candidate, authConfig.jwtSecret);
       } catch {
         decoded = null;
       }
     }
     if (!decoded) return res.status(401).json({ message: 'Unauthorized' });
-    if (decoded.role === 'admin') {
+    if (decoded.role === 'admin' || decoded.role === 'super_admin') {
       res.setHeader('Cache-Control', 'private, no-store');
       return next();
     }

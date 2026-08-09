@@ -45,3 +45,22 @@ export const buildAssetUrl = (path) => {
     }
     return `${BACKEND_URL}/${cleanPath}`;
 };
+
+/**
+ * Like buildAssetUrl, but appends the current JWT as ?token= for PRIVATE
+ * student documents (/uploads/students/...), which the backend only serves
+ * to authenticated users. Plain <a href> navigation cannot send an
+ * Authorization header, so the token travels in the query string instead.
+ *
+ * @param {string|null|undefined} path
+ * @returns {string|null}
+ */
+export const buildAuthenticatedAssetUrl = (path) => {
+    const url = buildAssetUrl(path);
+    if (!url) return null;
+    if (!String(path || '').startsWith('/uploads/students/')) return url;
+    const token = localStorage.getItem('ACCESS_TOKEN');
+    if (!token) return url;
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}token=${encodeURIComponent(token)}`;
+};

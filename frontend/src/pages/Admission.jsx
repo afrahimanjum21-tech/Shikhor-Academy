@@ -44,7 +44,7 @@ export default function Admission() {
     father_name: "", father_phone: "", father_occupation: "",
     mother_name: "", mother_phone: "", mother_occupation: "",
     address: "", permanent_address: "",
-    emergency_name: "", emergency_mobile: "",
+    emergency_name: "", emergency_phone: "", emergency_relation: "",
     last_school: "", jsc_gpa: "", ssc_gpa: "",
   });
 
@@ -471,6 +471,44 @@ export default function Admission() {
                   rows="2"
                   placeholder="Enter your permanent address"
                   className={glassTextarea}
+                  style={inputGlass}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+           </motion.div>
+
+          {/* ── Section: Emergency Contact ── */}
+          <motion.div variants={fadeUp}>
+            <h2 className={sectionTitle}>Emergency Contact</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className={sectionLabel}>Emergency Contact Name</label>
+                <input
+                  name="emergency_name"
+                  placeholder="Enter emergency contact name"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                />
+              </div>
+              <div>
+                <label className={sectionLabel}>Emergency Contact Phone *</label>
+                <input
+                  name="emergency_phone"
+                  placeholder="Enter emergency contact phone number"
+                  className={glassInput}
+                  style={inputGlass}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label className={sectionLabel}>Emergency Contact Relation</label>
+                <input
+                  name="emergency_relation"
+                  placeholder="e.g. Father, Mother, Guardian"
+                  className={glassInput}
                   style={inputGlass}
                   onChange={handleChange}
                 />

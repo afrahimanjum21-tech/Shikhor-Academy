@@ -255,9 +255,10 @@ export default function AdmissionManager() {
                             <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">Emergency Contact</h3>
                             <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                                 {a.emergency_name && <InfoRow label="Name" value={a.emergency_name} />}
-                                {a.emergency_mobile && <InfoRow label="Mobile" value={a.emergency_mobile} />}
+                                {a.emergency_phone && <InfoRow label="Phone" value={a.emergency_phone} />}
+                                {!a.emergency_phone && a.emergency_contact && <InfoRow label="Phone" value={a.emergency_contact} />}
                                 {a.emergency_relation && <InfoRow label="Relation" value={a.emergency_relation} />}
-                                {!a.emergency_name && !a.emergency_mobile && !a.emergency_relation && (
+                                {!a.emergency_name && !a.emergency_phone && !a.emergency_contact && !a.emergency_relation && (
                                     <p className="text-sm text-gray-400 italic">No emergency contact provided.</p>
                                 )}
                             </div>
