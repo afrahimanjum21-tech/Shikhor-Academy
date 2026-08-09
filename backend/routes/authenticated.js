@@ -170,9 +170,10 @@ admin.get('/events', EventController.index);
 admin.post('/events', EventController.store);
 admin.delete('/events/:id', EventController.destroy);
 
-admin.get('/payments', PaymentController.index);
-admin.post('/payments', PaymentController.store);
-admin.delete('/payments/:id', PaymentController.destroy);
+  admin.get('/payments', PaymentController.index);
+  admin.post('/payments', PaymentController.store);
+  admin.delete('/payments/:id', PaymentController.destroy);
+  admin.get('/payments/student/:studentId/history', PaymentController.studentPaymentHistoryByStudentId);
 
 admin.get('/payment-settings', PaymentSettingController.show);
 admin.post('/payment-settings', PaymentSettingController.update);

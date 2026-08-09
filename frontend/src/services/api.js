@@ -32,7 +32,6 @@ const UNWRAP_ENDPOINTS = [
     '/admin/course-categories',
     '/admin/events',
     '/public/notices',
-    '/admin/payments',
     '/public/teachers',
     '/public/gallery',
     '/public/materials',

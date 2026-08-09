@@ -56,24 +56,54 @@ export const index = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
-    const { student_id, month, status } = req.query;
+    const { student_id, month, status, q } = req.query;
 
     const whereClause = {};
     if (student_id) whereClause.student_id = student_id;
     if (month) whereClause.month = month;
     if (status) whereClause.status = status;
 
+    if (q && String(q).trim()) {
+      const term = `%${String(q).trim()}%`;
+      const [nameMatches, cardMatches] = await Promise.all([
+        models.Student.findAll({
+          attributes: ['id'],
+          include: [{ model: models.User, attributes: [], required: true, where: { name: { [Op.like]: term }, role: 'student' } }],
+        }),
+        models.Student.findAll({ where: { student_id_card_no: { [Op.like]: term } }, attributes: ['id'] }),
+      ]);
+      const studentIds = [...new Set([...nameMatches, ...cardMatches].map(s => s.id))];
+      whereClause[Op.or] = [
+        { student_id: { [Op.in]: studentIds } },
+        { trx_id: { [Op.like]: term } },
+        { month: { [Op.like]: term } },
+      ];
+    }
+
     const { rows, count } = await models.Payment.findAndCountAll({
       where: whereClause,
       // Aliased 'student' (lowercase) so the admin UI can read pay.student.user.name
-      include: [{ model: models.Student, as: 'student', include: [{ model: models.User, attributes: ['id', 'name', 'email'] }] }],
+      include: [{
+        model: models.Student,
+        as: 'student',
+        include: [{ model: models.User, attributes: ['id', 'name', 'email'] }],
+      }],
       order: [['createdAt', 'DESC']],
       limit,
       offset,
     });
 
+    const data = rows.map((payment) => {
+      const json = payment.toJSON();
+      if (json.student?.User) {
+        json.student.user = json.student.User;
+        delete json.student.User;
+      }
+      return json;
+    });
+
     return res.json({
-      data: rows,
+      payments: data,
       current_page: page,
       last_page: Math.ceil(count / limit),
       per_page: limit,
@@ -305,6 +335,33 @@ export const studentAttendance = async (req, res) => {
   }
 };
 
+const buildStudentPaymentHistory = (student) => {
+  const normalized = normalizeUser(student);
+  const payments = student.Payments || [];
+  const paymentRows = payments.map(payment => payment.toJSON());
+  const courseFee = parseFloat(student.Batch?.Course?.fee || student.batch?.course?.fee || 0);
+  const monthlyBreakdown = buildMonthlyBreakdown(student, paymentRows, courseFee);
+  const paidMonths = monthlyBreakdown.filter(m => m.status === 'paid').map(m => m.month);
+  const dueMonths = monthlyBreakdown.filter(m => m.status !== 'paid').map(m => m.month);
+  const totalPaid = paymentRows
+    .filter(payment => payment.status === 'paid')
+    .reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
+  const totalDue = monthlyBreakdown
+    .filter(month => month.status !== 'paid')
+    .reduce((sum, month) => sum + parseFloat(month.amount || 0), 0);
+
+  return {
+    student: normalized,
+    course_fee: courseFee,
+    paid_months: paidMonths,
+    due_months: dueMonths,
+    total_paid: totalPaid,
+    total_due: totalDue,
+    monthly_breakdown: monthlyBreakdown,
+    payments: paymentRows,
+  };
+};
+
 export const studentPaymentHistory = async (req, res) => {
   try {
     const { id } = req.params;
@@ -321,35 +378,41 @@ export const studentPaymentHistory = async (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    const payments = await models.Payment.findAll({
+    student.Payments = await models.Payment.findAll({
       where: { student_id: student.id },
       order: [['date', 'DESC']],
     });
 
-    const paymentRows = payments.map(payment => payment.toJSON());
-    const courseFee = parseFloat(student.Batch?.Course?.fee || 0);
-    const monthlyBreakdown = buildMonthlyBreakdown(student, paymentRows, courseFee);
-    const paidMonths = monthlyBreakdown.filter(m => m.status === 'paid').map(m => m.month);
-    const dueMonths = monthlyBreakdown.filter(m => m.status !== 'paid').map(m => m.month);
-    const totalPaid = paymentRows
-      .filter(payment => payment.status === 'paid')
-      .reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
-    const totalDue = monthlyBreakdown
-      .filter(month => month.status !== 'paid')
-      .reduce((sum, month) => sum + parseFloat(month.amount || 0), 0);
-
-    return res.json({
-      student: normalizeUser(student),
-      course_fee: courseFee,
-      paid_months: paidMonths,
-      due_months: dueMonths,
-      total_paid: totalPaid,
-      total_due: totalDue,
-      monthly_breakdown: monthlyBreakdown,
-      payments: paymentRows,
-    });
+    return res.json(buildStudentPaymentHistory(student));
   } catch (error) {
     console.error('PaymentController.studentPaymentHistory error:', error);
+    return res.status(500).json({ message: 'Failed to fetch payment history' });
+  }
+};
+
+export const studentPaymentHistoryByStudentId = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    const student = await models.Student.findByPk(studentId, {
+      include: [
+        { model: models.User, attributes: ['id', 'name', 'email', 'phone'] },
+        { model: models.Batch, include: [{ model: models.Course, attributes: ['id', 'title', 'fee'] }] },
+      ],
+    });
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    student.Payments = await models.Payment.findAll({
+      where: { student_id: student.id },
+      order: [['date', 'DESC']],
+    });
+
+    return res.json(buildStudentPaymentHistory(student));
+  } catch (error) {
+    console.error('PaymentController.studentPaymentHistoryByStudentId error:', error);
     return res.status(500).json({ message: 'Failed to fetch payment history' });
   }
 };
