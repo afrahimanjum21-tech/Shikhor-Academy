@@ -3,6 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { motion } from "framer-motion";
+import { useConfirm } from "./ConfirmDialog";
 
 import LOGO_IMAGE from "../../images/hero-background.jpg";
 
@@ -24,7 +25,17 @@ export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const navigate = useNavigate();
 
-    const handleLogout = () => {
+    const confirm = useConfirm();
+
+    const handleLogout = async () => {
+        const ok = await confirm({
+            title: "Log out?",
+            message: "Are you sure you want to log out?",
+            confirmText: "Logout",
+            cancelText: "Cancel",
+            variant: "destructive",
+        });
+        if (!ok) return;
         logout();
         navigate('/login');
     };

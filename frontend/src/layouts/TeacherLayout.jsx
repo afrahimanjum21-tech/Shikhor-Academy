@@ -7,6 +7,7 @@ import { useNotificationCounts } from "../context/NotificationContext";
 import NotificationBadge from "../components/notifications/NotificationBadge";
 import NotificationBell from "../components/notifications/NotificationBell";
 import ErrorBoundary from "../components/common/ErrorBoundary";
+import { useConfirm } from "../components/common/ConfirmDialog";
 import { buildAssetUrl } from "../services/config";
 import LOGO_IMAGE from "../images/hero-background.jpg";
 
@@ -21,7 +22,20 @@ export default function TeacherLayout() {
         setSidebarOpen(false);
     }, [location.pathname]);
 
-    const handleLogout = () => { logout(); navigate('/login'); };
+    const confirm = useConfirm();
+
+    const handleLogout = async () => {
+        const ok = await confirm({
+            title: "Log out?",
+            message: "Are you sure you want to log out of your teacher account?",
+            confirmText: "Logout",
+            cancelText: "Cancel",
+            variant: "destructive",
+        });
+        if (!ok) return;
+        logout();
+        navigate('/login');
+    };
 
     const navItems = [
         { name: 'Dashboard', path: '/teacher/dashboard', icon: <LayoutDashboard size={20}/> },
