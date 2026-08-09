@@ -120,7 +120,7 @@ export const destroyAlbum = async (req, res) => {
 
 export const destroyImage = async (req, res) => {
   try {
-    const image = await models.GalleryImage.findByPk(req.params.id);
+    const image = await models.GalleryImage.findByPk(req.params.imageId);
     if (!image) {
       return res.status(404).json({ message: 'Image not found' });
     }

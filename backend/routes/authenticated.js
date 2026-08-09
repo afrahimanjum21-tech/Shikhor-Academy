@@ -113,6 +113,7 @@ admin.put('/teachers/:id', TeacherController.update);
 admin.post('/teachers/:id/photo', uploadPhoto('teacher_photos').single('photo'), TeacherController.updatePhoto);
 admin.delete('/teachers/:id', TeacherController.destroy);
 
+admin.get('/gallery', GalleryController.index);
 admin.post('/gallery/album', uploadPhoto('gallery').single('thumbnail'), GalleryController.storeAlbum);
 admin.post('/gallery/:album/upload', uploadPhoto('gallery').fields([
   { name: 'images', maxCount: 20 },

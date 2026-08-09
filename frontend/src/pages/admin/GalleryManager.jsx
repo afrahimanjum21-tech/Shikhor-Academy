@@ -15,7 +15,7 @@ export default function GalleryManager() {
 
     const fetchAlbums = async () => {
         try {
-            const res = await api.get('/public/gallery');
+            const res = await api.get('/admin/gallery');
             const nextAlbums = res.data;
             setAlbums(nextAlbums);
             if (selectedAlbum) {
@@ -47,17 +47,16 @@ export default function GalleryManager() {
     };
 
     const handleImageUpload = async (e, albumId) => {
-        const file = e.target.files[0];
-        if(!file) return;
+        const files = Array.from(e.target.files || []);
+        e.target.value = '';
+        if (!files.length) return;
 
         const formData = new FormData();
-        formData.append('images', file);
+        files.forEach(file => formData.append('images', file));
 
         try {
-            await api.post(`/admin/gallery/${albumId}/upload`, formData, {
-                headers: { "Content-Type": "multipart/form-data" }
-            });
-            notify.success("Image Uploaded Successfully!");
+            await api.post(`/admin/gallery/${albumId}/upload`, formData);
+            notify.success(`${files.length} photo${files.length > 1 ? 's' : ''} Uploaded Successfully!`);
             fetchAlbums();
         } catch (err) { 
             logger.error(err);
@@ -89,7 +88,7 @@ export default function GalleryManager() {
             fetchAlbums();
             // Refresh selected album state
             if (selectedAlbum) {
-                const updated = await api.get('/public/gallery');
+                const updated = await api.get('/admin/gallery');
                 const refreshed = updated.data.find(a => a.id === albumId);
                 setSelectedAlbum(refreshed);
             }
@@ -113,7 +112,7 @@ export default function GalleryManager() {
                     <label className="flex items-center justify-center gap-2 bg-[#E6EEF5] text-[#1F4F78] p-3 md:p-4 rounded-lg mb-4 cursor-pointer hover:bg-[#d6e4f0] transition font-bold text-xs md:text-sm">
                         <Upload size={16} />
                         <span>Upload Photo to this Album</span>
-                        <input type="file" className="hidden" onChange={(e) => handleImageUpload(e, selectedAlbum.id)} />
+                        <input type="file" multiple className="hidden" onChange={(e) => handleImageUpload(e, selectedAlbum.id)} />
                     </label>
 
                     {/* Photos Grid */}
@@ -161,7 +160,7 @@ export default function GalleryManager() {
                             <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer text-white hidden md:flex" onClick={(e) => e.stopPropagation()}>
                                 <Upload size={24} />
                                 <span className="text-xs mt-1">Upload</span>
-                                <input type="file" className="hidden" onChange={(e) => handleImageUpload(e, album.id)} />
+                                <input type="file" multiple className="hidden" onChange={(e) => handleImageUpload(e, album.id)} />
                             </label>
                         </div>
                         <div className="p-3 md:p-4 flex justify-between items-center gap-2">
@@ -172,7 +171,7 @@ export default function GalleryManager() {
                             <div className="flex gap-1 shrink-0">
                                 <label className="md:hidden p-1.5 text-[#1F4F78] hover:bg-blue-50 rounded" onClick={(e) => e.stopPropagation()}>
                                     <Upload size={14} />
-                                    <input type="file" className="hidden" onChange={(e) => handleImageUpload(e, album.id)} />
+                                    <input type="file" multiple className="hidden" onChange={(e) => handleImageUpload(e, album.id)} />
                                 </label>
                                 <button onClick={(e) => { e.stopPropagation(); deleteAlbum(album.id); }} className="text-red-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50">
                                     <Trash2 size={14} />

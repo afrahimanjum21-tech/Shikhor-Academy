@@ -47,6 +47,7 @@ const UNWRAP_ENDPOINTS = [
     '/admin/courses',
     '/admin/attendance/leave-requests',
     '/admin/routines',
+    '/admin/gallery',
     '/admin/student/',
 ];
 
