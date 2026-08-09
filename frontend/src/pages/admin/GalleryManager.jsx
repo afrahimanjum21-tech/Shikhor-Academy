@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import api from "../../services/api";
 import { buildAssetUrl } from "../../services/config";
-import { Plus, Trash2, Upload, ArrowLeft, X } from "lucide-react";
+import { Plus, Trash2, Upload, ArrowLeft, X, Loader2, CheckCircle2 } from "lucide-react";
 import notify from "../../services/notification";
 import { useConfirm } from "../../components/common/ConfirmDialog";
 import logger from '../../services/logger';
@@ -12,6 +12,8 @@ export default function GalleryManager() {
     const [selectedAlbum, setSelectedAlbum] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newAlbumName, setNewAlbumName] = useState("");
+    const [uploadProgress, setUploadProgress] = useState(null);
+    const uploadTimerRef = useRef(null);
 
     const fetchAlbums = async () => {
         try {
@@ -54,6 +56,11 @@ export default function GalleryManager() {
         // Vercel serverless functions reject request bodies above ~4.5MB, so
         // multiple photos must go as separate requests (one file each) instead
         // of one combined multipart payload.
+        if (uploadTimerRef.current) {
+            clearTimeout(uploadTimerRef.current);
+            uploadTimerRef.current = null;
+        }
+        setUploadProgress({ total: files.length, done: 0, failed: 0, finished: false });
         let uploaded = 0;
         let failed = 0;
         let lastError = '';
@@ -70,6 +77,7 @@ export default function GalleryManager() {
                     || (status === 413 ? "file too large (max ~4.5MB per photo)" : err.message || "Upload failed");
                 logger.error(err);
             }
+            setUploadProgress({ total: files.length, done: uploaded + failed, failed, finished: false });
         }
         if (uploaded > 0) {
             notify.success(`${uploaded} photo${uploaded > 1 ? 's' : ''} uploaded successfully${failed ? `, ${failed} failed` : ''}`);
@@ -77,6 +85,8 @@ export default function GalleryManager() {
         if (failed > 0) {
             notify.error(`${failed} photo${failed > 1 ? 's' : ''} failed: ${lastError}`);
         }
+        setUploadProgress({ total: files.length, done: uploaded + failed, failed, finished: true });
+        uploadTimerRef.current = setTimeout(() => setUploadProgress(null), 3000);
         fetchAlbums();
     };
 
@@ -224,6 +234,40 @@ export default function GalleryManager() {
                 </div>
             )}
             </>
+            )}
+
+            {uploadProgress && (
+                <div className="fixed bottom-4 right-4 z-[80] w-72 bg-white rounded-xl shadow-2xl border border-gray-200 p-4">
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                            {uploadProgress.finished ? (
+                                <>
+                                    <CheckCircle2 size={16} className="text-green-500" />
+                                    Upload complete
+                                </>
+                            ) : (
+                                <>
+                                    <Loader2 size={16} className="animate-spin text-[#1F4E79]" />
+                                    Uploading photo {Math.min(uploadProgress.done + 1, uploadProgress.total)} of {uploadProgress.total}
+                                </>
+                            )}
+                        </p>
+                        <span className="text-xs font-bold text-[#1F4E79]">
+                            {uploadProgress.total ? Math.round((uploadProgress.done / uploadProgress.total) * 100) : 0}%
+                        </span>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                            className={`h-full rounded-full transition-all duration-300 ${uploadProgress.failed > 0 ? "bg-yellow-500" : "bg-[#1F4E79]"}`}
+                            style={{ width: `${uploadProgress.total ? (uploadProgress.done / uploadProgress.total) * 100 : 0}%` }}
+                        />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                        {uploadProgress.done - uploadProgress.failed} uploaded
+                        {uploadProgress.failed > 0 ? `, ${uploadProgress.failed} failed` : ""}
+                        {!uploadProgress.finished && uploadProgress.done < uploadProgress.total ? "..." : ""}
+                    </p>
+                </div>
             )}
         </div>
     );
