@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import api from "../../services/api";
 import NotificationItem from "./NotificationItem";
+import { useNotificationCounts } from "../../context/NotificationContext";
 
-export default function NotificationDropdown({ open, onClose, triggerRef, onCountChange }) {
+export default function NotificationDropdown({ open, onClose, triggerRef }) {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(false);
     const [hasMore, setHasMore] = useState(true);
     const dropdownRef = useRef(null);
+    const { markNotificationRead, markNotificationAllRead } = useNotificationCounts();
 
     const fetch = useCallback((offset = 0, append = false) => {
         if (!open) return;
@@ -47,19 +49,18 @@ export default function NotificationDropdown({ open, onClose, triggerRef, onCoun
 
     const handleMarkRead = (id) => {
         setNotifications(prev => prev.filter(n => n.id !== id));
-        if (onCountChange) onCountChange(prev => Math.max(0, (typeof prev === 'number' ? prev : 0) - 1));
-        api.post(`/notifications/${id}/read`).catch(() => {});
+        if (typeof id === 'number') {
+            markNotificationRead(id);
+        }
         if (hasMore && notifications.length === 1) {
             fetch(0);
         }
     };
 
     const handleMarkAllRead = () => {
-        api.post("/notifications/read-all").then(() => {
-            setNotifications([]);
-            setHasMore(false);
-            if (onCountChange) onCountChange(0);
-        }).catch(() => {});
+        markNotificationAllRead();
+        setNotifications([]);
+        setHasMore(false);
     };
 
     const loadMore = () => {

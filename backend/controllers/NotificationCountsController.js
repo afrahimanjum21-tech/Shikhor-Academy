@@ -1,5 +1,6 @@
 import models from '../models/index.js';
 import { Op } from 'sequelize';
+import { parseSince, makeAfter } from '../utils/sinceFilters.js';
 
 export const counts = async (req, res) => {
   try {
@@ -9,29 +10,12 @@ export const counts = async (req, res) => {
     // The frontend sends since_<page> timestamps (last time the user viewed
     // that page). Counts must only include items created/updated AFTER that
     // timestamp, otherwise bubbles reappear after viewing a page.
-    const since = {};
-    Object.entries(req.query).forEach(([key, value]) => {
-      if (key.startsWith('since_') && value) {
-        const date = new Date(value);
-        if (!Number.isNaN(date.getTime())) {
-          since[key.slice(6)] = date;
-        }
-      }
-    });
-
-    // Returns a where-filter for items newer than the most recent view of any
-    // of the given page keys (or an empty filter if never viewed).
-    const after = (field, ...pageKeys) => {
-      const dates = pageKeys.map((k) => since[k]).filter(Boolean);
-      if (dates.length === 0) return {};
-      return { [field]: { [Op.gt]: new Date(Math.max(...dates.map(d => d.getTime()))) } };
-    };
+    const since = parseSince(req.query);
+    const after = makeAfter(since);
 
     const unreadNotifications = await models.Notification.count({
       where: { user_id: user.id, read_at: null },
     });
-
-    counts.notifications = unreadNotifications;
 
     if (user.role === 'admin' || user.role === 'super_admin') {
       const [pendingAdmissions, holdAdmissions, pendingPayments, pendingLeaveRequests, unreadMessages] = await Promise.all([
@@ -47,6 +31,10 @@ export const counts = async (req, res) => {
       counts.pending_payments = pendingPayments;
       counts.pending_leave_requests = pendingLeaveRequests;
       counts.unread_messages = unreadMessages;
+
+      // The bell bubble is the total of everything actionable, so it matches
+      // the items listed in the notification dropdown.
+      counts.notifications = unreadNotifications + pendingAdmissions + holdAdmissions + pendingPayments + pendingLeaveRequests + unreadMessages;
     }
 
     if (user.role === 'teacher') {
@@ -74,9 +62,12 @@ export const counts = async (req, res) => {
       counts.pending_submissions = pendingSubmissions;
       counts.pending_reviews = pendingSubmissions;
       counts.total_students = totalStudents;
+      counts.notifications = unreadNotifications + pendingSubmissions;
     }
 
     if (user.role === 'student') {
+      counts.notifications = unreadNotifications;
+
       const student = await models.Student.findOne({ where: { user_id: user.id } });
 
       if (student) {

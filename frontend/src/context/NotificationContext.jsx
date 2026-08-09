@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import api from '../services/api';
 import { useAuth } from './AuthContext';
 
@@ -46,6 +46,16 @@ const pageToNotifType = {
     e_learning: 'video',
     fees: 'payment',
     results: 'assignment',
+    extra_curricular: 'event',
+    attitude: 'event',
+};
+
+// Page keys whose counts are included in the bell bubble (`counts.notifications`)
+// for each role, so visiting those pages drops the bubble immediately.
+const BELL_PAGE_KEYS = {
+    admin: ['admissions', 'payments', 'leaves', 'messages'],
+    super_admin: ['admissions', 'payments', 'leaves', 'messages'],
+    teacher: ['reviews'],
 };
 
 export function getLastViewed(key) {
@@ -72,9 +82,13 @@ function ensureLastViewed() {
 }
 
 export function NotificationProvider({ children }) {
-    const { token } = useAuth();
+    const { token, user } = useAuth();
     const [counts, setCounts] = useState({});
     const timerRef = useRef(null);
+    const retryRef = useRef(null);
+
+    const role = user?.role;
+    const bellPageKeys = useMemo(() => BELL_PAGE_KEYS[role] || [], [role]);
 
     const fetchCounts = useCallback(() => {
         if (!token) return;
@@ -90,24 +104,81 @@ export function NotificationProvider({ children }) {
         }
 
         api.get('/notifications/counts', { params: since })
-            .then(({ data }) => setCounts(data || {}))
-            .catch(() => {});
+            .then(({ data }) => {
+                setCounts(data || {});
+                if (retryRef.current) {
+                    clearTimeout(retryRef.current);
+                    retryRef.current = null;
+                }
+            })
+            .catch(() => {
+                // Retry sooner than the next poll so a transient backend error
+                // (e.g. a database pool hiccup) doesn't blank the badges.
+                if (retryRef.current) return;
+                retryRef.current = setTimeout(() => {
+                    retryRef.current = null;
+                    fetchCounts();
+                }, 15000);
+            });
     }, [token]);
+
+    // Marks one notification row as read (optimistic; backend confirms).
+    const markNotificationRead = useCallback((id) => {
+        setCounts(prev => ({ ...prev, notifications: Math.max(0, (prev.notifications || 0) - 1) }));
+        api.post(`/notifications/${id}/read`).catch(() => {});
+    }, []);
+
+    // Marks every notification row as read. For admins/teachers the bell also
+    // includes business-table counts, which are acknowledged by advancing the
+    // last-viewed timestamps (same semantics as visiting the page).
+    const markNotificationAllRead = useCallback(() => {
+        setCounts(prev => {
+            const next = { ...prev, notifications: 0 };
+            if (role === 'admin' || role === 'super_admin') {
+                next.pending_admissions = 0;
+                next.hold_admissions = 0;
+                next.pending_payments = 0;
+                next.pending_leave_requests = 0;
+                next.unread_messages = 0;
+            } else if (role === 'teacher') {
+                next.pending_reviews = 0;
+                next.pending_submissions = 0;
+            }
+            return next;
+        });
+        if (role === 'admin' || role === 'super_admin') {
+            ['admissions', 'payments', 'leaves', 'messages'].forEach(markPageViewed);
+        } else if (role === 'teacher') {
+            markPageViewed('reviews');
+        }
+        api.post('/notifications/read-all').catch(() => {});
+    }, [role]);
 
     const markViewed = useCallback((pageKey) => {
         markPageViewed(pageKey);
         const countKey = countKeyMap[pageKey];
         if (countKey) {
-            setCounts(prev => ({ ...prev, [countKey]: 0 }));
-        }
-        if (pageKey === 'admissions') {
-            setCounts(prev => ({ ...prev, hold_admissions: 0 }));
+            setCounts(prev => {
+                const drop = prev[countKey] || 0;
+                const next = { ...prev, [countKey]: 0 };
+                if (bellPageKeys.includes(pageKey)) {
+                    next.notifications = Math.max(0, (prev.notifications || 0) - drop);
+                }
+                if (pageKey === 'admissions') {
+                    const hold = prev.hold_admissions || 0;
+                    next.hold_admissions = 0;
+                    if (bellPageKeys.includes(pageKey)) {
+                        next.notifications = Math.max(0, (next.notifications || 0) - hold);
+                    }
+                }
+                return next;
+            });
         }
         const notifType = pageToNotifType[pageKey];
         if (notifType) {
             api.post('/notifications/read-by-type', { type: notifType }).catch(() => {});
         }
-    }, []);
+    }, [bellPageKeys]);
 
     useEffect(() => {
         if (!token) {
@@ -120,11 +191,12 @@ export function NotificationProvider({ children }) {
 
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
+            if (retryRef.current) clearTimeout(retryRef.current);
         };
     }, [token, fetchCounts]);
 
     return (
-        <NotificationContext.Provider value={{ counts, markViewed }}>
+        <NotificationContext.Provider value={{ counts, markViewed, markNotificationRead, markNotificationAllRead }}>
             {children}
         </NotificationContext.Provider>
     );

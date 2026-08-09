@@ -1,18 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import NotificationDropdown from "./NotificationDropdown";
 import { useNotificationCounts } from "../../context/NotificationContext";
 
 export default function NotificationBell() {
     const [open, setOpen] = useState(false);
-    const [count, setCount] = useState(0);
     const bellRef = useRef(null);
     const { counts } = useNotificationCounts();
-
-    useEffect(() => {
-        if (counts?.notifications !== undefined) {
-            setCount(counts.notifications);
-        }
-    }, [counts]);
+    const count = counts?.notifications || 0;
 
     return (
         <div className="relative">
@@ -51,7 +45,6 @@ export default function NotificationBell() {
                 open={open}
                 onClose={() => setOpen(false)}
                 triggerRef={bellRef}
-                onCountChange={setCount}
             />
         </div>
     );
