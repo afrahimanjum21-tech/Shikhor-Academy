@@ -51,18 +51,33 @@ export default function GalleryManager() {
         e.target.value = '';
         if (!files.length) return;
 
-        const formData = new FormData();
-        files.forEach(file => formData.append('images', file));
-
-        try {
-            await api.post(`/admin/gallery/${albumId}/upload`, formData);
-            notify.success(`${files.length} photo${files.length > 1 ? 's' : ''} Uploaded Successfully!`);
-            fetchAlbums();
-        } catch (err) { 
-            logger.error(err);
-            const msg = err.response?.data?.message || err.message || "Upload failed";
-            notify.error("Error: " + msg); 
+        // Vercel serverless functions reject request bodies above ~4.5MB, so
+        // multiple photos must go as separate requests (one file each) instead
+        // of one combined multipart payload.
+        let uploaded = 0;
+        let failed = 0;
+        let lastError = '';
+        for (const file of files) {
+            const formData = new FormData();
+            formData.append('images', file);
+            try {
+                await api.post(`/admin/gallery/${albumId}/upload`, formData);
+                uploaded++;
+            } catch (err) {
+                failed++;
+                const status = err.response?.status;
+                lastError = err.response?.data?.message
+                    || (status === 413 ? "file too large (max ~4.5MB per photo)" : err.message || "Upload failed");
+                logger.error(err);
+            }
         }
+        if (uploaded > 0) {
+            notify.success(`${uploaded} photo${uploaded > 1 ? 's' : ''} uploaded successfully${failed ? `, ${failed} failed` : ''}`);
+        }
+        if (failed > 0) {
+            notify.error(`${failed} photo${failed > 1 ? 's' : ''} failed: ${lastError}`);
+        }
+        fetchAlbums();
     };
 
     const deleteAlbum = async (id) => {
