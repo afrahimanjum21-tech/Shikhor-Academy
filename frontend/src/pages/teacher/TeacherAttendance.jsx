@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { buildAssetUrl } from "../../services/config";
 import { Calendar, Check, X, Clock, AlertCircle } from "lucide-react";
 import notify from "../../services/notification";
 import logger from '../../services/logger';
@@ -20,20 +21,30 @@ export default function TeacherAttendance() {
     const fetchBatches = async () => {
         try {
             const { data } = await api.get('/teacher/batches');
-            setBatches(data);
+            const unique = [];
+            const seen = new Set();
+            (data || []).forEach((assignment) => {
+                if (!seen.has(assignment.batch_id)) {
+                    seen.add(assignment.batch_id);
+                    unique.push(assignment);
+                }
+            });
+            setBatches(unique);
         } catch (error) {
             logger.error('Failed to fetch batches:', error);
         }
     };
 
-    const fetchStudents = async (batchId) => {
+    const fetchStudents = async (batchId, attDate, attSession) => {
         try {
             setLoading(true);
-            const { data } = await api.get(`/teacher/attendance/students/${batchId}`);
+            const { data } = await api.get(
+                `/teacher/attendance/students/${batchId}?date=${attDate}&session=${attSession}`
+            );
             setStudents(data.students || []);
             const initialAttendance = {};
-            (data.students || []).forEach(student => {
-                initialAttendance[student.id] = 'present';
+            (data.students || []).forEach(entry => {
+                initialAttendance[entry.student.id] = entry.attendance?.status || 'present';
             });
             setAttendance(initialAttendance);
         } catch (error) {
@@ -46,7 +57,21 @@ export default function TeacherAttendance() {
     const handleBatchChange = (batchId) => {
         setSelectedBatch(batchId);
         if (batchId) {
-            fetchStudents(batchId);
+            fetchStudents(batchId, date, session);
+        }
+    };
+
+    const handleDateChange = (value) => {
+        setDate(value);
+        if (selectedBatch) {
+            fetchStudents(selectedBatch, value, session);
+        }
+    };
+
+    const handleSessionChange = (value) => {
+        setSession(value);
+        if (selectedBatch) {
+            fetchStudents(selectedBatch, date, value);
         }
     };
 
@@ -88,8 +113,8 @@ export default function TeacherAttendance() {
                         >
                             <option value="">Select a batch</option>
                              {batches.map((assignment) => (
-                                 <option key={assignment.id} value={assignment.batch_id}>
-                                     {assignment.name} - {assignment.subject}
+                                 <option key={assignment.batch_id} value={assignment.batch_id}>
+                                     {assignment.name}
                                  </option>
                              ))}
                         </select>
@@ -99,7 +124,7 @@ export default function TeacherAttendance() {
                         <input
                             type="date"
                             value={date}
-                            onChange={(e) => setDate(e.target.value)}
+                            onChange={(e) => handleDateChange(e.target.value)}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F4E79] focus:border-transparent"
                         />
                     </div>
@@ -107,7 +132,7 @@ export default function TeacherAttendance() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Session</label>
                         <select
                             value={session}
-                            onChange={(e) => setSession(e.target.value)}
+                            onChange={(e) => handleSessionChange(e.target.value)}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F4E79] focus:border-transparent"
                         >
                             <option value="morning">Morning</option>
@@ -131,43 +156,50 @@ export default function TeacherAttendance() {
                     </div>
 
                     <div className="space-y-3">
-                        {students.map((student) => (
-                            <div key={student.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
-                                <div className="flex items-center gap-4">
-                                    <div className="h-10 w-10 rounded-full bg-[#1F4E79] flex items-center justify-center text-white font-bold">
-                                        {student.User?.name?.charAt(0).toUpperCase()}
+                        {students.map((entry) => {
+                            const student = entry.student;
+                            return (
+                                <div key={student.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-10 w-10 rounded-full bg-[#1F4E79] flex items-center justify-center text-white font-bold overflow-hidden shrink-0">
+                                            {student.User?.profile_photo_path ? (
+                                                <img src={buildAssetUrl(student.User.profile_photo_path)} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                student.User?.name?.charAt(0).toUpperCase()
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-gray-800">{student.User?.name}</p>
+                                            <p className="text-sm text-gray-500">ID: {student.student_id_card_no}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-medium text-gray-800">{student.User?.name}</p>
-                                        <p className="text-sm text-gray-500">ID: {student.student_id_card_no}</p>
+                                    <div className="flex gap-2">
+                                        {['present', 'absent', 'late', 'leave'].map((status) => (
+                                            <button
+                                                key={status}
+                                                onClick={() => setAttendance({ ...attendance, [student.id]: status })}
+                                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                                    attendance[student.id] === status
+                                                        ? status === 'present'
+                                                            ? 'bg-green-500 text-white'
+                                                            : status === 'absent'
+                                                            ? 'bg-red-500 text-white'
+                                                            : status === 'late'
+                                                            ? 'bg-yellow-500 text-white'
+                                                            : 'bg-blue-500 text-white'
+                                                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                                                }`}
+                                            >
+                                                {status === 'present' && <Check size={16} />}
+                                                {status === 'absent' && <X size={16} />}
+                                                {status === 'late' && <Clock size={16} />}
+                                                {status === 'leave' && <AlertCircle size={16} />}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
-                                <div className="flex gap-2">
-                                    {['present', 'absent', 'late', 'leave'].map((status) => (
-                                        <button
-                                            key={status}
-                                            onClick={() => setAttendance({ ...attendance, [student.id]: status })}
-                                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                                attendance[student.id] === status
-                                                    ? status === 'present'
-                                                        ? 'bg-green-500 text-white'
-                                                        : status === 'absent'
-                                                        ? 'bg-red-500 text-white'
-                                                        : status === 'late'
-                                                        ? 'bg-yellow-500 text-white'
-                                                        : 'bg-blue-500 text-white'
-                                                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                                            }`}
-                                        >
-                                            {status === 'present' && <Check size={16} />}
-                                            {status === 'absent' && <X size={16} />}
-                                            {status === 'late' && <Clock size={16} />}
-                                            {status === 'leave' && <AlertCircle size={16} />}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}

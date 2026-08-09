@@ -32,7 +32,15 @@ export default function TeacherMaterials() {
     const fetchBatches = async () => {
         try {
             const { data } = await api.get('/teacher/batches');
-            setBatches(data);
+            const unique = [];
+            const seen = new Set();
+            (data || []).forEach((assignment) => {
+                if (!seen.has(assignment.batch_id)) {
+                    seen.add(assignment.batch_id);
+                    unique.push(assignment);
+                }
+            });
+            setBatches(unique);
         } catch (error) {
             logger.error('Failed to fetch batches:', error);
         }
@@ -142,8 +150,8 @@ export default function TeacherMaterials() {
                             >
                                 <option value="">Select a batch</option>
                                  {batches.map((assignment) => (
-                                     <option key={assignment.id} value={assignment.batch_id}>
-                                         {assignment.name} - {assignment.subject}
+                                     <option key={assignment.batch_id} value={assignment.batch_id}>
+                                         {assignment.name}
                                      </option>
                                  ))}
                             </select>

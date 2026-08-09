@@ -5,6 +5,13 @@ import NotificationService from '../../services/NotificationService.js';
 
 const STUDENT_USER_ATTRIBUTES = ['id', 'name', 'email', 'phone', 'profile_photo_path'];
 
+const LIVE_STUDENT_INCLUDE = {
+  model: models.User,
+  attributes: STUDENT_USER_ATTRIBUTES,
+  where: { role: 'student', is_active: true },
+  required: true,
+};
+
 const requireAssignment = async (teacherId, batchId, subject) => {
   const assignment = await models.TeacherBatchAssignment.findOne({
     where: { teacher_id: teacherId, batch_id: Number(batchId), subject },
@@ -91,7 +98,14 @@ export const getExams = async (req, res) => {
       order: [['date', 'DESC'], ['id', 'DESC']],
     });
 
-    const studentCount = await models.Student.count({ where: { current_batch_id: batch_id } });
+    const studentCount = await models.Student.count({
+      where: { current_batch_id: batch_id },
+      include: [{
+        model: models.User,
+        where: { role: 'student', is_active: true },
+        required: true,
+      }],
+    });
 
     const list = exams
       .filter(exam => Array.isArray(exam.subjects) && exam.subjects.includes(subject))
@@ -145,7 +159,7 @@ export const getStudents = async (req, res) => {
 
     const students = await models.Student.findAll({
       where: { current_batch_id: Number(batch_id) },
-      include: [{ model: models.User, attributes: STUDENT_USER_ATTRIBUTES }],
+      include: [LIVE_STUDENT_INCLUDE],
       order: [['admission_date', 'ASC']],
     });
 
@@ -303,6 +317,12 @@ export const togglePublish = async (req, res) => {
         if (batchIds.length > 0) {
           const students = await models.Student.findAll({
             where: { current_batch_id: { [Op.in]: batchIds } },
+            include: [{
+              model: models.User,
+              where: { role: 'student', is_active: true },
+              required: true,
+              attributes: ['id'],
+            }],
             attributes: ['user_id'],
           });
           await NotificationService.createForStudents({

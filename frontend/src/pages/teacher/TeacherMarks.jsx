@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { buildAssetUrl } from "../../services/config";
 import { Award, BookOpen, CheckCircle2, GraduationCap, Loader2, Save, School, Send, Users } from "lucide-react";
 import notify from "../../services/notification";
 import logger from '../../services/logger';
@@ -333,8 +334,12 @@ export default function TeacherMarks() {
                                             <tr key={student.id} className="border-t border-gray-100">
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="h-8 w-8 rounded-full bg-[#1F4E79] flex items-center justify-center text-white font-bold text-sm">
-                                                            {student.User?.name?.charAt(0).toUpperCase()}
+                                                        <div className="h-8 w-8 rounded-full bg-[#1F4E79] flex items-center justify-center text-white font-bold text-sm overflow-hidden shrink-0">
+                                                            {student.User?.profile_photo_path ? (
+                                                                <img src={buildAssetUrl(student.User.profile_photo_path)} alt="" className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                student.User?.name?.charAt(0).toUpperCase()
+                                                            )}
                                                         </div>
                                                         <div>
                                                             <p className="font-medium text-gray-800">{student.User?.name}</p>

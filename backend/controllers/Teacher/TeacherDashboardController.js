@@ -1,6 +1,12 @@
 import models from '../../models/index.js';
 import { Op } from 'sequelize';
 
+const LIVE_STUDENT_INCLUDE = {
+  model: models.User,
+  where: { role: 'student', is_active: true },
+  required: true,
+};
+
 export const summary = async (req, res) => {
   try {
     const teacherId = req.user.id;
@@ -13,10 +19,11 @@ export const summary = async (req, res) => {
     });
 
     const validAssignmentsRaw = assignments.filter(a => a.Batch);
-    const batchIds = validAssignmentsRaw.map(a => a.Batch.id);
+    const batchIds = [...new Set(validAssignmentsRaw.map(a => a.Batch.id))];
 
     const studentCounts = batchIds.length > 0 ? await models.Student.count({
       where: { current_batch_id: { [Op.in]: batchIds } },
+      include: [LIVE_STUDENT_INCLUDE],
       attributes: ['current_batch_id'],
       group: ['current_batch_id'],
     }) : [];
@@ -41,17 +48,13 @@ export const summary = async (req, res) => {
     const courseIds = [...new Set(assignedBatches.map(a => a.course?.id).filter(Boolean))];
 
     const [totalBatches, totalStudents, totalAssignments, todayAttendance] = await Promise.all([
-      Promise.resolve(assignedBatches.length),
-      models.Student.count({ where: { current_batch_id: { [Op.in]: batchIds } } }),
+      Promise.resolve(batchIds.length),
+      models.Student.count({ where: { current_batch_id: { [Op.in]: batchIds } }, include: [LIVE_STUDENT_INCLUDE] }),
       models.Assignment.count({ where: { teacher_id: teacherId } }),
-      models.Attendance.count({ where: { date: today, course_id: { [Op.in]: batchIds } } }),
-      models.Student.count({
-        where: { current_batch_id: { [Op.in]: batchIds } },
-        include: [{
-          model: models.Attendance,
-          where: { date: today },
-          required: true,
-        }],
+      models.Attendance.count({
+        where: { date: today, batch_id: { [Op.in]: batchIds } },
+        distinct: true,
+        col: 'student_id',
       }),
     ]);
 
@@ -115,10 +118,11 @@ export const myBatches = async (req, res) => {
     });
 
     const validAssignmentsRaw = assignments.filter(a => a.Batch);
-    const batchIds = validAssignmentsRaw.map(a => a.Batch.id);
+    const batchIds = [...new Set(validAssignmentsRaw.map(a => a.Batch.id))];
 
     const studentCounts = batchIds.length > 0 ? await models.Student.count({
       where: { current_batch_id: { [Op.in]: batchIds } },
+      include: [LIVE_STUDENT_INCLUDE],
       attributes: ['current_batch_id'],
       group: ['current_batch_id'],
     }) : [];
@@ -160,7 +164,12 @@ export const myStudents = async (req, res) => {
     const students = await models.Student.findAll({
       where: { current_batch_id: { [Op.in]: batchIds } },
       include: [
-        { model: models.User, attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'] },
+        {
+          model: models.User,
+          attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'],
+          where: { role: 'student', is_active: true },
+          required: true,
+        },
         { model: models.Batch, attributes: ['id', 'name'] },
       ],
       order: [['admission_date', 'DESC']],

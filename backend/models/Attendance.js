@@ -5,6 +5,7 @@ const Attendance = sequelize.define('Attendance', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   student_id: { type: DataTypes.INTEGER, allowNull: false },
   course_id: { type: DataTypes.INTEGER },
+  batch_id: { type: DataTypes.INTEGER },
   date: { type: DataTypes.DATEONLY, allowNull: false },
   session: { type: DataTypes.ENUM('morning', 'evening') },
   status: { type: DataTypes.STRING(20), defaultValue: 'present' },
@@ -21,6 +22,8 @@ const Attendance = sequelize.define('Attendance', {
     { fields: ['date'] },
     { fields: ['course_id'] },
     { fields: ['student_id', 'date'] },
+    { fields: ['batch_id'] },
+    { unique: true, fields: ['student_id', 'batch_id', 'date', 'session'] },
   ],
 });
 

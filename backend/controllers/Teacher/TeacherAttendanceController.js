@@ -25,7 +25,12 @@ export const index = async (req, res) => {
 
     const students = queriedBatchIds.length > 0 ? await models.Student.findAll({
       where: { current_batch_id: { [Op.in]: queriedBatchIds } },
-      include: [{ model: models.User, attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'] }],
+      include: [{
+        model: models.User,
+        attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'],
+        where: { role: 'student', is_active: true },
+        required: true,
+      }],
     }) : [];
 
     const studentIds = students.map(s => s.id);
@@ -66,6 +71,7 @@ export const getStudentsForAttendance = async (req, res) => {
   try {
     const teacherId = req.user.id;
     const { batchId } = req.params;
+    const { date, session } = req.query;
 
     const assignment = await models.TeacherBatchAssignment.findOne({
       where: { teacher_id: teacherId, batch_id: batchId },
@@ -85,11 +91,28 @@ export const getStudentsForAttendance = async (req, res) => {
 
     const students = await models.Student.findAll({
       where: { current_batch_id: batchId },
-      include: [{ model: models.User, attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'] }],
+      include: [{
+        model: models.User,
+        attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'],
+        where: { role: 'student', is_active: true },
+        required: true,
+      }],
       order: [['admission_date', 'ASC']],
     });
 
-    res.json({ data: { batch, students } });
+    const attendanceWhere = { student_id: { [Op.in]: students.map(s => s.id) } };
+    if (date) attendanceWhere.date = date;
+    if (session) attendanceWhere.session = session;
+    const records = students.length > 0 ? await models.Attendance.findAll({ where: attendanceWhere }) : [];
+    const recordMap = {};
+    records.forEach(r => { recordMap[r.student_id] = r; });
+
+    const list = students.map(student => ({
+      student,
+      attendance: recordMap[student.id] || null,
+    }));
+
+    res.json({ data: { batch, students: list } });
   } catch (error) {
     console.error('TeacherAttendanceController.getStudentsForAttendance error:', error);
     res.status(500).json({ message: 'Failed to fetch students' });
@@ -115,7 +138,8 @@ export const markAttendance = async (req, res) => {
 
     const attendanceData = records.map(record => ({
       student_id: record.student_id,
-      course_id: batch_id,
+      batch_id,
+      course_id: null,
       date,
       session: session || null,
       status: record.status || 'present',
