@@ -132,6 +132,9 @@ export const togglePublish = async (req, res) => {
     }
 
     exam.is_published = !exam.is_published;
+    if (exam.is_published) {
+      exam.published_subjects = exam.subjects || [];
+    }
     await exam.save();
 
     if (exam.is_published) {
@@ -200,7 +203,27 @@ export const myResults = async (req, res) => {
       order: [[{ model: models.Exam }, 'date', 'DESC']],
     });
 
-    return res.json({ data: results });
+    // Teachers publish results subject by subject, so a result only becomes
+    // visible once at least one subject (or the whole exam) is published.
+    // Normalize aliases to lowercase so consumers can read result.exam.
+    const visibleResults = results
+      .filter(result =>
+        result.Exam?.is_published || (result.Exam?.published_subjects || []).length > 0
+      )
+      .map(result => {
+        const data = result.toJSON();
+        data.exam = data.Exam || null;
+        if (data.exam?.Course) {
+          data.exam.course = data.exam.Course;
+          delete data.exam.Course;
+        }
+        delete data.Exam;
+        data.student = data.Student || null;
+        delete data.Student;
+        return data;
+      });
+
+    return res.json({ data: visibleResults });
   } catch (error) {
     console.error('ExamController.myResults error:', error);
     return res.status(500).json({ message: 'Failed to fetch results' });

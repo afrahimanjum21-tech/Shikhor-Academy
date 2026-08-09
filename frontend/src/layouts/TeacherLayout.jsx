@@ -43,7 +43,7 @@ export default function TeacherLayout() {
         { name: 'My Batches', path: '/teacher/batches', icon: <BookOpen size={20}/> },
         { name: 'My Students', path: '/teacher/students', icon: <UserCheck size={20}/> },
         { name: 'Attendance', path: '/teacher/attendance', icon: <CalendarDays size={20}/> },
-        { name: 'Marks Entry', path: '/teacher/marks', icon: <Award size={20}/> },
+        { name: 'Marks & Results', path: '/teacher/marks', icon: <Award size={20}/> },
         { name: 'Study Materials', path: '/teacher/materials', icon: <Upload size={20}/> },
         { name: 'Assignments', path: '/teacher/assignments', icon: <FileText size={20}/>, count: counts.pending_reviews || 0 },
     ];

@@ -67,12 +67,27 @@ export const summary = async (req, res) => {
       where: { student_id: student.id },
       include: [{
         model: models.Exam,
-        attributes: ['id', 'name', 'date', 'type', 'total_marks', 'subjects'],
+        attributes: ['id', 'name', 'date', 'type', 'total_marks', 'subjects', 'subject_marks', 'is_published', 'published_subjects'],
         include: [{ model: models.Course, attributes: ['id', 'title'] }],
       }],
       order: [['id', 'DESC']],
       limit: 5,
     });
+
+    // Only show results that are published (fully or subject by subject), and
+    // normalize aliases to lowercase so consumers can read result.exam.
+    const normalizedRecentResults = recentResults
+      .filter(r => r.Exam?.is_published || (r.Exam?.published_subjects || []).length > 0)
+      .map(result => {
+        const data = result.toJSON();
+        data.exam = data.Exam || null;
+        if (data.exam?.Course) {
+          data.exam.course = data.exam.Course;
+          delete data.exam.Course;
+        }
+        delete data.Exam;
+        return data;
+      });
 
     const paymentBlock = {
       total_paid: totalPaid,
@@ -102,7 +117,7 @@ export const summary = async (req, res) => {
         payments: paymentBlock,
         upcoming: upcomingEvents,
         upcoming_events: upcomingEvents,
-        recent_results: recentResults,
+        recent_results: normalizedRecentResults,
       },
     });
   } catch (error) {

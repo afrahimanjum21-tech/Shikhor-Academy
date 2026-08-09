@@ -230,8 +230,8 @@ export default function TeacherManager() {
   const addAssignment = () => {
     if (!newBatchId || !newBatchSubject.trim()) return;
     const b = batches.find(b => b.id == newBatchId);
-    if (assignments.some(a => a.batch_id == newBatchId)) {
-      notify.warning('This batch is already assigned.');
+    if (assignments.some(a => a.batch_id == newBatchId && a.subject.trim().toLowerCase() === newBatchSubject.trim().toLowerCase())) {
+      notify.warning('This subject is already assigned for this batch.');
       return;
     }
     setAssignments(prev => [...prev, {
@@ -564,6 +564,7 @@ export default function TeacherManager() {
               {/* Batch Assignments */}
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Batch Assignments</h4>
+                <p className="text-xs text-gray-400 mb-3">A teacher can teach multiple subjects in the same batch, across multiple batches, and in multiple classes.</p>
                 <div className="bg-gray-50/60 rounded-xl border border-gray-200 p-4 space-y-3">
                   <div className="flex flex-col sm:flex-row gap-2">
                     <div className="flex-1">

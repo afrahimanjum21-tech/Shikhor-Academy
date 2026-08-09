@@ -11,6 +11,7 @@ const ExamResult = sequelize.define('ExamResult', {
   gpa: { type: DataTypes.FLOAT },
   position: { type: DataTypes.INTEGER },
   teacher_comment: { type: DataTypes.TEXT },
+  teacher_id: { type: DataTypes.INTEGER },
 }, {
   indexes: [
     { unique: true, fields: ['exam_id', 'student_id'] },

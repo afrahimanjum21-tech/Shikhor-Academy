@@ -128,10 +128,28 @@ function SummaryCard({ icon: Icon, label, value }) {
 
 function ResultSheet({ result }) {
     const exam = result.exam || {};
-    const subjects = exam.subjects || Object.keys(result.marks_details || {});
+    const allSubjects = exam.subjects || Object.keys(result.marks_details || {});
     const subjectMarks = exam.subject_marks || {};
-    const percentage = percent(result.total_obtained, exam.total_marks);
-    const passFail = result.pass_fail || (percentage >= 33 ? 'Pass' : 'Fail');
+
+    // Teachers publish results subject by subject. Only published subjects
+    // (or all subjects once the whole exam is published) are visible, and a
+    // subject appears only if the student actually has marks for it.
+    const publishedSubjects = exam.is_published
+        ? allSubjects
+        : (exam.published_subjects || []).filter(s => allSubjects.includes(s));
+    const visibleSubjects = publishedSubjects.filter(s => (result.marks_details || {})[s] !== undefined);
+    const partial = !exam.is_published && publishedSubjects.length < allSubjects.length;
+
+    const visibleObtained = visibleSubjects.reduce((sum, s) => sum + Number(result.marks_details?.[s] || 0), 0);
+    const visibleFull = visibleSubjects.reduce((sum, s) => sum + Number(subjectMarks[s] || 100), 0);
+    const percentage = percent(visibleObtained, visibleFull);
+    const grade = percentage >= 80 ? 'A+' :
+        percentage >= 70 ? 'A' :
+        percentage >= 60 ? 'A-' :
+        percentage >= 50 ? 'B' :
+        percentage >= 40 ? 'C' :
+        percentage >= 33 ? 'D' : 'F';
+    const passFail = percentage >= 33 ? 'Pass' : 'Fail';
 
     return (
         <div className="p-4 md:p-5">
@@ -146,8 +164,7 @@ function ResultSheet({ result }) {
                     <p className="text-sm text-gray-500 mt-1">{exam.course?.title} - {exam.date}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <MiniStat label="Grade" value={result.grade || "-"} tone={result.grade === "F" ? "text-red-600" : "text-green-700"} />
-                    <MiniStat label="GPA" value={result.gpa || "-"} tone="text-[#1F4E79]" />
+                    <MiniStat label="Grade" value={grade || "-"} tone={grade === "F" ? "text-red-600" : "text-green-700"} />
                     <MiniStat label="Status" value={passFail} tone={passFail === "Pass" ? "text-green-700" : "text-red-600"} />
                 </div>
             </div>
@@ -156,11 +173,11 @@ function ResultSheet({ result }) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                 <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
                     <p className="text-xs text-gray-500 font-medium">Total Marks</p>
-                    <p className="text-lg font-bold text-gray-900">{exam.total_marks || 0}</p>
+                    <p className="text-lg font-bold text-gray-900">{visibleFull || 0}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
                     <p className="text-xs text-gray-500 font-medium">Obtained</p>
-                    <p className="text-lg font-bold text-[#1F4E79]">{result.total_obtained}</p>
+                    <p className="text-lg font-bold text-[#1F4E79]">{visibleObtained}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
                     <p className="text-xs text-gray-500 font-medium">Position</p>
@@ -172,6 +189,12 @@ function ResultSheet({ result }) {
                 </div>
             </div>
 
+            {partial && visibleSubjects.length > 0 && (
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-4">
+                    Some subjects are not published yet — they will appear here once their teachers publish the results.
+                </p>
+            )}
+
             {/* Teacher Comment */}
             {result.teacher_comment && (
                 <div className="bg-blue-50 rounded-lg p-3 mb-4 border border-blue-100">
@@ -181,50 +204,56 @@ function ResultSheet({ result }) {
             )}
 
             {/* Subject-wise Marks */}
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
-                <table className="w-full text-sm">
-                    <thead className="bg-gray-50 text-xs uppercase text-gray-500">
-                        <tr>
-                            <th className="px-4 py-3 text-left">Subject</th>
-                            <th className="px-4 py-3 text-center">Marks</th>
-                            <th className="px-4 py-3 text-center">Full Marks</th>
-                            <th className="px-4 py-3 text-center">Grade</th>
-                            <th className="px-4 py-3 text-center">Percentage</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {subjects.map((subject) => {
-                            const obtained = Number(result.marks_details?.[subject] || 0);
-                            const full = Number(subjectMarks[subject] || 100);
-                            const subjectPercent = percent(obtained, full);
-                            const subjectGrade = subjectPercent >= 80 ? 'A+' :
-                                subjectPercent >= 70 ? 'A' :
-                                subjectPercent >= 60 ? 'A-' :
-                                subjectPercent >= 50 ? 'B' :
-                                subjectPercent >= 40 ? 'C' :
-                                subjectPercent >= 33 ? 'D' : 'F';
-                            const gradeColor = subjectGrade === 'A+' ? 'text-green-600' :
-                                subjectGrade === 'A' || subjectGrade === 'A-' ? 'text-blue-600' :
-                                subjectGrade === 'B' ? 'text-yellow-600' :
-                                subjectGrade === 'C' || subjectGrade === 'D' ? 'text-orange-600' :
-                                'text-red-600';
-                            return (
-                                <tr key={subject} className="hover:bg-gray-50">
-                                    <td className="px-4 py-3 font-medium text-gray-800">{subject}</td>
-                                    <td className="px-4 py-3 text-center font-bold text-[#1F4E79]">{obtained}</td>
-                                    <td className="px-4 py-3 text-center text-gray-600">{full}</td>
-                                    <td className={`px-4 py-3 text-center font-bold ${gradeColor}`}>{subjectGrade}</td>
-                                    <td className="px-4 py-3 text-center">
-                                        <span className={`font-bold ${subjectPercent < 33 ? "text-red-600" : "text-gray-700"}`}>
-                                            {subjectPercent}%
-                                        </span>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
+            {visibleSubjects.length > 0 ? (
+                <div className="overflow-x-auto rounded-lg border border-gray-200">
+                    <table className="w-full text-sm">
+                        <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                            <tr>
+                                <th className="px-4 py-3 text-left">Subject</th>
+                                <th className="px-4 py-3 text-center">Marks</th>
+                                <th className="px-4 py-3 text-center">Full Marks</th>
+                                <th className="px-4 py-3 text-center">Grade</th>
+                                <th className="px-4 py-3 text-center">Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {visibleSubjects.map((subject) => {
+                                const obtained = Number(result.marks_details?.[subject] || 0);
+                                const full = Number(subjectMarks[subject] || 100);
+                                const subjectPercent = percent(obtained, full);
+                                const subjectGrade = subjectPercent >= 80 ? 'A+' :
+                                    subjectPercent >= 70 ? 'A' :
+                                    subjectPercent >= 60 ? 'A-' :
+                                    subjectPercent >= 50 ? 'B' :
+                                    subjectPercent >= 40 ? 'C' :
+                                    subjectPercent >= 33 ? 'D' : 'F';
+                                const gradeColor = subjectGrade === 'A+' ? 'text-green-600' :
+                                    subjectGrade === 'A' || subjectGrade === 'A-' ? 'text-blue-600' :
+                                    subjectGrade === 'B' ? 'text-yellow-600' :
+                                    subjectGrade === 'C' || subjectGrade === 'D' ? 'text-orange-600' :
+                                    'text-red-600';
+                                return (
+                                    <tr key={subject} className="hover:bg-gray-50">
+                                        <td className="px-4 py-3 font-medium text-gray-800">{subject}</td>
+                                        <td className="px-4 py-3 text-center font-bold text-[#1F4E79]">{obtained}</td>
+                                        <td className="px-4 py-3 text-center text-gray-600">{full}</td>
+                                        <td className={`px-4 py-3 text-center font-bold ${gradeColor}`}>{subjectGrade}</td>
+                                        <td className="px-4 py-3 text-center">
+                                            <span className={`font-bold ${subjectPercent < 33 ? "text-red-600" : "text-gray-700"}`}>
+                                                {subjectPercent}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                <p className="text-xs text-gray-400 bg-gray-50 border border-dashed border-gray-300 rounded-lg px-3 py-2">
+                    No subject results have been published for this exam yet.
+                </p>
+            )}
         </div>
     );
 }

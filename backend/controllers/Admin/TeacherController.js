@@ -5,6 +5,24 @@ import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
 const USER_SAFE_ATTRIBUTES = { exclude: ['password'] };
 
+// One row per (teacher, batch, subject): a teacher can teach several subjects
+// in the same batch, but the exact same batch+subject must not repeat.
+const buildAssignmentRows = (teacherId, batchAssignments, batchIds) => {
+  const source = Array.isArray(batchAssignments)
+    ? batchAssignments.map(a => ({ batch_id: Number(a.batch_id), subject: a.subject }))
+    : (Array.isArray(batchIds) ? batchIds.map(batch_id => ({ batch_id, subject: null })) : []);
+  const seen = new Set();
+  const rows = [];
+  for (const a of source) {
+    const subject = (a.subject || '').trim() || null;
+    const key = `${a.batch_id}:${(subject || '').toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push({ teacher_id: teacherId, batch_id: a.batch_id, subject });
+  }
+  return rows;
+};
+
 export const index = async (req, res) => {
   try {
     const teachers = await models.User.findAll({
@@ -56,17 +74,8 @@ export const store = async (req, res) => {
     });
 
     let assignmentRows = [];
-    if (Array.isArray(batch_assignments)) {
-      assignmentRows = batch_assignments.map(a => ({
-        teacher_id: user.id,
-        batch_id: Number(a.batch_id),
-        subject: a.subject,
-      }));
-    } else if (Array.isArray(batch_ids)) {
-      assignmentRows = batch_ids.map(batch_id => ({
-        teacher_id: user.id,
-        batch_id,
-      }));
+    if (Array.isArray(batch_assignments) || Array.isArray(batch_ids)) {
+      assignmentRows = buildAssignmentRows(user.id, batch_assignments, batch_ids);
     }
     if (assignmentRows.length > 0) {
       await models.TeacherBatchAssignment.bulkCreate(assignmentRows);
@@ -154,19 +163,7 @@ export const update = async (req, res) => {
 
     if (Array.isArray(batch_ids) || Array.isArray(batch_assignments)) {
       await models.TeacherBatchAssignment.destroy({ where: { teacher_id: teacher.id } });
-      let rows = [];
-      if (Array.isArray(batch_assignments)) {
-        rows = batch_assignments.map(a => ({
-          teacher_id: teacher.id,
-          batch_id: Number(a.batch_id),
-          subject: a.subject,
-        }));
-      } else if (batch_ids.length > 0) {
-        rows = batch_ids.map(batch_id => ({
-          teacher_id: teacher.id,
-          batch_id,
-        }));
-      }
+      const rows = buildAssignmentRows(teacher.id, batch_assignments, batch_ids);
       if (rows.length > 0) {
         await models.TeacherBatchAssignment.bulkCreate(rows);
       }

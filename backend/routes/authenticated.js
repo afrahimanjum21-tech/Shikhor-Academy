@@ -258,6 +258,7 @@ import * as TeacherDashboardController from '../controllers/Teacher/TeacherDashb
 import * as TeacherProfileController from '../controllers/Teacher/TeacherProfileController.js';
 import * as TeacherAttendanceController from '../controllers/Teacher/TeacherAttendanceController.js';
 import * as TeacherMarksController from '../controllers/Teacher/TeacherMarksController.js';
+import * as TeacherResultController from '../controllers/Teacher/TeacherResultController.js';
 import * as TeacherMaterialController from '../controllers/Teacher/TeacherMaterialController.js';
 import * as TeacherAssignmentController from '../controllers/Teacher/TeacherAssignmentController.js';
 
@@ -281,6 +282,12 @@ teacher.put('/attendance/:attendanceId', TeacherAttendanceController.updateAtten
 teacher.get('/exams', TeacherMarksController.getExams);
 teacher.get('/exams/:examId/students', TeacherMarksController.getStudentsForExam);
 teacher.post('/exams/marks', TeacherMarksController.saveMarks);
+
+teacher.get('/results/assignments', TeacherResultController.myAssignments);
+teacher.get('/results/exams', TeacherResultController.getExams);
+teacher.get('/results/students', TeacherResultController.getStudents);
+teacher.post('/results/marks', TeacherResultController.saveMarks);
+teacher.post('/results/publish', TeacherResultController.togglePublish);
 
 teacher.get('/materials', TeacherMaterialController.index);
 teacher.post('/materials', uploadFile('materials').single('file'), TeacherMaterialController.store);

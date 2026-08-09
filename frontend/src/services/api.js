@@ -78,6 +78,9 @@ const UNWRAP_ALWAYS_ENDPOINTS = [
     '/teacher/exams',
     '/teacher/materials',
     '/teacher/assignments',
+    '/teacher/results/assignments',
+    '/teacher/results/exams',
+    '/teacher/results/students',
 ];
 
 api.interceptors.response.use(
