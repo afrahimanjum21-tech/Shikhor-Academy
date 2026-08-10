@@ -163,8 +163,8 @@ export default function SiteSettings() {
 
                     <Section icon={<MailCheck size={20} />} title="Notification Emails" subtitle="Choose where incoming admission requests and contact messages will arrive.">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Field label="Admission Request Email" value={form.admission_email || ""} onChange={(v) => update("admission_email", v)} placeholder="admin@uttoron.com" />
-                            <Field label="Contact Messages Email" value={form.messages_email || ""} onChange={(v) => update("messages_email", v)} placeholder="admin@uttoron.com" />
+                            <Field label="Admission Request Email" value={form.admission_email || ""} onChange={(v) => update("admission_email", v)} placeholder="afrahimamjum00@gmail.com" />
+                            <Field label="Contact Messages Email" value={form.messages_email || ""} onChange={(v) => update("messages_email", v)} placeholder="afrahimamjum00@gmail.com" />
                         </div>
                     </Section>
 

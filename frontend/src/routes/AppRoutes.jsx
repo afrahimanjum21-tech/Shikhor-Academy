@@ -20,6 +20,7 @@ const CourseDetail = lazy(() => import('../pages/CourseDetail'));
 const Contact = lazy(() => import('../pages/Contact'));
 const Library = lazy(() => import('../pages/Library'));
 const CheckResult = lazy(() => import('../pages/CheckResult'));
+const VerifyCredentialChange = lazy(() => import('../pages/VerifyCredentialChange'));
 
 // Admin Pages (lazy)
 const AdminDashboard = lazy(() => import('../pages/AdminDashboard'));
@@ -47,6 +48,7 @@ const EventManager = lazy(() => import('../pages/admin/EventManager'));
 const PaymentManager = lazy(() => import('../pages/admin/PaymentManager'));
 const PaymentSettings = lazy(() => import('../pages/admin/PaymentSettings'));
 const SiteSettings = lazy(() => import('../pages/admin/SiteSettings'));
+const SecuritySettings = lazy(() => import('../pages/admin/SecuritySettings'));
 const PaymentResult = lazy(() => import('../pages/payment/PaymentResult'));
 const ContactMessages = lazy(() => import('../pages/admin/ContactMessages'));
 
@@ -116,6 +118,7 @@ export default function AppRoutes() {
             </Route>
 
             <Route path="/check-result" element={<CheckResult />} />
+            <Route path="/verify-credential-change" element={<VerifyCredentialChange />} />
             <Route path="/payment/success" element={<PaymentResult type="success" />} />
             <Route path="/payment/failed" element={<PaymentResult type="failed" />} />
             <Route path="/payment/cancelled" element={<PaymentResult type="cancelled" />} />
@@ -152,6 +155,7 @@ export default function AppRoutes() {
                     <Route path="/admin/payments" element={<PaymentManager />} /> {/* <--- নতুন রাউট */}
                     <Route path="/admin/payment-settings" element={<PaymentSettings />} />
                     <Route path="/admin/site-settings" element={<SiteSettings />} />
+                    <Route path="/admin/security" element={<SecuritySettings />} />
                     <Route path="/admin/contact-messages" element={<ContactMessages />} />
                 </Route>
             </Route>

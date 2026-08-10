@@ -69,21 +69,12 @@ export function resetMailConfigCache() {
   transportCacheKey = '';
 }
 
-// Bootstrap placeholder accounts created by the seeders use email addresses
-// that are not real mailboxes (e.g. admin@uttoron.com, whose domain has a Null
-// MX record). We must never deliver to them unless they are *explicitly*
-// configured as a recipient, otherwise mail servers bounce them via
-// mailer-daemon and spam the admin's inbox.
-export const BOOTSTRAP_PLACEHOLDER_EMAILS = new Set(['admin@uttoron.com']);
-
 // Resolve the intended recipients for public-form admin notifications
 // (admission applications, contact messages, ...).
 // Preference order:
 //  1. An admin-configured SiteSetting field (e.g. `admission_email`,
-//     `messages_email`) — explicitly configured recipients are always honored,
-//     even if they happen to be a placeholder address.
-//  2. Active admin/super_admin users, WITH the bootstrap placeholder emails
-//     filtered out so they can never cause bounces.
+//     `messages_email`) — explicitly configured recipients are always honored.
+//  2. Active admin/super_admin users.
 export async function resolveAdminRecipients(settingField) {
   const setting = await models.SiteSetting.findByPk(1, {
     attributes: [settingField],
@@ -100,8 +91,7 @@ export async function resolveAdminRecipients(settingField) {
   });
   return admins
     .map((u) => u.email)
-    .filter(Boolean)
-    .filter((e) => !BOOTSTRAP_PLACEHOLDER_EMAILS.has(e.toLowerCase()));
+    .filter(Boolean);
 }
 
 const transportKeyOf = (c) => [c.host, c.port, c.secure, c.auth.user, c.auth.pass].join('|');

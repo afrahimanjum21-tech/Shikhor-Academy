@@ -13,6 +13,7 @@ import * as GalleryController from '../controllers/Admin/GalleryController.js';
 import * as ResourceController from '../controllers/Academic/ResourceController.js';
 import * as TeacherController from '../controllers/Admin/TeacherController.js';
 import * as SslCommerzController from '../controllers/Student/SslCommerzController.js';
+import * as CredentialChangeController from '../controllers/Auth/CredentialChangeController.js';
 import { uploadPhoto } from '../middleware/upload.js';
 import rateLimit from 'express-rate-limit';
 
@@ -23,6 +24,7 @@ const contactLimiter = rateLimit({ windowMs: 60 * 1000, max: 3, message: { messa
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { message: 'Too many login attempts, please try again later' } });
 
 router.post('/login', loginLimiter, AuthController.login);
+router.get('/verify-credential-change', CredentialChangeController.verify);
 router.post('/admission/submit', admissionLimiter, uploadPhoto('admission_photos', 2).single('photo'), AdmissionController.submit);
 router.get('/public/admissions/action', AdmissionEmailActionController.action);
 router.post('/contact', contactLimiter, ContactController.submit);

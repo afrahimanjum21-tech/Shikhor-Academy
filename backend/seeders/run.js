@@ -12,11 +12,12 @@ async function runSeeders() {
     }
     const password = await bcrypt.hash(seederPass, 12);
 
+    const adminEmail = process.env.SEEDER_ADMIN_EMAIL || 'afrahimamjum00@gmail.com';
     const admin = await models.User.findOrCreate({
-      where: { email: 'admin@uttoron.com' },
+      where: { email: adminEmail },
       defaults: {
         name: 'Super Admin',
-        email: 'admin@uttoron.com',
+        email: adminEmail,
         password,
         role: 'super_admin',
         phone: '01700000000',

@@ -50,12 +50,15 @@ import * as SiteSettingController from '../controllers/Admin/SiteSettingControll
 import * as ContactMessageController from '../controllers/Admin/ContactMessageController.js';
 import * as StudentDocumentController from '../controllers/Admin/StudentDocumentController.js';
 import * as ResourceController from '../controllers/Academic/ResourceController.js';
+import * as CredentialChangeController from '../controllers/Auth/CredentialChangeController.js';
 import { uploadPhoto, uploadFile } from '../middleware/upload.js';
 
 const admin = Router();
 admin.use(authorize('admin', 'super_admin'));
 
 admin.get('/stats', DashboardController.stats);
+
+admin.post('/change-credentials', CredentialChangeController.requestChange);
 
 admin.get('/students', AdminUserController.index);
 admin.post('/students', uploadPhoto('students').single('photo'), AdminUserController.store);

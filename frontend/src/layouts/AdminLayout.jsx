@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { LayoutDashboard, Users, FileText, BookOpen, LogOut, Menu, X, Image as ImageIcon, Bell, Calendar, CalendarDays, Library, GraduationCap, Layers, Banknote, Settings, UserCog, Building2, Laptop, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Users, FileText, BookOpen, LogOut, Menu, X, Image as ImageIcon, Bell, Calendar, CalendarDays, Library, GraduationCap, Layers, Banknote, Settings, UserCog, Building2, Laptop, MessageSquare, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import FloatingUploadWidget from "../components/common/FloatingUploadWidget";
 import ErrorBoundary from "../components/common/ErrorBoundary";
@@ -47,6 +47,7 @@ export default function AdminLayout() {
         { name: 'Payments', path: '/admin/payments', icon: <Banknote size={20}/>, count: counts.pending_payments || 0 },
         { name: 'Payment Settings', path: '/admin/payment-settings', icon: <Settings size={20}/> },
         { name: 'Site Settings', path: '/admin/site-settings', icon: <Building2 size={20}/> },
+        { name: 'Security', path: '/admin/security', icon: <ShieldCheck size={20}/> },
         { name: 'Library', path: '/admin/library', icon: <Library size={20}/> },
         { name: 'Gallery', path: '/admin/gallery', icon: <ImageIcon size={20}/> },
         { name: 'E-Learning', path: '/admin/e-learning', icon: <Laptop size={20}/> },
