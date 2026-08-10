@@ -6,7 +6,10 @@ async function runSeeders() {
   try {
     console.log('Running seeders...');
 
-    const seederPass = process.env.SEEDER_PASSWORD || 'password123';
+    const seederPass = process.env.SEEDER_PASSWORD;
+    if (!seederPass) {
+      throw new Error('SEEDER_PASSWORD environment variable is required to run seeders. Set it before running npm run seed.');
+    }
     const password = await bcrypt.hash(seederPass, 12);
 
     const admin = await models.User.findOrCreate({
