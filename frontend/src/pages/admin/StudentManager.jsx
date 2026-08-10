@@ -11,6 +11,7 @@ export default function StudentManager() {
     const confirm = useConfirm();
     const [students, setStudents] = useState([]);
     const [batches, setBatches] = useState([]); // ব্যাচ লিস্ট
+    const [subjects, setSubjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [entries, setEntries] = useState(10);
@@ -33,19 +34,21 @@ export default function StudentManager() {
         mother_name: '', mother_phone: '', mother_occupation: '',
          present_address: '', permanent_address: '',
         emergency_contact_name: '', emergency_contact_phone: '', emergency_contact_relation: '',
-        last_school: '', jsc_gpa: '', ssc_gpa: '',
+        last_school: '', jsc_gpa: '', ssc_gpa: '', subject: '',
     });
     const [addPhoto, setAddPhoto] = useState(null);
     const [saving, setSaving] = useState(false);
 
     const fetchData = async () => {
         try {
-            const [stdRes, batchRes] = await Promise.all([
+            const [stdRes, batchRes, subRes] = await Promise.all([
                 api.get('/admin/students'),
-                api.get('/admin/batches')
+                api.get('/admin/batches'),
+                api.get('/admin/faculty/subjects')
             ]);
             setStudents(stdRes.data);
             setBatches(batchRes.data);
+            setSubjects(subRes.data?.data || []);
         } catch (err) { logger.error(err); } 
         finally { setLoading(false); }
     };
@@ -75,6 +78,7 @@ export default function StudentManager() {
             phone: student.phone,
             student_id_card_no: prof.student_id_card_no || '',
             current_batch_id: prof.current_batch_id || '',
+            subject: prof.subject || '',
             emergency_contact_name: prof.emergency_contact_name || prof.emergency_name || '',
             emergency_contact_phone: prof.emergency_contact_phone || prof.emergency_mobile || '',
             emergency_contact_relation: prof.emergency_contact_relation || '',
@@ -106,7 +110,7 @@ export default function StudentManager() {
             notify.success("Student created successfully!");
             setIsAddOpen(false);
             setAddPhoto(null);
-            setAddForm({ name: '', email: '', password: '', phone: '', student_id_card_no: '', current_batch_id: '', gender: '', guardian_phone: '', dob: '', religion: 'islam', blood_group: '', nationality: 'Bangladeshi', father_name: '', father_phone: '', father_occupation: '', mother_name: '', mother_phone: '', mother_occupation: '', present_address: '', permanent_address: '', emergency_contact_name: '', emergency_contact_phone: '', emergency_contact_relation: '', last_school: '', jsc_gpa: '', ssc_gpa: '' });
+            setAddForm({ name: '', email: '', password: '', phone: '', student_id_card_no: '', current_batch_id: '', gender: '', guardian_phone: '', dob: '', religion: 'islam', blood_group: '', nationality: 'Bangladeshi', father_name: '', father_phone: '', father_occupation: '', mother_name: '', mother_phone: '', mother_occupation: '', present_address: '', permanent_address: '', emergency_contact_name: '', emergency_contact_phone: '', emergency_contact_relation: '', last_school: '', jsc_gpa: '', ssc_gpa: '', subject: '' });
             fetchData();
         } catch (err) {
             const errors = err.response?.data?.errors;
@@ -288,6 +292,14 @@ export default function StudentManager() {
                                             {batches.map(b => <option key={b.id} value={b.id}>{b.course?.title} - {b.name}</option>)}
                                         </select>
                                     </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Subject</label>
+                                        <select className="w-full border p-2 rounded text-sm bg-white" value={addForm.subject} onChange={e => setAddForm({...addForm, subject: e.target.value})}>
+                                            <option value="">Select Subject</option>
+                                            <option value="All">All</option>
+                                            {subjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
 
@@ -445,6 +457,11 @@ export default function StudentManager() {
                 <select className="w-full border p-2 rounded text-sm bg-white" value={editForm.current_batch_id} onChange={e => setEditForm({...editForm, current_batch_id: e.target.value})}>
                     <option value="">Select Batch</option>
                     {batches.map(b => <option key={b.id} value={b.id}>{b.course?.title} - {b.name}</option>)}
+                </select>
+                <select className="w-full border p-2 rounded text-sm bg-white" value={editForm.subject || ''} onChange={e => setEditForm({...editForm, subject: e.target.value})}>
+                    <option value="">Select Subject</option>
+                    <option value="All">All</option>
+                    {subjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                 </select>
                 <hr className="my-2" />
                 <p className="text-xs font-semibold text-gray-500">Emergency Contact</p>

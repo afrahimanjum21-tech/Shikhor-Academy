@@ -45,14 +45,16 @@ export default function Admission() {
     mother_name: "", mother_phone: "", mother_occupation: "",
     address: "", permanent_address: "",
     emergency_name: "", emergency_phone: "", emergency_relation: "",
-    last_school: "", jsc_gpa: "", ssc_gpa: "",
+    last_school: "", jsc_gpa: "", ssc_gpa: "", subject: "",
   });
 
+  const [subjects, setSubjects] = useState([]);
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     api.get("/public/courses").then((res) => setCourses(res.data));
+    api.get("/public/faculty/subjects").then((res) => setSubjects(res.data)).catch(() => {});
   }, []);
 
   const handleChange = (e) => {
@@ -336,6 +338,41 @@ export default function Admission() {
                   style={inputGlass}
                   onChange={handleChange}
                 />
+              </div>
+              <div>
+                <label className={sectionLabel}>Subject *</label>
+                <div className="relative">
+                  <select
+                    name="subject"
+                    className={glassSelect}
+                    style={inputGlass}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select subject</option>
+                    <option value="All">All</option>
+                    {subjects.map((s) => (
+                      <option key={s.id} value={s.name}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
+                    <svg
+                      className="w-4 h-4 text-[#1F4E79]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                </div>
               </div>
               <div>
                 <label className={sectionLabel}>Gender *</label>
