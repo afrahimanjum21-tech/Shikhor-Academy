@@ -1,10 +1,9 @@
 import { useState } from "react";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import PasswordInput from "../../components/common/PasswordInput";
 import {
     CheckCircle2,
-    Eye,
-    EyeOff,
     KeyRound,
     Loader2,
     Lock,
@@ -15,7 +14,6 @@ import {
 export default function SecuritySettings() {
     const { user } = useAuth();
     const [form, setForm] = useState({ currentPassword: "", newEmail: "", newPassword: "", confirmPassword: "" });
-    const [showPassword, setShowPassword] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [sent, setSent] = useState(false);
     const [message, setMessage] = useState("");
@@ -118,7 +116,7 @@ export default function SecuritySettings() {
                     <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
                         <Lock size={14} /> Current Password <span className="text-red-500">*</span>
                     </label>
-                    <input type="password" className={inputCls} value={form.currentPassword} onChange={(e) => update("currentPassword", e.target.value)} placeholder="Enter your current app password" />
+                    <PasswordInput className={inputCls} value={form.currentPassword} onChange={(e) => update("currentPassword", e.target.value)} placeholder="Enter your current app password" />
                 </div>
 
                 <div className="border-t border-gray-100 pt-5">
@@ -133,19 +131,14 @@ export default function SecuritySettings() {
                     <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
                         <KeyRound size={14} /> New App Password (optional)
                     </label>
-                    <div className="relative">
-                        <input type={showPassword ? "text" : "password"} className={inputCls} value={form.newPassword} onChange={(e) => update("newPassword", e.target.value)} placeholder="At least 8 characters" />
-                        <button type="button" onClick={() => setShowPassword((s) => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                    </div>
+                    <PasswordInput className={inputCls} value={form.newPassword} onChange={(e) => update("newPassword", e.target.value)} placeholder="At least 8 characters" />
                 </div>
 
                 <div>
                     <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
                         <Lock size={14} /> Confirm New Password
                     </label>
-                    <input type="password" className={inputCls} value={form.confirmPassword} onChange={(e) => update("confirmPassword", e.target.value)} placeholder="Repeat the new app password" />
+                    <PasswordInput className={inputCls} value={form.confirmPassword} onChange={(e) => update("confirmPassword", e.target.value)} placeholder="Repeat the new app password" />
                 </div>
 
                 <button type="submit" disabled={submitting} className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#1F4E79] text-white text-sm font-semibold hover:bg-[#1a4166] disabled:opacity-60 disabled:cursor-not-allowed transition-colors">

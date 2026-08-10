@@ -5,6 +5,7 @@ import { MoreVertical, Search, Eye, Trash2, ShieldAlert, FileOutput, CheckCircle
 import { useNavigate } from "react-router-dom";
 import notify from "../../services/notification";
 import { useConfirm } from "../../components/common/ConfirmDialog";
+import PasswordInput from "../../components/common/PasswordInput";
 import logger from '../../services/logger';
  
 export default function StudentManager() {
@@ -271,7 +272,7 @@ export default function StudentManager() {
                                     </div>
                                     <div>
                                         <label className="block text-xs font-medium text-gray-600 mb-1">Password</label>
-                                        <input type="password" autoComplete="new-password" minLength={8} className="w-full border p-2 rounded text-sm" value={addForm.password} onChange={e => setAddForm({...addForm, password: e.target.value})} />
+                                        <PasswordInput autoComplete="new-password" minLength={8} className="w-full border p-2 rounded text-sm" value={addForm.password} onChange={e => setAddForm({...addForm, password: e.target.value})} />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>

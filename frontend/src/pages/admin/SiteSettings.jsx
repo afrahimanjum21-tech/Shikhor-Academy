@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import PasswordInput from "../../components/common/PasswordInput";
 import {
     Building2,
     CheckCircle2,
@@ -274,6 +275,15 @@ function Field({ label, value, onChange, required = false, placeholder = "", tex
                     placeholder={placeholder}
                     onChange={(e) => onChange(e.target.value)}
                     rows="2"
+                    className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-[#1F4E79]"
+                />
+            ) : type === "password" ? (
+                <PasswordInput
+                    value={value}
+                    required={required}
+                    placeholder={placeholder}
+                    maxLength={maxLength}
+                    onChange={(e) => onChange(e.target.value)}
                     className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-[#1F4E79]"
                 />
             ) : (

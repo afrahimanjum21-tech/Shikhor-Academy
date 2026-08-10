@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { CheckCircle2, CreditCard, Loader2, Save, ShieldCheck } from "lucide-react";
+import PasswordInput from "../../components/common/PasswordInput";
 
 const defaultForm = {
     is_active: false,
@@ -113,8 +114,7 @@ export default function PaymentSettings() {
                         <Field label="Store ID" value={form.store_id || ""} onChange={(value) => update("store_id", value)} required={form.is_active} />
                         <div>
                             <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Store Password</label>
-                            <input
-                                type="password"
+                            <PasswordInput
                                 value={form.store_password}
                                 onChange={(event) => update("store_password", event.target.value)}
                                 placeholder={hasPassword ? "Saved. Enter only to replace" : "Required before activation"}

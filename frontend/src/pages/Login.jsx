@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import PageBackground from "../components/common/PageBackground";
+import PasswordInput from "../components/common/PasswordInput";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { LogIn } from "lucide-react";
 import { motion } from "framer-motion";
@@ -74,8 +75,7 @@ export default function Login() {
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase">Password</label>
-                        <input
-                            type="password"
+                        <PasswordInput
                             className="w-full border-b border-gray-200 focus:border-[#1F4E79] transition-all outline-none bg-transparent text-sm py-2.5"
                             placeholder="••••••••"
                             value={password}

@@ -4,6 +4,7 @@ import { buildAssetUrl } from "../../services/config";
 import { Users, Plus, Edit, Trash2, Search, Filter, Star, Eye, EyeOff, ArrowUpDown, Upload, X, Tag, Mail, Phone, Award, BookOpen, Calendar, User } from "lucide-react";
 import notify from "../../services/notification";
 import { useConfirm } from "../../components/common/ConfirmDialog";
+import PasswordInput from "../../components/common/PasswordInput";
 import logger from '../../services/logger';
  
 export default function FacultyManager() {
@@ -1161,8 +1162,7 @@ export default function FacultyManager() {
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                                                    <input
-                                                        type="password"
+                                                    <PasswordInput
                                                         value={formData.password}
                                                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                                         required={formData.create_user_account}
@@ -1192,8 +1192,7 @@ export default function FacultyManager() {
                                                     </div>
                                                     <div>
                                                         <label className="block text-sm font-medium text-gray-700 mb-1">New Password (optional)</label>
-                                                        <input
-                                                            type="password"
+                                                        <PasswordInput
                                                             value={formData.password}
                                                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                                             minLength={8}
@@ -1229,8 +1228,7 @@ export default function FacultyManager() {
                                                         </div>
                                                         <div>
                                                             <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                                                            <input
-                                                                type="password"
+                                                            <PasswordInput
                                                                 value={formData.password}
                                                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                                                 required={formData.create_user_account}

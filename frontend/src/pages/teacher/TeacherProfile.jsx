@@ -3,6 +3,7 @@ import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { buildAssetUrl } from "../../services/config";
 import { User, Mail, Phone, Calendar, Edit, Camera, Lock } from "lucide-react";
+import PasswordInput from "../../components/common/PasswordInput";
 import notify from "../../services/notification";
 import logger from '../../services/logger';
 
@@ -194,8 +195,7 @@ export default function TeacherProfile() {
                 <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
-                        <input
-                            type="password"
+                        <PasswordInput
                             name="current_password"
                             required
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F4E79] focus:border-transparent"
@@ -203,8 +203,7 @@ export default function TeacherProfile() {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-                        <input
-                            type="password"
+                        <PasswordInput
                             name="new_password"
                             required
                             minLength={8}
@@ -213,8 +212,7 @@ export default function TeacherProfile() {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
-                        <input
-                            type="password"
+                        <PasswordInput
                             name="new_password_confirmation"
                             required
                             minLength={8}

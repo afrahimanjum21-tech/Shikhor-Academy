@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import notify from "../../services/notification";
 import { useConfirm } from "../../components/common/ConfirmDialog";
+import PasswordInput from "../../components/common/PasswordInput";
 import logger from '../../services/logger';
 
 const EMPTY = { name: '', email: '', phone: '', designation: '', subject: '', password: '', bio: '', joining_date: '' };
@@ -654,9 +655,8 @@ export default function TeacherManager() {
                   </label>
                   <div className="relative">
                     <KeyRound size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-primary outline-none transition-colors bg-white"
-                      type="password"
+                    <PasswordInput
+                      className="w-full pl-9 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-primary outline-none transition-colors bg-white"
                       placeholder={editingTeacher ? 'Leave blank to keep current' : 'Set login password'}
                       required={!editingTeacher}
                       minLength={8}
