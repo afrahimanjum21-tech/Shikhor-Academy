@@ -17,12 +17,12 @@ window.addEventListener('beforeinstallprompt', (e) => {
   window.__uttoronDeferredPrompt = e;
 });
 
-// Register the service worker (production only, to keep the dev server clean).
+// Register the service worker immediately (not on window load) so the
+// browser's installability check completes sooner and `beforeinstallprompt`
+// can fire right away. Production only, to keep the dev server clean.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
-      console.warn('Service worker registration failed:', err);
-    });
+  navigator.serviceWorker.register('/sw.js').catch((err) => {
+    console.warn('Service worker registration failed:', err);
   });
 }
 

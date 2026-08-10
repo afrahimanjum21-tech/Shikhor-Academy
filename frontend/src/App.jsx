@@ -3,8 +3,23 @@ import AppRoutes from './routes/AppRoutes';
 import LoadingScreen from './components/common/LoadingScreen';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import InstallPrompt from './components/common/InstallPrompt';
+import api from './services/api';
+
+// Keep the serverless database warm while the app is open. Neon suspends the
+// compute after ~5 minutes of inactivity; a periodic lightweight ping avoids
+// the multi-second cold-start delay (and occasional 503) on the first request
+// after idle. Failures are harmless — the next ping will retry.
+function keepDbWarm() {
+  api.get('/keep-alive').catch(() => {});
+}
 
 function App() {
+  useEffect(() => {
+    keepDbWarm();
+    const keepAliveTimer = window.setInterval(keepDbWarm, 4 * 60 * 1000);
+    return () => window.clearInterval(keepAliveTimer);
+  }, []);
+
   useEffect(() => {
     const preloadRoutes = () => {
       Promise.allSettled([

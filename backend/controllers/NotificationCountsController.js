@@ -2,8 +2,31 @@ import models from '../models/index.js';
 import { Op } from 'sequelize';
 import { parseSince, makeAfter } from '../utils/sinceFilters.js';
 
+// Short-lived in-memory cache: the frontend polls this endpoint every 60s per
+// tab, and several tabs can be open at once. Serving repeated identical
+// requests from the cache avoids stacking many parallel DB queries on a single
+// serverless instance (which is what pushes cold starts toward timeouts/503s).
+const CACHE_TTL_MS = 10000;
+const countsCache = new Map();
+
+const cacheKeyFor = (req) => `${req.user.id}:${req.user.role}:${JSON.stringify(req.query)}`;
+
+// Opportunistic cleanup so the map can't grow without bound.
+const pruneCache = () => {
+  const now = Date.now();
+  for (const [k, v] of countsCache) {
+    if (now - v.at >= CACHE_TTL_MS) countsCache.delete(k);
+  }
+};
+
 export const counts = async (req, res) => {
   try {
+    const key = cacheKeyFor(req);
+    const hit = countsCache.get(key);
+    if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
+      return res.json({ data: hit.value });
+    }
+
     const user = req.user;
     const counts = {};
 
@@ -122,6 +145,8 @@ export const counts = async (req, res) => {
       }
     }
 
+    if (countsCache.size > 200) pruneCache();
+    countsCache.set(key, { at: Date.now(), value: counts });
     res.json({ data: counts });
   } catch (error) {
     console.error('NotificationCountsController.counts error:', error);

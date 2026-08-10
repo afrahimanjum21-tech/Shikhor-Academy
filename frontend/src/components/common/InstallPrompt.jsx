@@ -108,6 +108,7 @@ export default function InstallPrompt() {
 
         const onBeforeInstallPrompt = (e) => {
             e.preventDefault();
+            window.__uttoronDeferredPrompt = e;
             setDeferredPrompt(e);
         };
         const onAppInstalled = () => {
@@ -142,7 +143,21 @@ export default function InstallPrompt() {
     }, [shouldShow]);
 
     const handleInstall = async () => {
-        const prompt = deferredPrompt || window.__uttoronDeferredPrompt;
+        let prompt = deferredPrompt || window.__uttoronDeferredPrompt;
+
+        // The browser may still be running its installability check when the
+        // user clicks. Wait a short grace period for `beforeinstallprompt`
+        // (it often fires right after the click gesture registers engagement)
+        // before falling back to manual instructions.
+        if (!prompt) {
+            const deadline = Date.now() + 4000;
+            while (Date.now() < deadline) {
+                await new Promise((resolve) => setTimeout(resolve, 250));
+                prompt = deferredPrompt || window.__uttoronDeferredPrompt;
+                if (prompt) break;
+            }
+        }
+
         if (prompt) {
             window.__uttoronDeferredPrompt = null;
             setDeferredPrompt(null);
