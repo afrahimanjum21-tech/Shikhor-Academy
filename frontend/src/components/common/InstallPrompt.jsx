@@ -1,6 +1,11 @@
-import { useEffect, useState } from "react";
-import { Download, Monitor, Smartphone, X, Share2, Menu } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Download, X, Share2, Menu, Monitor, Smartphone } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+const DISMISS_KEY = "ucc_pwa_install_dismissed_at";
+const INSTALLED_KEY = "ucc_pwa_install_done";
+const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // don't nag again for 7 days
+const SHOW_DELAY_MS = 4000;
 
 const getPlatform = () => {
     const ua = navigator.userAgent || "";
@@ -22,6 +27,22 @@ const getBrowser = () => {
 const isInstalledApp = () =>
     (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) ||
     window.navigator.standalone === true;
+
+const readFlag = (key) => {
+    try {
+        return localStorage.getItem(key);
+    } catch (err) {
+        return null;
+    }
+};
+
+const writeFlag = (key, value) => {
+    try {
+        localStorage.setItem(key, value);
+    } catch (err) {
+        // Private-mode browsers may block storage; nothing to do.
+    }
+};
 
 const HELP_STEPS = {
     ios: {
@@ -58,24 +79,29 @@ const HELP_STEPS = {
                   ]
                 : [
                       "Click the install icon (monitor with a down-arrow) in the address bar.",
-                      "Alternatively, click the browser menu (\u2630) and choose \u201CInstall Uttoron Coaching Centre\u201D (or \u201CCast, save, and share \u2192 Install page as app\u201D in Edge).",
+                      "Alternatively, open the browser menu (\u2630) and choose \u201CInstall Uttoron Coaching Centre\u201D (or \u201CCast, save, and share \u2192 Install page as app\u201D in Edge).",
                       "Confirm by clicking \u201CInstall\u201D.",
                   ],
         note: "Uttoron will open in its own window with an icon on your desktop and taskbar (or dock).",
     },
 };
 
-export default function InstallAppButton({ variant = "pill", className = "" }) {
+export default function InstallPrompt() {
+    const [visible, setVisible] = useState(false);
     const [deferredPrompt, setDeferredPrompt] = useState(null);
-    const [installed, setInstalled] = useState(false);
     const [showHelp, setShowHelp] = useState(false);
+    const [installed, setInstalled] = useState(false);
+
+    const shouldShow = useCallback(() => {
+        if (!import.meta.env.PROD) return false;
+        if (isInstalledApp()) return false;
+        if (readFlag(INSTALLED_KEY)) return false;
+        const dismissedAt = Number(readFlag(DISMISS_KEY));
+        if (dismissedAt && Date.now() - dismissedAt < DISMISS_DURATION_MS) return false;
+        return true;
+    }, []);
 
     useEffect(() => {
-        if (isInstalledApp()) {
-            setInstalled(true);
-            return;
-        }
-
         if (window.__uttoronDeferredPrompt) {
             setDeferredPrompt(window.__uttoronDeferredPrompt);
         }
@@ -85,11 +111,16 @@ export default function InstallAppButton({ variant = "pill", className = "" }) {
             setDeferredPrompt(e);
         };
         const onAppInstalled = () => {
+            writeFlag(INSTALLED_KEY, String(Date.now()));
             setInstalled(true);
-            setDeferredPrompt(null);
+            setVisible(false);
         };
         const onDisplayModeChange = (e) => {
-            if (e.matches) setInstalled(true);
+            if (e.matches) {
+                writeFlag(INSTALLED_KEY, String(Date.now()));
+                setInstalled(true);
+                setVisible(false);
+            }
         };
 
         window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
@@ -97,12 +128,18 @@ export default function InstallAppButton({ variant = "pill", className = "" }) {
         const mql = window.matchMedia("(display-mode: standalone)");
         mql.addEventListener?.("change", onDisplayModeChange);
 
+        let timer;
+        if (shouldShow()) {
+            timer = window.setTimeout(() => setVisible(true), SHOW_DELAY_MS);
+        }
+
         return () => {
+            window.clearTimeout(timer);
             window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
             window.removeEventListener("appinstalled", onAppInstalled);
             mql.removeEventListener?.("change", onDisplayModeChange);
         };
-    }, []);
+    }, [shouldShow]);
 
     const handleInstall = async () => {
         const prompt = deferredPrompt || window.__uttoronDeferredPrompt;
@@ -112,7 +149,11 @@ export default function InstallAppButton({ variant = "pill", className = "" }) {
             try {
                 prompt.prompt();
                 const { outcome } = await prompt.userChoice;
-                if (outcome === "accepted") setInstalled(true);
+                if (outcome === "accepted") {
+                    writeFlag(INSTALLED_KEY, String(Date.now()));
+                    setInstalled(true);
+                    setVisible(false);
+                }
             } catch (err) {
                 setShowHelp(true);
             }
@@ -121,25 +162,68 @@ export default function InstallAppButton({ variant = "pill", className = "" }) {
         }
     };
 
+    const handleDismiss = () => {
+        writeFlag(DISMISS_KEY, String(Date.now()));
+        setVisible(false);
+    };
+
     if (installed) return null;
 
     const platform = getPlatform();
     const help = HELP_STEPS[platform];
     const HelpIcon = help.icon;
-    const label = "Install App";
-
-    const buttonStyles = {
-        pill: `inline-flex items-center gap-1.5 bg-[#1F4E79] text-white px-3 xl:px-4 py-2 rounded-md font-bold hover:opacity-90 transition shadow-sm text-[10px] xl:text-xs uppercase whitespace-nowrap ${className}`,
-        icon: `inline-flex items-center gap-1.5 p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition ${className}`,
-        footer: `inline-flex items-center gap-2 text-gray-300 border border-gray-700 hover:text-white hover:border-gray-400 px-3 py-1.5 rounded-md text-xs font-semibold transition ${className}`,
-    };
 
     return (
         <>
-            <button type="button" onClick={handleInstall} className={buttonStyles[variant]} aria-label={label}>
-                <Download size={variant === "icon" ? 18 : 14} />
-                {variant !== "icon" && <span>{label}</span>}
-            </button>
+            <AnimatePresence>
+                {visible && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 40 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 40 }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                        role="dialog"
+                        aria-label="Install Uttoron as an app"
+                        className="fixed bottom-4 left-4 right-4 z-[90] sm:left-auto sm:right-4 sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
+                    >
+                        <div className="flex items-start gap-3 p-4">
+                            <div className="shrink-0 w-10 h-10 rounded-full bg-[#1F4E79] flex items-center justify-center text-white">
+                                <Download size={20} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-gray-900">Download as an App</p>
+                                <p className="mt-0.5 text-xs text-gray-500 leading-relaxed">
+                                    Install Uttoron Coaching Center on your device for a faster and more convenient experience.
+                                </p>
+                                <div className="mt-3 flex items-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={handleInstall}
+                                        className="bg-[#1F4E79] text-white px-4 py-1.5 rounded-md text-xs font-bold hover:opacity-90 transition shadow-sm"
+                                    >
+                                        Install
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleDismiss}
+                                        className="text-gray-500 hover:text-gray-700 text-xs font-medium transition"
+                                    >
+                                        Maybe later
+                                    </button>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleDismiss}
+                                className="shrink-0 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                aria-label="Dismiss"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <AnimatePresence>
                 {showHelp && (

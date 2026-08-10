@@ -7,7 +7,6 @@ import ErrorBoundary from "../components/common/ErrorBoundary";
 import { useNotificationCounts } from "../context/NotificationContext";
 import NotificationBadge from "../components/notifications/NotificationBadge";
 import NotificationBell from "../components/notifications/NotificationBell";
-import InstallAppButton from "../components/common/InstallAppButton";
 import { useConfirm } from "../components/common/ConfirmDialog";
 import HERO_IMAGE from "../images/hero-background.jpg";
 
@@ -88,7 +87,6 @@ export default function AdminLayout() {
                         <h2 className="text-sm md:text-lg font-semibold text-gray-800 truncate max-w-[140px] md:max-w-none">{navItems.find(i => i.path === location.pathname)?.name || 'Dashboard'}</h2>
                     </div>
                     <div className="flex items-center gap-2 md:gap-3">
-                        <InstallAppButton variant="icon" />
                         <NotificationBell />
                         <div className="hidden xs:block text-right">
                             <p className="text-xs md:text-sm font-bold text-gray-800 truncate max-w-[100px] md:max-w-[160px]">{user?.name}</p>

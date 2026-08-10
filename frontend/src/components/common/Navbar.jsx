@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useConfirm } from "./ConfirmDialog";
-import InstallAppButton from "./InstallAppButton";
 
 import LOGO_IMAGE from "../../images/hero-background.jpg";
 
@@ -73,19 +72,15 @@ export default function Navbar() {
                         ))}
 
                         {user ? (
-                            <div className="flex gap-4 items-center">
-                                <InstallAppButton variant="pill" />
+                            <div className="flex gap-4">
                                 <Link to="/admin/dashboard" className="bg-[#1F4F78] text-white px-4 xl:px-5 py-2 rounded-md font-bold hover:opacity-90 transition shadow-sm text-[10px] xl:text-xs uppercase whitespace-nowrap">
                                     DASHBOARD
                                 </Link>
                             </div>
                         ) : (
-                            <div className="flex gap-4 items-center">
-                                <InstallAppButton variant="pill" />
-                                <Link to="/login" className="text-[#1F4F78] font-bold border border-[#1F4F78] px-4 xl:px-5 py-2 rounded-md hover:bg-[#1F4F78] hover:text-white transition text-[10px] xl:text-xs uppercase whitespace-nowrap">
-                                    LOGIN
-                                </Link>
-                            </div>
+                            <Link to="/login" className="text-[#1F4F78] font-bold border border-[#1F4F78] px-4 xl:px-5 py-2 rounded-md hover:bg-[#1F4F78] hover:text-white transition text-[10px] xl:text-xs uppercase whitespace-nowrap">
+                                LOGIN
+                            </Link>
                         )}
                     </div>
 
@@ -145,7 +140,6 @@ export default function Navbar() {
                             ))}
 
                             <motion.div variants={fadeIn} className="pt-2 space-y-2">
-                                <InstallAppButton variant="pill" className="!w-full !justify-center" />
                                 {user ? (
                                     <>
                                         <Link

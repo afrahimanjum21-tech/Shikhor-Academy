@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Facebook, Instagram, Mail, MapPin, Phone, Twitter, Youtube } from "lucide-react";
 import { Link } from "react-router-dom";
 import api from "../../services/api";
-import InstallAppButton from "./InstallAppButton";
 import LOGO_IMAGE from "../../images/hero-background.jpg";
 
 export default function Footer() {
@@ -83,11 +82,8 @@ export default function Footer() {
                     </div>
                 </div>
 
-                <div className="text-center text-gray-500 text-sm pt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <span>
-                        &copy; {new Date().getFullYear()} {settings?.site_name || "উত্তরণ কোচিং সেন্টার"}. All rights reserved.
-                    </span>
-                    <InstallAppButton variant="footer" />
+                <div className="text-center text-gray-500 text-sm pt-6">
+                    &copy; {new Date().getFullYear()} {settings?.site_name || "উত্তরণ কোচিং সেন্টার"}. All rights reserved.
                 </div>
             </div>
         </footer>

@@ -2,6 +2,7 @@ import { Suspense, useEffect } from 'react';
 import AppRoutes from './routes/AppRoutes';
 import LoadingScreen from './components/common/LoadingScreen';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import InstallPrompt from './components/common/InstallPrompt';
 
 function App() {
   useEffect(() => {
@@ -85,6 +86,7 @@ function App() {
           <AppRoutes />
         </ErrorBoundary>
       </Suspense>
+      <InstallPrompt />
     </div>
   );
 }
