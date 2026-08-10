@@ -1,21 +1,60 @@
 {
+  "id": "/",
   "name": "Uttoron Coaching Centre",
   "short_name": "Uttoron",
   "description": "Uttoron Coaching Centre - Empowering students through quality education",
+  "lang": "en",
+  "dir": "ltr",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#ffffff",
   "theme_color": "#1F4E79",
+  "categories": ["education", "productivity"],
   "icons": [
     {
       "src": "favicon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "favicon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Home",
+      "url": "/",
+      "icons": [{ "src": "favicon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Courses",
+      "url": "/courses"
+    },
+    {
+      "name": "Admission",
+      "url": "/admission"
+    },
+    {
+      "name": "Notices",
+      "url": "/notices"
     }
   ]
 }

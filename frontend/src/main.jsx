@@ -9,6 +9,23 @@ import { UploadProvider } from './context/UploadContext'
 import { ConfirmProvider } from './components/common/ConfirmDialog'
 import { Toaster } from 'react-hot-toast'
 
+// Capture the PWA install prompt as early as possible so the Install App
+// button can use it even if the event fires before React mounts.
+window.__uttoronDeferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  window.__uttoronDeferredPrompt = e;
+});
+
+// Register the service worker (production only, to keep the dev server clean).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('Service worker registration failed:', err);
+    });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
