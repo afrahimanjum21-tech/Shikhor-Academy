@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import authConfig from '../config/auth.js';
 import models from '../models/index.js';
 import { getTokenFromReq } from '../services/cookie.js';
+import { withDbRetry } from '../services/dbRetry.js';
 
 export const authenticate = async (req, res, next) => {
   try {
@@ -20,12 +21,18 @@ export const authenticate = async (req, res, next) => {
 
     let user;
     try {
-      user = await models.User.findByPk(decoded.id, {
-      attributes: { exclude: ['password'] },
-    });
+      // Retry transient DB connection failures (e.g. Neon compute waking from
+      // suspension) before giving up with a 503.
+      user = await withDbRetry(() =>
+        models.User.findByPk(decoded.id, {
+          attributes: { exclude: ['password'] },
+        })
+      );
     } catch (dbError) {
       console.error('Auth database error:', dbError);
-      return res.status(503).json({ message: 'Service temporarily unavailable, please try again' });
+      return res.status(503).json({
+        message: 'Database is temporarily unavailable, please try again in a moment',
+      });
     }
 
     if (!user || !user.is_active) {

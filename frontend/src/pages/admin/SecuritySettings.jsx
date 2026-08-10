@@ -63,7 +63,7 @@ export default function SecuritySettings() {
             if (form.newEmail.trim()) payload.newEmail = form.newEmail.trim();
             if (form.newPassword) payload.newPassword = form.newPassword;
             const res = await api.post("/admin/change-credentials", payload);
-            setMessage(res.data.message || "Verification email sent.");
+            setMessage(res.data.message || "A confirmation email has been sent. Check your inbox (and spam folder). The link expires in 30 minutes.");
             setSent(true);
             setForm({ currentPassword: "", newEmail: "", newPassword: "", confirmPassword: "" });
         } catch (err) {
@@ -83,14 +83,14 @@ export default function SecuritySettings() {
                 </div>
                 <div>
                     <h1 className="text-xl font-bold text-gray-900">Security Settings</h1>
-                    <p className="text-sm text-gray-500">Change your admin sign-in email and app password.</p>
+                    <p className="text-sm text-gray-500">Change your admin sign-in email and admin login password.</p>
                 </div>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-start gap-3">
                 <Mail size={18} className="text-blue-600 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-blue-900">
-                    <p className="font-semibold">Current admin email: <span className="font-mono">{user?.email}</span></p>
+                    <p className="font-semibold">Current admin sign-in email: <span className="font-mono">{user?.email}</span></p>
                     <p className="mt-1 text-blue-800/80">After you submit, a confirmation email will be sent to this address. The change is applied only after you click the confirm link — nothing changes before that.</p>
                 </div>
             </div>
@@ -116,29 +116,30 @@ export default function SecuritySettings() {
                     <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
                         <Lock size={14} /> Current Password <span className="text-red-500">*</span>
                     </label>
-                    <PasswordInput className={inputCls} value={form.currentPassword} onChange={(e) => update("currentPassword", e.target.value)} placeholder="Enter your current app password" />
+                    <PasswordInput className={inputCls} value={form.currentPassword} onChange={(e) => update("currentPassword", e.target.value)} placeholder="Enter your current admin login password" />
                 </div>
 
                 <div className="border-t border-gray-100 pt-5">
                     <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
-                        <Mail size={14} /> New Email (optional)
+                        <Mail size={14} /> New Admin Sign-in Email (optional)
                     </label>
                     <input type="email" className={inputCls} value={form.newEmail} onChange={(e) => update("newEmail", e.target.value)} placeholder="newemail@example.com" />
-                    <p className="text-xs text-gray-400 mt-1">Future verification emails and password resets go to this address.</p>
+                    <p className="text-xs text-gray-400 mt-1">This is the email used to log in to the admin panel. Future verification emails and password resets go to this address.</p>
                 </div>
 
                 <div className="border-t border-gray-100 pt-5">
                     <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
-                        <KeyRound size={14} /> New App Password (optional)
+                        <KeyRound size={14} /> New Admin Login Password (optional)
                     </label>
                     <PasswordInput className={inputCls} value={form.newPassword} onChange={(e) => update("newPassword", e.target.value)} placeholder="At least 8 characters" />
+                    <p className="text-xs text-gray-400 mt-1">This is the password you use to log in to the admin panel. The site's SMTP/Gmail app password is configured in Site Settings, not here.</p>
                 </div>
 
                 <div>
                     <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
-                        <Lock size={14} /> Confirm New Password
+                        <Lock size={14} /> Confirm New Admin Login Password
                     </label>
-                    <PasswordInput className={inputCls} value={form.confirmPassword} onChange={(e) => update("confirmPassword", e.target.value)} placeholder="Repeat the new app password" />
+                    <PasswordInput className={inputCls} value={form.confirmPassword} onChange={(e) => update("confirmPassword", e.target.value)} placeholder="Repeat the new admin login password" />
                 </div>
 
                 <button type="submit" disabled={submitting} className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#1F4E79] text-white text-sm font-semibold hover:bg-[#1a4166] disabled:opacity-60 disabled:cursor-not-allowed transition-colors">

@@ -13,9 +13,11 @@ export const show = async (req, res) => {
 
     const data = setting.toJSON();
     data.has_smtp_password = Boolean(data.smtp_password);
+    delete data.smtp_password;
 
     res.json({ data });
   } catch (error) {
+    console.error('Fetch site settings error:', error);
     res.status(500).json({ message: 'Failed to fetch settings' });
   }
 };
@@ -85,9 +87,11 @@ export const update = async (req, res) => {
     const updated = await models.SiteSetting.instance();
     const result = updated.toJSON();
     result.has_smtp_password = Boolean(result.smtp_password);
+    delete result.smtp_password;
 
     res.json({ message: 'Settings updated successfully', data: result });
   } catch (error) {
+    console.error('Update site settings error:', error);
     res.status(500).json({ message: 'Failed to update settings' });
   }
 };
