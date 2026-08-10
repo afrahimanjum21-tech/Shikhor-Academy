@@ -13,7 +13,7 @@ import {
     Home, Building2,
     ChevronRight,
     Percent, CreditCard, BookMarked,
-    Globe, Bell, Image
+    Globe, Bell, Image, Printer
 } from "lucide-react";
 
 function Skeleton({ className = "" }) {
@@ -31,7 +31,28 @@ function getRankLabel(gpa) {
     return { label: "Active", color: "text-gray-300" };
 }
 
-const payload = (response) => response?.data?.data ?? response?.data;
+// Map the various names an admin backend may use for a document's `type` to a
+// small canonical set, so UI classification (e.g. "identity") isn't fragile
+// when the stored `type` is an unconstrained string.
+const ID_TYPE_ALIASES = new Set([
+  "identity", "identity_card", "id_card", "idcard", "id",
+  "student_id", "studentid", "studentidcard", "national_id", "nid",
+]);
+function canonicalDocumentType(type) {
+  if (!type) return "";
+  const t = String(type).toLowerCase().trim().replace(/[\s-]+/g, "_");
+  return ID_TYPE_ALIASES.has(t) ? "identity" : t;
+}
+function normalizeDocument(doc) {
+  if (!doc) return null;
+  return {
+    ...doc,
+    type: canonicalDocumentType(doc.type),
+    name: doc.name || doc.title || doc.original_name || doc.file_name || "",
+    file_path: doc.file_path || doc.path || doc.url || doc.file_url || doc.storage_path || doc.upload_url || "",
+    original_name: doc.original_name || doc.name || doc.title || doc.original_filename || "",
+  };
+}
 
 function HeroBadge({ icon: Icon, children }) {
     return (
@@ -69,14 +90,22 @@ export default function StudentProfile() {
     });
     const [error, setError] = useState(null);
 
+    const normalizedDocs = useMemo(() => (documents || []).map(normalizeDocument).filter(Boolean), [documents]);
+    const idCardDoc = useMemo(() => normalizedDocs.find((d) => d.type === "identity"), [normalizedDocs]);
+    const otherDocs = useMemo(() => normalizedDocs.filter((d) => d.type !== "identity"), [normalizedDocs]);
+
     const fetchSection = async (key, request) => {
         try {
             const res = await request;
             setSections(prev => ({ ...prev, [key]: "done" }));
-            return { status: "fulfilled", value: res };
+            // Pre-unwrap the normalised envelope (`{data:[...]}` or `{data:{...}}`)
+            // and return the payload directly. Promise.allSettled's `value` is
+            // then the data itself — callers no longer need the confusing
+            // `res.value.value` double-wrap. Returns `null` on failure.
+            return res?.data?.data ?? res?.data ?? null;
         } catch (err) {
             setSections(prev => ({ ...prev, [key]: "error" }));
-            return { status: "rejected", reason: err };
+            return null;
         }
     };
 
@@ -94,14 +123,14 @@ export default function StudentProfile() {
                 fetchSection("documents", api.get("/student/documents")),
             ]);
 
-            if (dashRes.status === "fulfilled") setDashboard(payload(dashRes.value.value));
-            if (resRes.status === "fulfilled") setResults(payload(resRes.value.value));
+            if (dashRes.status === "fulfilled") setDashboard(dashRes.value ?? null);
+            if (resRes.status === "fulfilled") setResults(resRes.value ?? null);
             if (actRes.status === "fulfilled") {
-                const data = payload(actRes.value.value);
+                const data = actRes.value;
                 setActivities(Array.isArray(data) ? data : data?.items || []);
             }
-            if (routineRes.status === "fulfilled") setRoutine(payload(routineRes.value.value));
-            if (docRes.status === "fulfilled") setDocuments(payload(docRes.value.value));
+            if (routineRes.status === "fulfilled") setRoutine(routineRes.value ?? null);
+            if (docRes.status === "fulfilled") setDocuments(Array.isArray(docRes.value) ? docRes.value : (docRes.value ?? []));
         } catch (err) {
             setError("Failed to load profile data. Please try again.");
         }
@@ -109,17 +138,8 @@ export default function StudentProfile() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    if (!user) return (
-        <div className="min-h-[60vh] flex items-center justify-center">
-            <div className="text-center space-y-4">
-                <div className="w-10 h-10 border-[3px] border-[#1F4E79] border-t-transparent rounded-full animate-spin mx-auto" />
-                <p className="text-sm text-gray-400 font-medium">Loading Profile...</p>
-            </div>
-        </div>
-    );
-
-    const profile = user.student_profile || {};
-    const rawPhotoPath = user.profile_photo_url || user.profile_photo_path || profile.admission?.photo_path;
+    const profile = user?.student_profile || {};
+    const rawPhotoPath = user?.profile_photo_url || user?.profile_photo_path || profile.admission?.photo_path;
     const photoUrl = buildAssetUrl(rawPhotoPath);
     const dash = dashboard?.student || {};
     const att = dashboard?.attendance || {};
@@ -159,7 +179,7 @@ export default function StudentProfile() {
     const subject = profile.subject || "-";
 
     const personalRows = [
-        { icon: User, label: "Full Name", value: user.name },
+        { icon: User, label: "Full Name", value: user?.name },
         { icon: Calendar, label: "Date of Birth", value: profile.dob },
         { icon: User, label: "Gender", value: profile.gender },
         { icon: Activity, label: "Blood Group", value: profile.blood_group },
@@ -178,8 +198,8 @@ export default function StudentProfile() {
     ];
 
     const contactRows = [
-        { icon: Phone, label: "Mobile", value: user.phone },
-        { icon: Mail, label: "Email", value: user.email },
+        { icon: Phone, label: "Mobile", value: user?.phone },
+        { icon: Mail, label: "Email", value: user?.email },
         { icon: MapPin, label: "Present Address", value: profile.present_address },
         { icon: MapPin, label: "Permanent Address", value: profile.permanent_address },
         { icon: Phone, label: "Emergency Contact", value: profile.emergency_contact_name ? `${profile.emergency_contact_name} (${profile.emergency_contact_phone || profile.emergency_mobile || profile.emergency_contact || "N/A"})` + (profile.emergency_contact_relation ? ' · ' + profile.emergency_contact_relation : '') : (profile.emergency_contact_phone || profile.emergency_mobile || profile.emergency_contact || "N/A") },
@@ -207,9 +227,21 @@ export default function StudentProfile() {
 
     const memberSince = useMemo(() => {
         if (profile.admission_date) return new Date(profile.admission_date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-        if (user.created_at) return new Date(user.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+        if (user?.created_at) return new Date(user.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
         return "N/A";
-    }, [profile.admission_date, user.created_at]);
+    }, [profile.admission_date, user?.created_at]);
+
+    // All hooks above run in a stable order on every render. This guard is the
+    // LAST statement before the JSX so React's rules-of-hooks are never
+    // violated, even when `user` resolves after the first render.
+    if (!user) return (
+        <div className="min-h-[60vh] flex items-center justify-center">
+            <div className="text-center space-y-4">
+                <div className="w-10 h-10 border-[3px] border-[#1F4E79] border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-sm text-gray-400 font-medium">Loading Profile...</p>
+            </div>
+        </div>
+    );
 
     return (
         <div className="space-y-8 md:space-y-10">
@@ -378,44 +410,109 @@ export default function StudentProfile() {
                         <InfoCard icon={Users} title="Guardian Information" rows={guardianRows} loading={false} />
                     </div>
 
-                    {/* Documents */}
-                    <div>
-                        <div className="flex items-center gap-2.5 mb-4">
-                            <div className="w-7 h-7 rounded-lg bg-[#F0F4F8] flex items-center justify-center">
-                                <FileText size={14} className="text-[#1F4E79]" />
+                    {/* ID Card, Documents & Recent Activity */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6 lg:gap-8 items-start">
+                        {/* ID Card — Direct Visual Preview */}
+                        <div>
+                            <div className="flex items-center gap-2.5 mb-4">
+                                <div className="w-7 h-7 rounded-lg bg-[#F0F4F8] flex items-center justify-center">
+                                    <IdCard size={14} className="text-[#1F4E79]" />
+                                </div>
+                                <h3 className="text-base md:text-lg font-bold text-gray-900">ID Card</h3>
                             </div>
-                            <h3 className="text-base md:text-lg font-bold text-gray-900">Documents</h3>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                             {sections.documents === "loading" ? (
-                                <>
-                                    <DocCardSkeleton />
-                                    <DocCardSkeleton />
-                                    <DocCardSkeleton />
-                                    <DocCardSkeleton />
-                                </>
-                            ) : documents.length === 0 ? (
-                                <div className="col-span-full text-center py-6 bg-white rounded-xl border border-gray-100">
-                                    <FileText size={24} className="mx-auto text-gray-300 mb-2" />
-                                    <p className="text-sm text-gray-400">No documents uploaded</p>
-                                    <p className="text-[11px] text-gray-300 mt-1">Admin can upload documents from the student details page</p>
+                                <Skeleton className="w-full aspect-[4/3] rounded-xl" />
+                            ) : !idCardDoc ? (
+                                <div className="bg-white rounded-xl border border-gray-100 border-dashed flex flex-col items-center justify-center min-h-[200px] p-5 text-center">
+                                    <IdCard size={32} className="text-gray-300 mb-2" />
+                                    <p className="text-sm text-gray-400">No ID card uploaded</p>
+                                    <p className="text-[11px] text-gray-300 mt-1">Your ID card will appear here once uploaded by the admin</p>
+                                </div>
+                            ) : getDocPreviewType(idCardDoc) === "pdf" ? (
+                                <embed
+                                    src={buildAuthenticatedAssetUrl(idCardDoc.file_path)}
+                                    type="application/pdf"
+                                    className="w-full h-72 rounded-xl border border-gray-100"
+                                    title={idCardDoc.name || "Student ID Card"}
+                                />
+                            ) : getDocPreviewType(idCardDoc) === "other" ? (
+                                <div className="bg-white rounded-xl border border-gray-100 flex flex-col items-center justify-center min-h-[200px] p-5 text-center">
+                                    <FileText size={36} className="text-gray-300 mb-2" />
+                                    <p className="text-sm font-semibold text-gray-800 truncate">{idCardDoc.name || "ID Card"}</p>
+                                    <a
+                                        href={buildAuthenticatedAssetUrl(idCardDoc.file_path)}
+                                        download={idCardDoc.original_name}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="mt-2 text-[11px] font-semibold text-[#1F4E79] hover:underline"
+                                    >Download</a>
                                 </div>
                             ) : (
-                                documents.map((doc) => (
-                                    <DocCard
-                                        key={doc.id}
-                                        name={doc.name}
-                                        type={doc.type}
-                                        fileUrl={buildAuthenticatedAssetUrl(doc.file_path)}
-                                        loading={false}
+                                <div className="w-full bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center overflow-hidden p-2">
+                                    <img
+                                        src={buildAuthenticatedAssetUrl(idCardDoc.file_path)}
+                                        alt={idCardDoc.name || "Student ID Card"}
+                                        className="max-w-full max-h-[300px] w-auto h-auto object-contain"
+                                        loading="lazy"
                                     />
-                                ))
+                                </div>
+                            )}
+                            {idCardDoc && idCardDoc.file_path && (getDocPreviewType(idCardDoc) === "image" || getDocPreviewType(idCardDoc) === "pdf") && (
+                                <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                    <button
+                                        onClick={() => handlePrintDocument(buildAuthenticatedAssetUrl(idCardDoc.file_path))}
+                                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+                                        <Printer size={14} /> Print
+                                    </button>
+                                    <a
+                                        href={buildAuthenticatedAssetUrl(idCardDoc.file_path)}
+                                        download={idCardDoc.original_name || idCardDoc.name || "id-card"}
+                                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#1F4E79] text-white border border-[#1F4E79] text-sm font-medium hover:bg-[#163859] transition-colors">
+                                        <Download size={14} /> Download
+                                    </a>
+                                </div>
                             )}
                         </div>
-                    </div>
 
-                    {/* Recent Activity */}
-                    <ActivityCard activities={activities} loading={sections.activities === "loading"} navigate={navigate} />
+                        {/* Documents */}
+                        <div>
+                            <div className="flex items-center gap-2.5 mb-4">
+                                <div className="w-7 h-7 rounded-lg bg-[#F0F4F8] flex items-center justify-center">
+                                    <FileText size={14} className="text-[#1F4E79]" />
+                                </div>
+                                <h3 className="text-base md:text-lg font-bold text-gray-900">Documents</h3>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                                {sections.documents === "loading" ? (
+                                    <>
+                                        <DocCardSkeleton />
+                                        <DocCardSkeleton />
+                                        <DocCardSkeleton />
+                                        <DocCardSkeleton />
+                                    </>
+                                ) : otherDocs.length === 0 ? (
+                                    <div className="col-span-full text-center py-6 bg-white rounded-xl border border-gray-100">
+                                        <FileText size={24} className="mx-auto text-gray-300 mb-2" />
+                                        <p className="text-sm text-gray-400">No documents uploaded</p>
+                                        <p className="text-[11px] text-gray-300 mt-1">Admin can upload documents from the student details page</p>
+                                    </div>
+                                ) : (
+                                    otherDocs.map((doc) => (
+                                        <DocCard
+                                            key={doc.id}
+                                            name={doc.name}
+                                            type={doc.type}
+                                            fileUrl={buildAuthenticatedAssetUrl(doc.file_path)}
+                                            loading={false}
+                                        />
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Recent Activity */}
+                        <ActivityCard activities={activities} loading={sections.activities === "loading"} navigate={navigate} />
+                    </div>
                 </div>
             </div>
         </div>
@@ -605,6 +702,21 @@ function getDocIcon(type) {
     return FileText;
 }
 
+function getDocPreviewType(doc) {
+    const name = (doc?.original_name || doc?.file_path || doc?.name || "").toLowerCase();
+    if (/\.pdf$/.test(name)) return "pdf";
+    if (/\.(png|jpe?g|jpg|gif|webp|bmp|svg)$/.test(name)) return "image";
+    return "other";
+}
+
+function handlePrintDocument(url) {
+    const win = window.open(url, "_blank");
+    if (!win) return;
+    const fire = () => { try { win.focus(); win.print(); } catch (e) { /* ignore */ } };
+    win.addEventListener("load", fire);
+    setTimeout(fire, 600);
+}
+
 function DocCardSkeleton() {
     return (
         <div className="bg-white rounded-xl border border-gray-100 p-4 md:p-5">
@@ -635,6 +747,12 @@ function DocCard({ name, type, fileUrl }) {
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
                     {fileUrl ? (
                         <>
+                            <button
+                                onClick={() => handlePrintDocument(fileUrl)}
+                                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                                title="Print">
+                                <Printer size={14} />
+                            </button>
                             <a href={fileUrl} target="_blank" rel="noopener noreferrer"
                                 className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors" title="View">
                                 <Eye size={14} />

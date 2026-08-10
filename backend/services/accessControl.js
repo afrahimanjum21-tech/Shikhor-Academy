@@ -1,14 +1,16 @@
 import jwt from 'jsonwebtoken';
 import models from '../models/index.js';
 import authConfig from '../config/auth.js';
+import { getTokenFromReq } from '../services/cookie.js';
 
 // Resolves the currently-viewing student (optional auth) into an access
 // profile: { batchId, courseId, section } — or null for anonymous visitors.
 export const resolveStudentAccess = async (req) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-    const decoded = jwt.verify(authHeader.split(' ')[1], authConfig.jwtSecret);
+    // Bearer header first (backward compatible); HttpOnly cookie fallback.
+    const token = getTokenFromReq(req);
+    if (!token) return null;
+    const decoded = jwt.verify(token, authConfig.jwtSecret);
     const student = await models.Student.findOne({
       where: { user_id: decoded.id },
       include: [{ model: models.Batch, attributes: ['id', 'course_id'] }],

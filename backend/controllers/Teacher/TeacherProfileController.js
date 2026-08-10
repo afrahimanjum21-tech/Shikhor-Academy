@@ -1,5 +1,6 @@
 import models from '../../models/index.js';
 import bcrypt from 'bcryptjs';
+import authConfig from '../../config/auth.js';
 import MediaService from '../../services/media/MediaService.js';
 import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 
@@ -101,8 +102,12 @@ export const changePassword = async (req, res) => {
       return res.status(400).json({ message: 'New passwords do not match' });
     }
 
-    if (new_password.length < 6) {
-      return res.status(400).json({ message: 'New password must be at least 6 characters' });
+    const { minLength, maxLength } = authConfig.passwordPolicy;
+    if (new_password.length < minLength) {
+      return res.status(400).json({ message: `New password must be at least ${minLength} characters` });
+    }
+    if (new_password.length > maxLength) {
+      return res.status(400).json({ message: `New password must be at most ${maxLength} characters` });
     }
 
     const user = await models.User.findByPk(req.user.id);

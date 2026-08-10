@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import models from '../../models/index.js';
 import authConfig from '../../config/auth.js';
+import { setAuthCookie, clearAuthCookie } from '../../services/cookie.js';
 
 // Pre-computed hash used only to equalize bcrypt timing when the email
 // doesn't exist, so response time cannot be used to enumerate accounts.
@@ -40,6 +41,9 @@ export async function login(req, res) {
       profile_photo_path: user.profile_photo_path,
     };
 
+    // Also issue the token as a HttpOnly cookie (XSS hardening). The JSON
+    // `token` is still returned so existing API clients keep working.
+    setAuthCookie(res, token);
     res.json({ token, user: userData });
   } catch (error) {
     console.error('Login error:', error);
@@ -48,6 +52,8 @@ export async function login(req, res) {
 }
 
 export async function logout(req, res) {
+  // Clear the HttpOnly auth cookie alongside any client-side token removal.
+  clearAuthCookie(res);
   res.json({ message: 'Logged out successfully' });
 }
 

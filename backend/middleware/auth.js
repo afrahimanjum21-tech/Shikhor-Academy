@@ -1,15 +1,16 @@
 import jwt from 'jsonwebtoken';
 import authConfig from '../config/auth.js';
 import models from '../models/index.js';
+import { getTokenFromReq } from '../services/cookie.js';
 
 export const authenticate = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Bearer header is checked first (backward compatible); HttpOnly cookie
+    // is the browser fallback (see backend/services/cookie.js).
+    const token = getTokenFromReq(req);
+    if (!token) {
       return res.status(401).json({ message: 'No token provided' });
     }
-
-    const token = authHeader.split(' ')[1];
     let decoded;
     try {
       decoded = jwt.verify(token, authConfig.jwtSecret);

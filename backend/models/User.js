@@ -2,6 +2,17 @@ import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 import bcrypt from 'bcryptjs';
 
+// bcrypt only considers the first 72 bytes of a password. Truncate defensively
+// so bcryptjs never receives over-length input from any code path (seed, admin
+// create, password change). This is a no-op for normal passwords and matches
+// bcrypt's own semantics — every bcrypt implementation discards bytes beyond 72.
+function toBcryptSafe(password) {
+  if (typeof password !== 'string' || password.length === 0) return password;
+  const bytes = Buffer.byteLength(password, 'utf8');
+  if (bytes <= 72) return password;
+  return Buffer.from(password, 'utf8').slice(0, 72).toString('utf8');
+}
+
 const User = sequelize.define('User', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   name: { type: DataTypes.STRING, allowNull: false },
@@ -20,12 +31,12 @@ const User = sequelize.define('User', {
   hooks: {
     beforeCreate: async (user) => {
       if (user.password && !user.password.startsWith('$2a$') && !user.password.startsWith('$2b$')) {
-        user.password = await bcrypt.hash(user.password, 12);
+        user.password = await bcrypt.hash(toBcryptSafe(user.password), 12);
       }
     },
     beforeUpdate: async (user) => {
       if (user.changed('password') && !user.password.startsWith('$2a$') && !user.password.startsWith('$2b$')) {
-        user.password = await bcrypt.hash(user.password, 12);
+        user.password = await bcrypt.hash(toBcryptSafe(user.password), 12);
       }
     },
   },

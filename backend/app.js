@@ -19,6 +19,7 @@ import publicRoutes from './routes/public.js';
 import authenticatedRoutes from './routes/authenticated.js';
 import LocalFileService from './services/media/LocalFileService.js';
 import models from './models/index.js';
+import { getTokenFromReq } from './services/cookie.js';
 
 dotenv.config();
 
@@ -111,11 +112,11 @@ app.use('/uploads', async (req, res, next) => {
     if (!req.path.startsWith('/students/')) return next();
     // <a href> navigation cannot send an Authorization header, so also accept
     // the JWT as a ?token= query parameter (used for student document links).
-    const authHeader = req.headers.authorization;
     const queryToken = typeof req.query.token === 'string' ? req.query.token : null;
-    const candidate = authHeader?.startsWith('Bearer ')
-      ? authHeader.split(' ')[1]
-      : queryToken;
+    // Bearer header first (backward compatible), then the HttpOnly auth cookie,
+    // then the ?token= query parameter (for document links opened in a new tab
+    // from an external source, where a header cannot be attached).
+    const candidate = getTokenFromReq(req) || queryToken;
     let decoded = null;
     if (candidate) {
       try {
