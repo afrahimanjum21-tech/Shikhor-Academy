@@ -458,17 +458,21 @@ export default function StudentProfile() {
                                 </div>
                             )}
                             {idCardDoc && idCardDoc.file_path && (getDocPreviewType(idCardDoc) === "image" || getDocPreviewType(idCardDoc) === "pdf") && (
-                                <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                <div className="mt-3 flex items-center gap-2">
                                     <button
                                         onClick={() => handlePrintDocument(buildAuthenticatedAssetUrl(idCardDoc.file_path))}
-                                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">
-                                        <Printer size={14} /> Print
+                                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                                        title="Print"
+                                        aria-label="Print ID card">
+                                        <Printer size={14} />
                                     </button>
                                     <a
                                         href={buildAuthenticatedAssetUrl(idCardDoc.file_path)}
                                         download={idCardDoc.original_name || idCardDoc.name || "id-card"}
-                                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#1F4E79] text-white border border-[#1F4E79] text-sm font-medium hover:bg-[#163859] transition-colors">
-                                        <Download size={14} /> Download
+                                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[#1F4E79] text-white hover:bg-[#163859] transition-colors"
+                                        title="Download"
+                                        aria-label="Download ID card">
+                                        <Download size={14} />
                                     </a>
                                 </div>
                             )}
