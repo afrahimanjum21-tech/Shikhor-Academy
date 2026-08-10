@@ -738,37 +738,39 @@ function DocCard({ name, type, fileUrl }) {
 
     return (
         <div className="group bg-white rounded-xl border border-gray-100 p-4 md:p-5 transition-all duration-200 hover:shadow-md hover:border-gray-200 hover:-translate-y-0.5">
+            {/* Row 1: document icon + title, vertically aligned */}
             <div className="flex items-center gap-3 md:gap-4">
                 <div className="w-10 h-10 shrink-0 rounded-xl bg-[#F0F4F8] flex items-center justify-center transition-colors duration-200 group-hover:bg-[#1F4E79]/5">
                     <Icon size={17} className="text-[#1F4E79]/70" />
                 </div>
                 <div className="flex-1 min-w-0">
                     <p className="text-xs md:text-sm font-semibold text-gray-800 truncate" title={displayName}>{displayName}</p>
-                    {type && <p className="text-[10px] md:text-[11px] text-gray-400 mt-0.5 capitalize truncate">{type}</p>}
+                    {type && <p className="text-[10px] md:text-[11px] text-gray-400 capitalize truncate">{type}</p>}
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                    {fileUrl ? (
-                        <>
-                            <button
-                                onClick={() => handlePrintDocument(fileUrl)}
-                                className={actionBtn}
-                                title="Print"
-                                aria-label="Print document">
-                                <Printer size={14} />
-                            </button>
-                            <a href={fileUrl} target="_blank" rel="noopener noreferrer"
-                                className={actionBtn} title="View" aria-label="View document">
-                                <Eye size={14} />
-                            </a>
-                            <a href={fileUrl} download
-                                className={actionBtn} title="Download" aria-label="Download document">
-                                <Download size={14} />
-                            </a>
-                        </>
-                    ) : (
-                        <span className="text-[10px] text-gray-300 italic whitespace-nowrap">No file</span>
-                    )}
-                </div>
+            </div>
+            {/* Row 2: View / Print / Download, evenly spaced and fully contained */}
+            <div className="flex items-center justify-end gap-1.5 mt-3">
+                {fileUrl ? (
+                    <>
+                        <button
+                            onClick={() => handlePrintDocument(fileUrl)}
+                            className={actionBtn}
+                            title="Print"
+                            aria-label="Print document">
+                            <Printer size={14} />
+                        </button>
+                        <a href={fileUrl} target="_blank" rel="noopener noreferrer"
+                            className={actionBtn} title="View" aria-label="View document">
+                            <Eye size={14} />
+                        </a>
+                        <a href={fileUrl} download
+                            className={actionBtn} title="Download" aria-label="Download document">
+                            <Download size={14} />
+                        </a>
+                    </>
+                ) : (
+                    <span className="text-[10px] text-gray-300 italic whitespace-nowrap">No file</span>
+                )}
             </div>
         </div>
     );
