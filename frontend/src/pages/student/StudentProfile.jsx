@@ -482,10 +482,9 @@ export default function StudentProfile() {
                                 </div>
                                 <h3 className="text-base md:text-lg font-bold text-gray-900">Documents</h3>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                            <div className="grid grid-cols-1 gap-3 md:gap-4">
                                 {sections.documents === "loading" ? (
                                     <>
-                                        <DocCardSkeleton />
                                         <DocCardSkeleton />
                                         <DocCardSkeleton />
                                         <DocCardSkeleton />
