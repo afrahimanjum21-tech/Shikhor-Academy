@@ -1,4 +1,4 @@
-import models from '../../models/index.js';
+import models, { sequelize } from '../../models/index.js';
 import { Op } from 'sequelize';
 import crypto from 'crypto';
 import MediaService from '../../services/media/MediaService.js';
@@ -38,6 +38,62 @@ const generateStudentId = async () => {
   const year = new Date().getFullYear();
   const count = await models.Student.count();
   return `UCC-${year}-${String(count + 1).padStart(4, '0')}`;
+};
+
+// Permanently removes a student account and every related record (profile,
+// documents, results, attendance, payments, submissions, notifications and
+// the linked admission application) inside a single transaction. Media files
+// (profile photo, uploaded documents, admission photo) are cleaned up after
+// the DB work commits, and failures there are non-blocking.
+const deleteStudentData = async (user) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const mediaUrls = [];
+    if (user.profile_photo_path) mediaUrls.push(user.profile_photo_path);
+
+    const student = await models.Student.findOne({
+      where: { user_id: user.id },
+      transaction,
+    });
+
+    if (student) {
+      const documents = await models.StudentDocument.findAll({
+        where: { student_id: student.id },
+        transaction,
+      });
+      documents.forEach((doc) => {
+        if (doc.file_path) mediaUrls.push(doc.file_path);
+      });
+      await models.StudentDocument.destroy({ where: { student_id: student.id }, transaction });
+
+      await models.ExamResult.destroy({ where: { student_id: student.id }, transaction });
+      await models.Attendance.destroy({ where: { student_id: student.id }, transaction });
+      await models.Payment.destroy({ where: { student_id: student.id }, transaction });
+      await models.AssignmentSubmission.destroy({ where: { student_id: student.id }, transaction });
+
+      await student.destroy({ transaction });
+
+      if (student.admission_id) {
+        const admission = await models.AdmissionApplication.findByPk(student.admission_id, { transaction });
+        if (admission?.photo_path) mediaUrls.push(admission.photo_path);
+        await models.AdmissionApplication.destroy({ where: { id: student.admission_id }, transaction });
+      }
+    }
+
+    await models.Notification.destroy({ where: { user_id: user.id }, transaction });
+
+    // force:true hard-deletes the row instead of the paranoid soft delete
+    // (deletedAt), so no ghost account remains in the database.
+    await user.destroy({ force: true, transaction });
+
+    await transaction.commit();
+
+    await MediaDeleteService.deleteMultiple(mediaUrls)
+      .catch(err => console.warn('Media cleanup after student delete:', err.message));
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 };
 
 export const index = async (req, res) => {
@@ -311,10 +367,7 @@ export const action = async (req, res) => {
         return res.json({ message: 'Student activated successfully' });
 
       case 'delete':
-        if (user.profile_photo_path) {
-          await MediaDeleteService.deleteByUrl(user.profile_photo_path).catch(err => console.warn('Media cleanup:', err.message));
-        }
-        await user.destroy();
+        await deleteStudentData(user);
         return res.json({ message: 'Student deleted successfully' });
 
       default:
