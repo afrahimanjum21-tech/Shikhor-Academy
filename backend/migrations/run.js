@@ -116,6 +116,15 @@ async function applyMigrations(queryInterface, Sequelize) {
 }
 
 export async function migrate() {
+  // Never silently target the config/database.js localhost fallback: on Vercel
+  // builds DATABASE_URL is a Sensitive var and is not injected, and a missing
+  // URL here produced a confusing ECONNREFUSED 127.0.0.1:5432. Fail loudly.
+  if (!process.env.DATABASE_URL && !process.env.DB_HOST) {
+    throw new Error(
+      'DATABASE_URL is not set. Refusing to run migrations against the localhost fallback. ' +
+      'Run `npm run migrate` locally (backend/.env has the Neon URL) or provide DATABASE_URL.'
+    );
+  }
   await sequelize.authenticate();
   const queryInterface = sequelize.getQueryInterface();
   await ensureMetaTable(queryInterface, Sequelize);
@@ -149,8 +158,21 @@ export async function rollback() {
   console.log('Rolled back OK.');
 }
 
+async function finish(run) {
+  try {
+    await run();
+  } catch (err) {
+    console.error(err);
+    process.exitCode = 1;
+  } finally {
+    // Close the pool so the process exits; otherwise the open Neon connections
+    // keep Node alive and a build/CI step hangs until its timeout.
+    await sequelize.close();
+  }
+}
+
 if (process.argv.includes('--rollback')) {
-  rollback().catch((err) => { console.error(err); process.exit(1); });
+  finish(rollback);
 } else {
-  migrate().catch((err) => { console.error(err); process.exit(1); });
+  finish(migrate);
 }
