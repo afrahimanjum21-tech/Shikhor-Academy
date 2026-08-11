@@ -36,8 +36,20 @@ const normalizeStudentProfile = (student) => {
 
 const generateStudentId = async () => {
   const year = new Date().getFullYear();
-  const count = await models.Student.count();
-  return `UCC-${year}-${String(count + 1).padStart(4, '0')}`;
+  const prefix = `UCC-${year}-`;
+  // Use MAX(suffix) + 1 instead of COUNT + 1 so soft-deleted or re-used
+  // card numbers can never collide under concurrent creation.
+  const rows = await models.Student.findAll({
+    where: { student_id_card_no: { [Op.like]: `${prefix}%` } },
+    attributes: ['student_id_card_no'],
+  });
+  let max = 0;
+  for (const row of rows) {
+    const suffix = row.student_id_card_no.slice(prefix.length);
+    const n = parseInt(suffix, 10);
+    if (!Number.isNaN(n) && n > max) max = n;
+  }
+  return `${prefix}${String(max + 1).padStart(4, '0')}`;
 };
 
 // Permanently removes a student account and every related record (profile,
@@ -174,7 +186,7 @@ export const store = async (req, res) => {
     // one and surface it once in the response so the admin can share it.
     const generatedPassword = password
       ? null
-      : (process.env.DEFAULT_USER_PASSWORD || crypto.randomBytes(5).toString('hex'));
+      : (process.env.DEFAULT_USER_PASSWORD || crypto.randomBytes(8).toString('hex'));
 
     const user = await models.User.create({
       name, email, phone,

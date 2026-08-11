@@ -21,8 +21,18 @@ const Routine = sequelize.define('Routine', {
   program: { type: DataTypes.STRING },
   semester: { type: DataTypes.STRING(20) },
   section: { type: DataTypes.STRING(20) },
-  shift: { type: DataTypes.STRING(20) },
-  updated_by: { type: DataTypes.INTEGER },
+   shift: { type: DataTypes.STRING(20) },
+   updated_by: { type: DataTypes.INTEGER },
+}, {
+  indexes: [
+    // Business-key uniqueness so saveAll upserts don't create duplicate rows.
+    // `status` is included so a published routine and an archived routine can
+    // coexist for the same time slot (used by the publish flow).
+    {
+      unique: true,
+      fields: ['batch_id', 'day', 'start_time', 'end_time', 'status'],
+    },
+  ],
 });
 
 Routine.associate = (models) => {

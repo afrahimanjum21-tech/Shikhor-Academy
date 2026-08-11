@@ -31,7 +31,7 @@ const sequelize = DB_URL
     })
   : new Sequelize(
       process.env.DB_DATABASE || 'uttoron_coaching',
-      process.env.DB_USERNAME || 'root',
+      process.env.DB_USERNAME || 'postgres',
       process.env.DB_PASSWORD || '',
       {
         host: process.env.DB_HOST || 'localhost',

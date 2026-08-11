@@ -19,15 +19,17 @@ export function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-function applyEnvFromSettings(row) {
-  if (!row || !row.smtp_host) return;
-  process.env.MAIL_HOST = row.smtp_host;
-  process.env.MAIL_PORT = String(row.smtp_port || 587);
-  process.env.MAIL_USERNAME = row.smtp_username || '';
-  process.env.MAIL_PASSWORD = row.smtp_password || '';
-  process.env.MAIL_ENCRYPTION = row.smtp_encryption || 'tls';
-  process.env.MAIL_FROM_ADDRESS = row.smtp_from_address || row.email || 'noreply@uttoron.com';
-  process.env.MAIL_FROM_NAME = row.smtp_from_name || row.site_name || 'Uttoron Coaching Centre';
+function getDbMailConfig(row) {
+  if (!row || !row.smtp_host) return null;
+  return {
+    host: row.smtp_host,
+    port: String(row.smtp_port || 587),
+    username: row.smtp_username || '',
+    password: row.smtp_password || '',
+    encryption: row.smtp_encryption || 'tls',
+    fromAddress: row.smtp_from_address || row.email || 'noreply@uttoron.com',
+    fromName: row.smtp_from_name || row.site_name || 'Uttoron Coaching Centre',
+  };
 }
 
 // SMTP settings live in the SiteSetting row (admin-configurable). Env vars
@@ -39,24 +41,24 @@ export async function getSiteMailConfig() {
     return siteMailCache.config;
   }
 
-  let settings = null;
+  let dbConfig = null;
   try {
-    settings = await models.SiteSetting.findOne({ where: { id: 1 } });
+    const settings = await models.SiteSetting.findOne({ where: { id: 1 } });
+    dbConfig = getDbMailConfig(settings);
   } catch (err) {
     console.error('[mailer] Failed to load SMTP settings from DB:', err.message);
   }
-  if (settings) applyEnvFromSettings(settings);
 
   const config = {
-    host: process.env.MAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.MAIL_PORT || '587', 10),
-    secure: (process.env.MAIL_ENCRYPTION || 'tls') === 'ssl',
+    host: process.env.MAIL_HOST || dbConfig?.host || 'smtp.gmail.com',
+    port: parseInt(process.env.MAIL_PORT || dbConfig?.port || '587', 10),
+    secure: (process.env.MAIL_ENCRYPTION || dbConfig?.encryption || 'tls') === 'ssl',
     auth: {
-      user: process.env.MAIL_USERNAME || '',
-      pass: process.env.MAIL_PASSWORD || '',
+      user: process.env.MAIL_USERNAME || dbConfig?.username || '',
+      pass: process.env.MAIL_PASSWORD || dbConfig?.password || '',
     },
-    fromAddress: process.env.MAIL_FROM_ADDRESS || 'noreply@uttoron.com',
-    fromName: process.env.MAIL_FROM_NAME || 'Uttoron Coaching Centre',
+    fromAddress: process.env.MAIL_FROM_ADDRESS || dbConfig?.fromAddress || 'noreply@uttoron.com',
+    fromName: process.env.MAIL_FROM_NAME || dbConfig?.fromName || 'Uttoron Coaching Centre',
   };
 
   siteMailCache = { at: now, config };
@@ -143,11 +145,11 @@ export function resolveSiteBaseUrl() {
   if (vercelHost) return `https://${vercelHost}`;
 
   const appUrl = process.env.APP_URL;
-  if (appUrl && !/localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(appUrl)) {
+  if (appUrl) {
     return appUrl.replace(/\/+$/, '');
   }
 
-  return 'https://uttoron-coaching.vercel.app';
+  return 'http://localhost:8000';
 }
 
 // Signed, short-lived, action-bound tokens: only an admin who received the

@@ -32,23 +32,6 @@ const SiteSetting = sequelize.define('SiteSetting', {
   smtp_encryption: { type: DataTypes.STRING(10) },
   smtp_from_address: { type: DataTypes.STRING },
   smtp_from_name: { type: DataTypes.STRING },
-}, {
-  hooks: {
-    afterFind: (result) => {
-      if (result && !Array.isArray(result)) {
-        const setting = result;
-        if (setting.smtp_host) {
-          process.env.MAIL_HOST = setting.smtp_host;
-          process.env.MAIL_PORT = String(setting.smtp_port || 587);
-          process.env.MAIL_USERNAME = setting.smtp_username || '';
-          process.env.MAIL_PASSWORD = setting.smtp_password || '';
-          process.env.MAIL_ENCRYPTION = setting.smtp_encryption || 'tls';
-          process.env.MAIL_FROM_ADDRESS = setting.smtp_from_address || setting.email || 'noreply@uttoron.com';
-          process.env.MAIL_FROM_NAME = setting.smtp_from_name || setting.site_name || 'Uttoron Coaching Centre';
-        }
-      }
-    },
-  },
 });
 
 SiteSetting.instance = async function() {

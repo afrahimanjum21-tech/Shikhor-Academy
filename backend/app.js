@@ -38,7 +38,7 @@ const app = express();
 app.set('trust proxy', 1);
 
 app.use(cors({
-  origin: true,
+  origin: appConfig.corsOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
@@ -180,7 +180,9 @@ app.get('/api/keep-alive', async (req, res) => {
 });
 
 app.use('/api', publicRoutes);
-app.use('/api', authenticatedRoutes);app.get('/health', (req, res) => {
+app.use('/api', authenticatedRoutes);
+
+app.get('/health', (req, res) => {
   res.json({ status: 'ok', name: appConfig.name, timestamp: new Date().toISOString() });
 });
 

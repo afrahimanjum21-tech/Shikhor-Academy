@@ -369,7 +369,9 @@ export const success = async (req, res) => {
       payment.ssl_val_id = data.val_id || null;
       payment.ssl_store_amount = data.store_amount || null;
       payment.ssl_card_type = data.card_type || null;
-      payment.ssl_card_no = data.card_no || null;
+      // PCI DSS: never store the full PAN. Keep only last 4 digits for
+      // reference; the rest is masked so no sensitive data is at rest.
+      payment.ssl_card_no = data.card_no ? data.card_no.slice(-4) : null;
       payment.date = now;
       await payment.save();
     }
@@ -468,9 +470,9 @@ export const ipn = async (req, res) => {
           payment.status = 'paid';
           payment.ssl_val_id = data.val_id || null;
           payment.ssl_store_amount = data.store_amount || null;
-          payment.ssl_card_type = data.card_type || null;
-          payment.ssl_card_no = data.card_no || null;
-          payment.date = now;
+           payment.ssl_card_type = data.card_type || null;
+           payment.ssl_card_no = data.card_no ? data.card_no.slice(-4) : null;
+           payment.date = now;
           await payment.save();
           markedPaid = true;
         }

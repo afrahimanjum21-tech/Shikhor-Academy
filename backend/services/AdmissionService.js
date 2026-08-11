@@ -1,6 +1,7 @@
 import models from '../models/index.js';
 import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
+import crypto from 'crypto';
 import NotificationService from './NotificationService.js';
 import { sendEmail, escapeHtml, resolveSiteBaseUrl } from './mailer.js';
 
@@ -79,9 +80,9 @@ const buildStudentFromAdmission = async (admission, userId) => ({
   subject: admission.subject,
 });
 
-const generatePassword = () =>
-  Math.random().toString(36).slice(2, 10) +
-  Math.random().toString(36).toUpperCase().slice(2, 6);
+const generatePassword = () => {
+  return crypto.randomBytes(12).toString('hex');
+};
 
 const getCourseTitle = async (courseId) => {
   if (!courseId) return null;

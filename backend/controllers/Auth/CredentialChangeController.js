@@ -88,7 +88,7 @@ export async function requestChange(req, res) {
       html: `
         <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto">
           <h2 style="color:#1F4F78">Confirm Account Change</h2>
-          <p>Someone requested to change <strong>${escapeHtml(changes.join(' and '))}</strong> on your admin account (<strong>${escapeHtml(user.email)}</strong>).</p>
+          <p>Someone requested to change <strong>${escapeHtml(changes.join(' and '))}</strong> on your account (<strong>${escapeHtml(user.email)}</strong>).</p>
           <p>If this was you, click the button below to confirm. The change will NOT be applied until you confirm.</p>
           <p style="margin:24px 0">
             <a href="${verifyUrl}" style="display:inline-block;padding:12px 24px;border-radius:8px;text-decoration:none;color:#ffffff;background:#1F4F78;font-weight:bold;font-size:14px">Yes, it was me - Confirm Change</a>

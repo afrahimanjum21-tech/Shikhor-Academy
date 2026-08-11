@@ -13,18 +13,7 @@ const PaymentSetting = sequelize.define('PaymentSetting', {
   settlement_account_number: { type: DataTypes.STRING },
   settlement_bank: { type: DataTypes.STRING },
   instructions: { type: DataTypes.TEXT },
-}, {
-  hooks: {
-    beforeUpsert: async (values) => {
-      if (values.id) {
-        const existing = await PaymentSetting.findByPk(values.id);
-        if (existing) Object.assign(existing, values);
-        else await PaymentSetting.create(values);
-        return;
-      }
-    },
-  },
-});
+}, {});
 
 PaymentSetting.sslcommerz = async function() {
   const [setting] = await this.findOrCreate({

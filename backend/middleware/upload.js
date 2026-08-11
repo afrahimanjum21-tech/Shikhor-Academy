@@ -2,6 +2,11 @@ import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const BACKEND_ROOT = path.resolve(__dirname, '..');
 
 const ensureDir = (dir) => {
   if (!fs.existsSync(dir)) {
@@ -10,7 +15,7 @@ const ensureDir = (dir) => {
 };
 
 const getUploadDir = (subDir) => {
-  return path.join('uploads', subDir);
+  return path.join(BACKEND_ROOT, 'uploads', subDir);
 };
 
 const createStorage = (subDir) => {

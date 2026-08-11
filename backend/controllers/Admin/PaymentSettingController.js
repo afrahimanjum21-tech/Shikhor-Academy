@@ -8,7 +8,11 @@ export const show = async (req, res) => {
       return res.status(404).json({ message: 'Payment settings not found' });
     }
 
-    res.json({ data: setting });
+    const data = setting.toJSON();
+    data.has_store_password = Boolean(data.store_password);
+    delete data.store_password;
+
+    res.json({ data });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch payment settings' });
   }
@@ -42,8 +46,11 @@ export const update = async (req, res) => {
     await setting.update(updateData);
 
     const updated = await models.PaymentSetting.sslcommerz();
+    const data = updated.toJSON();
+    data.has_store_password = Boolean(data.store_password);
+    delete data.store_password;
 
-    res.json({ message: 'Payment settings updated successfully', data: updated });
+    res.json({ message: 'Payment settings updated successfully', data });
   } catch (error) {
     res.status(500).json({ message: 'Failed to update payment settings' });
   }

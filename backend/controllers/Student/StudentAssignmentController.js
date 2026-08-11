@@ -1,5 +1,4 @@
 import models from '../../models/index.js';
-import { Op } from 'sequelize';
 import MediaService from '../../services/media/MediaService.js';
 
 export const index = async (req, res) => {
@@ -11,7 +10,7 @@ export const index = async (req, res) => {
 
     const assignments = await models.Assignment.findAll({
       where: {
-        batch_id: student.current_batch_id || { [Op.ne]: null },
+        batch_id: student.current_batch_id,
       },
       include: [
         { model: models.Batch, attributes: ['id', 'name'] },
@@ -71,6 +70,12 @@ export const submit = async (req, res) => {
     const assignment = await models.Assignment.findByPk(assignmentId);
     if (!assignment) {
       return res.status(404).json({ message: 'Assignment not found' });
+    }
+
+    // Enforce batch-level authorization: a student may only submit
+    // assignments that belong to their current batch.
+    if (assignment.batch_id !== student.current_batch_id) {
+      return res.status(403).json({ message: 'You are not enrolled in the batch this assignment belongs to' });
     }
 
     const existing = await models.AssignmentSubmission.findOne({

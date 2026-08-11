@@ -79,6 +79,7 @@ const TeacherAssignments = lazy(() => import('../pages/teacher/TeacherAssignment
 const ProtectedRoute = ({ role }) => {
     const { user, token } = useAuth();
     if (!token) return <Navigate to="/login" />;
+    if (!user) return null;
 
     if (user.role === 'super_admin') return <Outlet />;
 
