@@ -1,4 +1,5 @@
-import models from '../../models/index.js';
+import models, { sequelize } from '../../models/index.js';
+import { Op } from 'sequelize';
 import crypto from 'crypto';
 import MediaService from '../../services/media/MediaService.js';
 import MediaDeleteService from '../../services/media/MediaDeleteService.js';
@@ -145,6 +146,11 @@ export const update = async (req, res) => {
     if (password !== undefined) userData.password = password;
     await teacher.update(userData);
 
+    // SEC-5: an admin-set password revokes the teacher's existing sessions.
+    if (userData.password !== undefined) {
+      await models.User.increment('token_version', { where: { id: teacher.id } });
+    }
+
     if (teacher.TeacherProfile) {
       const profileData = {};
       if (designation !== undefined) profileData.designation = designation;
@@ -212,16 +218,46 @@ export const destroy = async (req, res) => {
       return res.status(404).json({ message: 'Teacher not found' });
     }
 
-    if (teacher.profile_photo_path) {
-      await MediaDeleteService.deleteByUrl(teacher.profile_photo_path).catch(err => console.warn('Media cleanup:', err.message));
+    // H-del1: the teacher may have AUTHORED academic records whose owner column
+    // is NOT NULL (Assignment.teacher_id) or that are academic history
+    // (StudyMaterial, exam marks). Hard-deleting the account would orphan or
+    // destroy them, so BLOCK the delete with a clear explanation and keep the
+    // account + records intact. (A dedicated deactivate flow is the richer
+    // alternative — see the tracker.)
+    const [assignmentCount, materialCount, markCount] = await Promise.all([
+      models.Assignment.count({ where: { teacher_id: teacher.id } }),
+      models.StudyMaterial.count({ where: { uploaded_by: teacher.id } }),
+      models.ExamResult.count({ where: { teacher_id: teacher.id } }),
+    ]);
+    if (assignmentCount + materialCount + markCount > 0) {
+      return res.status(409).json({
+        message: 'This teacher has authored assignments, study materials, or exam marks. The account was NOT deleted so academic history is preserved. Deactivate the teacher instead.',
+        details: { assignments: assignmentCount, study_materials: materialCount, exam_marks: markCount },
+      });
     }
-    await models.TeacherBatchAssignment.destroy({ where: { teacher_id: teacher.id } });
-    await models.TeacherProfile.destroy({ where: { user_id: teacher.id } });
-    await models.Faculty.destroy({ where: { user_id: teacher.id } });
-    await teacher.destroy();
+
+    const photoPath = teacher.profile_photo_path;
+
+    // H-del3: remove the account + its links atomically; roll back on any error.
+    await sequelize.transaction(async (t) => {
+      await models.TeacherBatchAssignment.destroy({ where: { teacher_id: teacher.id }, transaction: t });
+      await models.TeacherProfile.destroy({ where: { user_id: teacher.id }, transaction: t });
+      await models.Faculty.destroy({ where: { user_id: teacher.id }, transaction: t });
+      // Nullable metadata stamps left by this teacher — null them so no row
+      // points at a deleted account (these are not academic content).
+      await models.Routine.update({ updated_by: null }, { where: { updated_by: teacher.id }, transaction: t });
+      await models.Attendance.update({ leave_approved_by: null }, { where: { leave_approved_by: teacher.id }, transaction: t });
+      await teacher.destroy({ transaction: t });
+    });
+
+    // Media cleanup is non-transactional; do it only after the row delete commits.
+    if (photoPath) {
+      await MediaDeleteService.deleteByUrl(photoPath).catch(err => console.warn('Media cleanup:', err.message));
+    }
 
     res.json({ message: 'Teacher deleted successfully' });
   } catch (error) {
+    console.error('TeacherController.destroy error:', error);
     res.status(500).json({ message: 'Failed to delete teacher' });
   }
 };

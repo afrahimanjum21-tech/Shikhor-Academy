@@ -11,7 +11,8 @@ function cleanupTempFile(file) {
       fs.unlinkSync(file.path);
       logger.debug('MediaService', `Cleaned up temp file: ${file.path}`);
     }
-  } catch {
+  } catch (err) {
+    logger.warn('MediaService', `Temp file cleanup failed: ${err.message}`);
   }
 }
 

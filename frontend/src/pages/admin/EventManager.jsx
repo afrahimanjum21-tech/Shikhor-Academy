@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
-import { Plus, Trash2, Calendar, Flag, BookOpen } from "lucide-react";
+import { Plus, Trash2, Calendar, Flag, BookOpen, Loader2 } from "lucide-react";
 import notify from "../../services/notification";
 import { useConfirm } from "../../components/common/ConfirmDialog";
 import logger from '../../services/logger';
@@ -10,6 +10,7 @@ export default function EventManager() {
     const [events, setEvents] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState({ title: '', date: '', type: 'event', description: '' });
+    const [submitting, setSubmitting] = useState(false);
 
     const fetchEvents = async () => {
         try {
@@ -22,6 +23,8 @@ export default function EventManager() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitting) return;
+        setSubmitting(true);
         try {
             await api.post('/admin/events', formData);
             notify.success("Event Added!");
@@ -29,12 +32,18 @@ export default function EventManager() {
             setFormData({ title: '', date: '', type: 'event', description: '' });
             fetchEvents();
         } catch (error) { notify.error("Failed"); }
+        finally { setSubmitting(false); }
     };
 
     const handleDelete = async (id) => {
         const ok = await confirm({ title: "Delete Event?", message: "Delete event?", confirmText: "Delete", variant: "destructive" }); if (ok) {
-            await api.delete(`/admin/events/${id}`);
-            fetchEvents();
+            try {
+                await api.delete(`/admin/events/${id}`);
+                notify.success("Event deleted");
+                fetchEvents();
+            } catch (err) {
+                notify.error(err.response?.data?.message || "Failed to delete event");
+            }
         }
     }
 
@@ -118,7 +127,7 @@ export default function EventManager() {
                             <textarea className="w-full border p-2 rounded text-sm focus:outline-none focus:border-[#1F4E79]" placeholder="Description (Optional)" rows="2" onChange={e => setFormData({...formData, description: e.target.value})} />
                             <div className="flex justify-end gap-2 mt-4">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="text-gray-500 px-4 py-2 hover:bg-gray-100 rounded">Cancel</button>
-                                <button type="submit" className="bg-[#1F4E79] text-white px-4 py-2 rounded hover:bg-[#163859]">Save</button>
+                                <button type="submit" disabled={submitting} className="bg-[#1F4E79] text-white px-4 py-2 rounded hover:bg-[#163859] disabled:opacity-60 disabled:cursor-not-allowed">{submitting ? <Loader2 size={16} className="animate-spin" /> : null} {submitting ? "Saving..." : "Save"}</button>
                             </div>
                         </form>
                     </div>

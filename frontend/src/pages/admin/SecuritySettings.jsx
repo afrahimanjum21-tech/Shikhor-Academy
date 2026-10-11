@@ -91,7 +91,7 @@ export default function SecuritySettings() {
                 <Mail size={18} className="text-blue-600 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-blue-900">
                     <p className="font-semibold">Current admin sign-in email: <span className="font-mono">{user?.email}</span></p>
-                    <p className="mt-1 text-blue-800/80">After you submit, a confirmation email will be sent to this address. The change is applied only after you click the confirm link — nothing changes before that.</p>
+                    <p className="mt-1 text-blue-800/80">After you submit, a confirmation email will be sent to the current email address. The change is applied only after you click the confirm link. nothing changes before that.</p>
                 </div>
             </div>
 

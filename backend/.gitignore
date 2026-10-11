@@ -25,3 +25,6 @@ Thumbs.db
 
 .vercel
 .env*
+# Keep the placeholder template tracked (it is safe — contains no real secrets)
+!.env.example
+!.env.staging.example

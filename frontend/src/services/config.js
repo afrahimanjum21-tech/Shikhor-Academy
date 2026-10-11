@@ -47,20 +47,21 @@ export const buildAssetUrl = (path) => {
 };
 
 /**
- * Like buildAssetUrl, but appends the current JWT as ?token= for PRIVATE
- * student documents (/uploads/students/...), which the backend only serves
- * to authenticated users. Plain <a href> navigation cannot send an
- * Authorization header, so the token travels in the query string instead.
+ * Like buildAssetUrl, but appends a SHORT-LIVED, file-scoped signed download
+ * token (minted by the backend and returned on each private document, e.g.
+ * `doc.download_token`) for PRIVATE student documents (/uploads/students/...).
+ * Plain <a href>/<img src> cannot send an Authorization header, so the token
+ * travels in the query string — but it is now a narrowly-scoped, minutes-long
+ * token, NOT the long-lived session JWT (which must never appear in a URL).
  *
  * @param {string|null|undefined} path
+ * @param {string|null|undefined} downloadToken  server-issued signed token for this file
  * @returns {string|null}
  */
-export const buildAuthenticatedAssetUrl = (path) => {
+export const buildAuthenticatedAssetUrl = (path, downloadToken) => {
     const url = buildAssetUrl(path);
     if (!url) return null;
-    if (!String(path || '').startsWith('/uploads/students/')) return url;
-    const token = localStorage.getItem('ACCESS_TOKEN');
-    if (!token) return url;
+    if (!downloadToken) return url;
     const sep = url.includes('?') ? '&' : '?';
-    return `${url}${sep}token=${encodeURIComponent(token)}`;
+    return `${url}${sep}token=${encodeURIComponent(downloadToken)}`;
 };

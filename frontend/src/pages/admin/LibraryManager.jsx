@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { useUpload } from "../../context/UploadContext";
-import { Plus, MoreVertical, Trash2, Pencil, Link as LinkIcon, FileText, X } from "lucide-react";
+import { Plus, MoreVertical, Trash2, Pencil, Link as LinkIcon, FileText, X, Loader2 } from "lucide-react";
 import { useConfirm } from "../../components/common/ConfirmDialog";
+import notify from "../../services/notification";
 import AccessTargetSelect, { accessLabel } from "../../components/common/AccessTargetSelect";
 import logger from '../../services/logger';
 
@@ -20,6 +21,7 @@ export default function LibraryManager() {
     const [courses, setCourses] = useState([]);
     const [access, setAccess] = useState({ access_type: 'all', batch_id: '', course_id: '', class_name: '' });
     const { startUpload } = useUpload();
+    const [submitting, setSubmitting] = useState(false);
 
     const fetchMaterials = async () => {
         try {
@@ -32,9 +34,11 @@ export default function LibraryManager() {
         fetchMaterials();
         api.get('/admin/batches').then(res => setBatches(res.data || [])).catch(() => {});
         api.get('/admin/courses').then(res => setCourses(res.data || [])).catch(() => {});
-        document.addEventListener("click", (e) => {
+        const onDocClick = (e) => {
             if (!e.target.closest(".action-menu-btn")) setOpenMenuId(null);
-        });
+        };
+        document.addEventListener("click", onDocClick);
+        return () => document.removeEventListener("click", onDocClick);
     }, []);
 
     const openCreateModal = () => {
@@ -73,6 +77,9 @@ export default function LibraryManager() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitting) return;
+        setSubmitting(true);
+        try {
 
         // গ্লোবাল আপলোড কনটেক্সটে আপলোড শুরু করো — ব্যাকগ্রাউন্ডে চলবে, পেজ চেঞ্জ করলেও থাকবে
         startUpload({
@@ -91,12 +98,18 @@ export default function LibraryManager() {
         // মডাল বন্ধ করে ফর্ম রিসেট করো — আপলোড ব্যাকগ্রাউন্ডে চলতে থাকবে
         setIsModalOpen(false);
         resetForm();
+        } finally { setSubmitting(false); }
     };
 
     const handleDelete = async (id) => {
         const ok = await confirm({ title: "Delete Material?", message: "Delete?", confirmText: "Delete", variant: "destructive" }); if (ok) {
-            await api.delete(`/admin/materials/${id}`);
-            fetchMaterials();
+            try {
+                await api.delete(`/admin/materials/${id}`);
+                notify.success("Material deleted");
+                fetchMaterials();
+            } catch (err) {
+                notify.error(err.response?.data?.message || "Failed to delete material");
+            }
         }
     };
 
@@ -244,8 +257,8 @@ export default function LibraryManager() {
                                     <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg font-medium">
                                         Cancel
                                     </button>
-                                    <button type="submit" className="px-5 py-2.5 text-sm rounded-lg font-bold bg-[#1F4E79] text-white hover:bg-[#163859] transition">
-                                        {editing ? 'Save Changes' : 'Start Upload'}
+                                    <button type="submit" disabled={submitting} className="px-5 py-2.5 text-sm rounded-lg font-bold bg-[#1F4E79] text-white hover:bg-[#163859] transition disabled:opacity-60 disabled:cursor-not-allowed">
+                                        {submitting ? <Loader2 size={16} className="animate-spin" /> : null} {submitting ? "Saving..." : (editing ? 'Save Changes' : 'Start Upload')}
                                     </button>
                                 </div>
 

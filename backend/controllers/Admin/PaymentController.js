@@ -1,6 +1,10 @@
 import models from '../../models/index.js';
 import { Op } from 'sequelize';
 import NotificationService from '../../services/NotificationService.js';
+import { summarizeFees } from '../../services/feeBreakdown.js';
+import { canonicalMonthKey, todayDhaka } from '../../services/paymentMonth.js';
+import ExamResultService from '../../services/ExamResultService.js';
+import GradeService from '../../services/GradeService.js';
 
 const normalizeUser = (student) => {
   const data = student.toJSON ? student.toJSON() : { ...student };
@@ -14,42 +18,9 @@ const normalizeUser = (student) => {
   return data;
 };
 
-const monthKey = (date) => {
-  const d = new Date(date);
-  return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-};
+// monthKey + buildMonthlyBreakdown moved to services/feeBreakdown.js +
+// services/paymentMonth.js (single source of truth; canonical month keys).
 
-const buildMonthlyBreakdown = (student, payments, monthlyFee) => {
-  const start = student.admission_date ? new Date(student.admission_date) : new Date();
-  const end = new Date();
-  const paidByMonth = new Map();
-
-  payments.forEach((payment) => {
-    const json = payment.toJSON ? payment.toJSON() : payment;
-    const key = json.month || (json.date ? monthKey(json.date) : null);
-    if (key) paidByMonth.set(key, json);
-  });
-
-  const monthly = [];
-  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
-  const last = new Date(end.getFullYear(), end.getMonth(), 1);
-
-  while (cursor <= last) {
-    const month = monthKey(cursor);
-    const payment = paidByMonth.get(month);
-    monthly.push({
-      month,
-      amount: payment?.amount || monthlyFee,
-      status: payment?.status || 'due',
-      method: payment?.method || null,
-      trx_id: payment?.trx_id || null,
-      date: payment?.date || null,
-    });
-    cursor.setMonth(cursor.getMonth() + 1);
-  }
-
-  return monthly;
-};
 
 export const index = async (req, res) => {
   try {
@@ -64,7 +35,12 @@ export const index = async (req, res) => {
     if (status) whereClause.status = status;
 
     if (q && String(q).trim()) {
-      const term = `%${String(q).trim()}%`;
+      // H-low5: this is a LITERAL contains-search, so escape the LIKE wildcards
+      // (`%` `_`) and the escape char itself — otherwise a user typing "50%"
+      // would match everything. Postgres LIKE honours `\` as the escape char by
+      // default, so no explicit ESCAPE clause is needed. Still parameterized.
+      const escaped = String(q).trim().replace(/[\\%_]/g, '\\$&');
+      const term = `%${escaped}%`;
       const [nameMatches, cardMatches] = await Promise.all([
         models.Student.findAll({
           attributes: ['id'],
@@ -118,31 +94,38 @@ export const index = async (req, res) => {
 export const store = async (req, res) => {
   try {
     const { student_id, month, amount, trx_id, method, status, date } = req.body;
+    if (!student_id) return res.status(400).json({ message: 'student_id is required' });
+    // Allow partial / advance / ৳0-waiver amounts, but require a finite,
+    // non-negative number (never NaN / Infinity / negative / blank).
+    const numAmount = Number(amount);
+    if (amount === undefined || amount === null || amount === '' || !Number.isFinite(numAmount) || numAmount < 0) {
+      return res.status(400).json({ message: 'A valid non-negative amount is required' });
+    }
+    const student = await models.Student.findByPk(student_id, { attributes: ['id', 'user_id'] });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    const canonMonth = month ? canonicalMonthKey(month) : null;
+    if (month && !canonMonth) return res.status(400).json({ message: 'Invalid month format' });
 
-    if (!student_id || !amount) {
-      return res.status(400).json({ message: 'student_id and amount are required' });
+    let payment;
+    try {
+      payment = await models.Payment.create({
+        student_id, month: canonMonth, amount: numAmount,
+        trx_id: trx_id || null, method: method || 'cash',
+        status: status || 'paid', date: date || todayDhaka(),
+      });
+    } catch (error) {
+      if (error.name === 'SequelizeUniqueConstraintError') {
+        return res.status(409).json({ message: `A payment for ${canonMonth || 'this month'} already exists for this student.` });
+      }
+      throw error;
     }
 
-    const payment = await models.Payment.create({
-      student_id,
-      month: month || null,
-      amount,
-      trx_id: trx_id || null,
-      method: method || 'cash',
-      status: status || 'paid',
-      date: date || new Date().toISOString().split('T')[0],
-    });
-
     try {
-      const student = await models.Student.findByPk(student_id, { attributes: ['user_id'] });
-      if (student?.user_id) {
+      if (student.user_id) {
         await NotificationService.create({
-          userId: student.user_id,
-          type: 'payment',
-          title: 'Payment Recorded',
-          body: `A payment of ৳${amount} has been recorded${month ? ` for ${month}` : ''}.`,
-          actionUrl: '/student/fees',
-          actionLabel: 'View Fees',
+          userId: student.user_id, type: 'payment', title: 'Payment Recorded',
+          body: `A payment of ৳${numAmount} has been recorded${canonMonth ? ` for ${canonMonth}` : ''}.`,
+          actionUrl: '/student/fees', actionLabel: 'View Fees',
         });
       }
     } catch (notifErr) {
@@ -193,15 +176,7 @@ export const studentFinancialStatus = async (req, res) => {
     });
 
     const paymentRows = paymentHistory.map(payment => payment.toJSON());
-    const monthlyBreakdown = buildMonthlyBreakdown(student, paymentRows, monthlyFee);
-    const dueMonths = monthlyBreakdown.filter(m => m.status !== 'paid').map(m => m.month);
-    const pendingPayments = paymentRows.filter(p => p.status === 'pending');
-    const totalPaid = paymentRows
-      .filter(p => p.status === 'paid')
-      .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
-    const totalDue = monthlyBreakdown
-      .filter(month => month.status !== 'paid')
-      .reduce((sum, month) => sum + parseFloat(month.amount || 0), 0);
+    const { dueMonths, pendingPayments, totalPaid, totalDue } = summarizeFees(student, paymentRows, monthlyFee);
 
     if (!student.admission_date || monthlyFee === 0) {
       return res.json({
@@ -273,15 +248,24 @@ export const studentExamResults = async (req, res) => {
       return data;
     });
 
-    const gpas = normalizedResults.map(r => parseFloat(r.gpa)).filter(v => !Number.isNaN(v));
+    // I-3: show the SAME canonical computed grade/GPA/percentage/position the
+    // student sees (admin sees the full, unpublished-inclusive result), instead
+    // of possibly-stale stored values. I-15: Pass/Fail from the canonical
+    // percentage rule (GradeService), never an absolute-marks >= 33 comparison.
+    const enrichedResults = await ExamResultService.enrichResults(normalizedResults);
+    enrichedResults.forEach((r) => {
+      r.pass_fail = GradeService.passFailStatus(Number(r.percentage) || 0);
+    });
+
+    const gpas = enrichedResults.map(r => parseFloat(r.gpa)).filter(v => !Number.isNaN(v));
     const summary = {
-      total_exams: normalizedResults.length,
+      total_exams: enrichedResults.length,
       average_gpa: gpas.length ? (gpas.reduce((sum, v) => sum + v, 0) / gpas.length).toFixed(2) : 0,
       highest_gpa: gpas.length ? Math.max(...gpas).toFixed(2) : 0,
       lowest_gpa: gpas.length ? Math.min(...gpas).toFixed(2) : 0,
     };
 
-    return res.json({ student: normalizeUser(student), results: normalizedResults, summary });
+    return res.json({ student: normalizeUser(student), results: enrichedResults, summary });
   } catch (error) {
     console.error('PaymentController.studentExamResults error:', error);
     return res.status(500).json({ message: 'Failed to fetch exam results' });
@@ -319,7 +303,7 @@ export const studentAttendance = async (req, res) => {
 
     const monthly_stats = {};
     records.forEach((record) => {
-      const month = monthKey(record.date);
+      const month = canonicalMonthKey(record.date);
       if (!monthly_stats[month]) {
         monthly_stats[month] = { total: 0, present: 0, percentage: 0 };
       }
@@ -340,15 +324,7 @@ const buildStudentPaymentHistory = (student) => {
   const payments = student.Payments || [];
   const paymentRows = payments.map(payment => payment.toJSON());
   const courseFee = parseFloat(student.Batch?.Course?.fee || student.batch?.course?.fee || 0);
-  const monthlyBreakdown = buildMonthlyBreakdown(student, paymentRows, courseFee);
-  const paidMonths = monthlyBreakdown.filter(m => m.status === 'paid').map(m => m.month);
-  const dueMonths = monthlyBreakdown.filter(m => m.status !== 'paid').map(m => m.month);
-  const totalPaid = paymentRows
-    .filter(payment => payment.status === 'paid')
-    .reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
-  const totalDue = monthlyBreakdown
-    .filter(month => month.status !== 'paid')
-    .reduce((sum, month) => sum + parseFloat(month.amount || 0), 0);
+  const { monthlyBreakdown, paidMonths, dueMonths, totalPaid, totalDue } = summarizeFees(student, paymentRows, courseFee);
 
   return {
     student: normalized,

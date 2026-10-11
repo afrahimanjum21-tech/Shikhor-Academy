@@ -2,11 +2,24 @@ import { useEffect, useState } from "react";
 import api from "../services/api";
 import { Bell, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
+import usePageMeta from "../hooks/usePageMeta";
 import PageBackground from "../components/common/PageBackground";
+import ShareButtons from "../components/common/ShareButtons";
+import { useNotificationCounts } from "../context/NotificationContext";
 
 
 export default function Notices() {
+    usePageMeta({
+        title: "Notices — Uttoron Coaching Centre",
+        description: "Latest notices and announcements from Uttoron Coaching Centre: class schedules, exams, results and important updates.",
+        path: "/notices",
+    });
     const [notices, setNotices] = useState([]);
+    const { markViewed } = useNotificationCounts();
+
+    useEffect(() => {
+        markViewed('notices');
+    }, [markViewed]);
 
     useEffect(() => {
         api.get('/public/notices').then(res => setNotices(res.data)).catch(() => {});
@@ -54,6 +67,11 @@ export default function Notices() {
                                         </span>
                                         <h3 className="text-xl font-bold mt-3 text-gray-800">{notice.title}</h3>
                                         <p className="text-gray-600 mt-2 whitespace-pre-wrap leading-relaxed">{notice.description}</p>
+                                        <ShareButtons
+                                            text={`${notice.title} — Uttoron Coaching Centre`}
+                                            url="/notices"
+                                            className="mt-4"
+                                        />
                                     </div>
                                     <div className="flex-shrink-0 text-center bg-gray-50 p-3 rounded-lg min-w-[80px]">
                                         <Calendar size={20} className="mx-auto text-gray-400 mb-1" />

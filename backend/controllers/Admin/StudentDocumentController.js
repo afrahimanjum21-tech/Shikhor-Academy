@@ -1,6 +1,15 @@
 import models from '../../models/index.js';
 import MediaService from '../../services/media/MediaService.js';
 import MediaDeleteService from '../../services/media/MediaDeleteService.js';
+import { signDownloadToken } from '../../services/downloadToken.js';
+
+// Attach a short-lived, file-scoped signed download token so the frontend can
+// build a private-document URL WITHOUT embedding the long-lived session JWT.
+const withDownloadToken = (doc, sub = null) => {
+  const json = typeof doc.toJSON === 'function' ? doc.toJSON() : { ...doc };
+  json.download_token = json.file_path ? signDownloadToken(json.file_path, { sub }) : null;
+  return json;
+};
 
 export const index = async (req, res) => {
   try {
@@ -16,7 +25,7 @@ export const index = async (req, res) => {
       order: [['createdAt', 'DESC']],
     });
 
-    res.json({ data: documents });
+    res.json({ data: documents.map((d) => withDownloadToken(d, student.user_id)) });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch documents' });
   }
@@ -98,7 +107,7 @@ export const studentDocuments = async (req, res) => {
       order: [['createdAt', 'DESC']],
     });
 
-    res.json({ data: documents });
+    res.json({ data: documents.map((d) => withDownloadToken(d, userId)) });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch documents' });
   }

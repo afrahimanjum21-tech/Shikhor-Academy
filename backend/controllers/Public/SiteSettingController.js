@@ -14,6 +14,8 @@ export async function show(req, res) {
     const sensitiveFields = [
       'smtp_host', 'smtp_port', 'smtp_username', 'smtp_password',
       'smtp_encryption', 'smtp_from_address', 'smtp_from_name',
+      'email_enabled', 'email_provider', 'email_api_key', 'email_from',
+      'admission_email', 'messages_email',
     ];
     sensitiveFields.forEach(field => { delete data[field]; });
 

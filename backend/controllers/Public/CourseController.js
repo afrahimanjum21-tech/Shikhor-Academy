@@ -9,13 +9,17 @@ export async function index(req, res) {
     const where = { is_active: true };
     if (category) where.category_id = category;
 
-    const { count, rows } = await models.Course.findAndCountAll({
-      where,
-      include: [{ model: models.CourseCategory, as: 'CourseCategory' }],
-      order: [['sorting_order', 'ASC'], ['createdAt', 'DESC']],
-      limit: parseInt(limit, 10),
-      offset,
-    });
+    // findAndCountAll counted with the JOIN included, doubling the query cost.
+    const [rows, count] = await Promise.all([
+      models.Course.findAll({
+        where,
+        include: [{ model: models.CourseCategory, as: 'CourseCategory' }],
+        order: [['sorting_order', 'ASC'], ['createdAt', 'DESC']],
+        limit: parseInt(limit, 10),
+        offset,
+      }),
+      models.Course.count({ where }),
+    ]);
 
     res.json({
       data: rows,
@@ -45,24 +49,27 @@ export async function categories(req, res) {
 
 export async function stats(req, res) {
   try {
-    const totalCourses = await models.Course.count({ where: { is_active: true } });
-    const totalCategories = await models.CourseCategory.count({ where: { is_active: true } });
-    const totalBatches = await models.Batch.count();
-    const totalStudents = await models.Student.count({
-      include: [{
-        model: models.User,
-        as: 'User',
-        where: { is_active: true },
-      }],
-    });
-    const totalTeachers = await models.TeacherProfile.count({
-      include: [{
-        model: models.User,
-        as: 'User',
-        where: { is_active: true },
-      }],
-    });
-    const siteSetting = await models.SiteSetting.findByPk(1);
+    // Six sequential queries (~1.9s) collapsed into one parallel batch.
+    const [totalCourses, totalCategories, totalBatches, totalStudents, totalTeachers, siteSetting] = await Promise.all([
+      models.Course.count({ where: { is_active: true } }),
+      models.CourseCategory.count({ where: { is_active: true } }),
+      models.Batch.count(),
+      models.Student.count({
+        include: [{
+          model: models.User,
+          as: 'User',
+          where: { is_active: true },
+        }],
+      }),
+      models.TeacherProfile.count({
+        include: [{
+          model: models.User,
+          as: 'User',
+          where: { is_active: true },
+        }],
+      }),
+      models.SiteSetting.findByPk(1),
+    ]);
 
     res.json({
       courses: totalCourses,
@@ -83,7 +90,7 @@ export async function bySlug(req, res) {
       where: { slug: req.params.slug, is_active: true },
       include: [
         { model: models.CourseCategory, as: 'CourseCategory' },
-        { model: models.Batch, as: 'Batches' },
+        { model: models.Batch, as: 'Batches', attributes: ['id', 'name', 'start_time', 'end_time', 'capacity'] },
       ],
     });
 
@@ -115,11 +122,14 @@ export async function featured(req, res) {
 
 export async function show(req, res) {
   try {
-    const course = await models.Course.findByPk(req.params.id, {
-      where: { is_active: true },
+    // D15: findByPk ignores the `where` option, so the intended is_active filter
+    // was silently dropped — an inactive course could leak through if this
+    // handler is ever routed. Use findOne so the filter actually applies.
+    const course = await models.Course.findOne({
+      where: { id: req.params.id, is_active: true },
       include: [
         { model: models.CourseCategory, as: 'CourseCategory' },
-        { model: models.Batch, as: 'Batches' },
+        { model: models.Batch, as: 'Batches', attributes: ['id', 'name', 'start_time', 'end_time', 'capacity'] },
       ],
     });
 

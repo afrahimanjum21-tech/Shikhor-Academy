@@ -100,7 +100,7 @@ export async function up(queryInterface, Sequelize) {
   const ordered = computeCreationOrder(models);
   // One round-trip to learn which tables already exist (avoids 38 separate
   // tableExists queries against a cold/suspended database).
-  const existing = new Set(await queryInterface.sequelize.showAllTables());
+  const existing = new Set(await queryInterface.showAllTables());
   const tx = await queryInterface.sequelize.transaction();
   try {
     for (const table of ordered) {

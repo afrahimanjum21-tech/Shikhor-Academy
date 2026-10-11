@@ -1,8 +1,10 @@
 import models, { sequelize } from '../../models/index.js';
-import { Op } from 'sequelize';
+import { Op, fn, col, where } from 'sequelize';
 import crypto from 'crypto';
 import MediaService from '../../services/media/MediaService.js';
 import MediaDeleteService from '../../services/media/MediaDeleteService.js';
+import { normalizeEmail } from '../../utils/normalizeEmail.js';
+import { nextStudentId, withStudentIdRetry } from '../../services/studentId.js';
 
 const normalizeCourse = (course) => {
   if (!course) return null;
@@ -32,24 +34,6 @@ const normalizeStudentProfile = (student) => {
   delete data.Payments;
   delete data.Attendances;
   return data;
-};
-
-const generateStudentId = async () => {
-  const year = new Date().getFullYear();
-  const prefix = `UCC-${year}-`;
-  // Use MAX(suffix) + 1 instead of COUNT + 1 so soft-deleted or re-used
-  // card numbers can never collide under concurrent creation.
-  const rows = await models.Student.findAll({
-    where: { student_id_card_no: { [Op.like]: `${prefix}%` } },
-    attributes: ['student_id_card_no'],
-  });
-  let max = 0;
-  for (const row of rows) {
-    const suffix = row.student_id_card_no.slice(prefix.length);
-    const n = parseInt(suffix, 10);
-    if (!Number.isNaN(n) && n > max) max = n;
-  }
-  return `${prefix}${String(max + 1).padStart(4, '0')}`;
 };
 
 // Permanently removes a student account and every related record (profile,
@@ -110,8 +94,11 @@ const deleteStudentData = async (user) => {
 
 export const index = async (req, res) => {
   try {
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 20;
+    // Clamp to sane bounds so a stray or malicious page/limit (0, negative,
+    // NaN) can never produce a negative OFFSET/LIMIT. The admin UI already
+    // clamps page to [1, last_page]; this is server-side defence in depth.
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit, 10) || 20);
     const offset = (page - 1) * limit;
     const search = req.query.search || '';
 
@@ -188,32 +175,50 @@ export const store = async (req, res) => {
       ? null
       : (process.env.DEFAULT_USER_PASSWORD || crypto.randomBytes(8).toString('hex'));
 
-    const user = await models.User.create({
-      name, email, phone,
-      password: generatedPassword || password,
-      role: 'student',
-      profile_photo_path: photoPath,
-    });
+    const normalizedEmail = normalizeEmail(email);
+    // Report a case-variant email collision as a clear 409 instead of a raw
+    // unique-constraint 500 (never merge accounts).
+    if (normalizedEmail) {
+      const emailClash = await models.User.findOne({ where: where(fn('lower', col('email')), normalizedEmail), paranoid: false });
+      if (emailClash) return res.status(409).json({ message: 'An account with this email already exists.' });
+    }
+    // Atomic account + profile creation (no orphan User if the Student insert
+    // fails); the card number is generated inside the tx and the whole tx is
+    // retried on a concurrent id collision (admin-supplied ids are not retried).
+    const retries = student_id_card_no ? 0 : 6;
+    const { user, student } = await withStudentIdRetry(() => sequelize.transaction(async (t) => {
+      const user = await models.User.create({
+        name, email: normalizedEmail, phone,
+        password: generatedPassword || password,
+        role: 'student',
+        profile_photo_path: photoPath,
+      }, { transaction: t });
 
-    const student = await models.Student.create({
-      user_id: user.id,
-      student_id_card_no: student_id_card_no || await generateStudentId(),
-      guardian_phone,
-      admission_date: admission_date || new Date().toISOString().split('T')[0],
-      gender, nationality, religion, blood_group, dob,
-      father_name, father_phone, father_occupation, father_nid,
-      mother_name, mother_phone, mother_occupation, mother_nid,
-      present_address, permanent_address,
-      emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
-      last_school, jsc_roll, jsc_registration, jsc_gpa,
-      ssc_roll, ssc_registration, ssc_gpa,
-      shift, section, group_name, subject, current_batch_id,
-    });
+      const student = await models.Student.create({
+        user_id: user.id,
+        student_id_card_no: student_id_card_no || await nextStudentId({ transaction: t }),
+        guardian_phone,
+        admission_date: admission_date || new Date().toISOString().split('T')[0],
+        gender, nationality, religion, blood_group, dob: dob || null,
+        father_name, father_phone, father_occupation, father_nid,
+        mother_name, mother_phone, mother_occupation, mother_nid,
+        present_address, permanent_address,
+        emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
+        last_school, jsc_roll, jsc_registration, jsc_gpa,
+        ssc_roll, ssc_registration, ssc_gpa,
+        shift, section, group_name, subject, current_batch_id: current_batch_id || null,
+      }, { transaction: t });
+
+      return { user, student };
+    }), retries);
 
     const { password: _pw, ...safeUser } = user.toJSON();
     if (generatedPassword && !process.env.DEFAULT_USER_PASSWORD) safeUser.temp_password = generatedPassword;
     res.status(201).json({ message: 'Student created successfully', data: { user: safeUser, student } });
   } catch (error) {
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(409).json({ message: 'An account with this email already exists.' });
+    }
     res.status(500).json({ message: 'Failed to create student' });
   }
 };
@@ -279,9 +284,19 @@ export const update = async (req, res) => {
 
     const userData = {};
     if (name !== undefined) userData.name = name;
-    if (email !== undefined) userData.email = email;
+    if (email !== undefined) {
+      const normEmail = normalizeEmail(email);
+      if (normEmail) {
+        const clash = await models.User.findOne({
+          where: { [Op.and]: [where(fn('lower', col('email')), normEmail), { id: { [Op.ne]: id } }] },
+          paranoid: false,
+        });
+        if (clash) return res.status(409).json({ message: 'Another account already uses this email.' });
+      }
+      userData.email = normEmail;
+    }
     if (phone !== undefined) userData.phone = phone;
-    if (password !== undefined) userData.password = password;
+    if (password !== undefined && password !== '') userData.password = password;
     if (req.file) {
       const result = await MediaService.upload(req.file, { folder: 'users' });
       if (user.profile_photo_path) {
@@ -292,6 +307,12 @@ export const update = async (req, res) => {
 
     await user.update(userData);
 
+    // SEC-5: an admin-set password revokes the student's existing sessions
+    // (routine profile edits without a password change do not).
+    if (userData.password !== undefined) {
+      await models.User.increment('token_version', { where: { id: user.id } });
+    }
+
     if (user.Student) {
       const studentData = {};
       if (student_id_card_no !== undefined) studentData.student_id_card_no = student_id_card_no || null;
@@ -301,7 +322,7 @@ export const update = async (req, res) => {
       if (nationality !== undefined) studentData.nationality = nationality;
       if (religion !== undefined) studentData.religion = religion;
       if (blood_group !== undefined) studentData.blood_group = blood_group;
-      if (dob !== undefined) studentData.dob = dob;
+      if (dob !== undefined) studentData.dob = dob || null;
       if (father_name !== undefined) studentData.father_name = father_name;
       if (father_phone !== undefined) studentData.father_phone = father_phone;
       if (father_occupation !== undefined) studentData.father_occupation = father_occupation;
@@ -326,7 +347,7 @@ export const update = async (req, res) => {
       if (section !== undefined) studentData.section = section;
       if (group_name !== undefined) studentData.group_name = group_name;
       if (subject !== undefined) studentData.subject = subject;
-      if (current_batch_id !== undefined) studentData.current_batch_id = current_batch_id;
+      if (current_batch_id !== undefined) studentData.current_batch_id = current_batch_id || null;
 
       await user.Student.update(studentData);
     }

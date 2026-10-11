@@ -1,5 +1,5 @@
 import models from '../models/index.js';
-import { Op } from 'sequelize';
+import { Op, fn, col } from 'sequelize';
 import { parseSince, makeAfter } from '../utils/sinceFilters.js';
 import NotificationService from '../services/NotificationService.js';
 
@@ -29,6 +29,18 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const buildSyntheticItems = async (user, after) => {
   const synth = [];
   const role = user.role;
+
+  // Unread notification rows per type, so a business event that already has
+  // its own row is not ALSO listed as a synthetic summary item.
+  const unreadRows = await models.Notification.findAll({
+    where: { user_id: user.id, read_at: null },
+    attributes: ['type', [fn('COUNT', col('id')), 'n']],
+    group: ['type'],
+  });
+  const rowCountByType = unreadRows.reduce((m, r) => {
+    m[r.type] = Number(r.get('n'));
+    return m;
+  }, {});
 
   if (role === 'admin' || role === 'super_admin') {
     const [pendingAdmissions, holdAdmissions, pendingPayments, pendingLeaveRequests, unreadMessages, latestAdmission, latestPayment, latestLeave, latestMessage] = await Promise.all([
@@ -60,10 +72,14 @@ const buildSyntheticItems = async (user, after) => {
     };
 
     const totalAdmissions = pendingAdmissions + holdAdmissions;
-    if (totalAdmissions > 0) push('syn-admissions', 'admission', plural(totalAdmissions, 'pending admission application'), 'New applications awaiting review', '/admin/admissions', 'warning', latestAdmission);
-    if (pendingPayments > 0) push('syn-payments', 'payment', plural(pendingPayments, 'pending payment'), 'Payments awaiting confirmation', '/admin/payments', 'warning', latestPayment);
-    if (pendingLeaveRequests > 0) push('syn-leaves', 'leave', plural(pendingLeaveRequests, 'pending leave request'), 'Leave requests awaiting review', '/admin/leave-requests', 'warning', latestLeave);
-    if (unreadMessages > 0) push('syn-messages', 'contact', plural(unreadMessages, 'unread message'), 'New contact form messages', '/admin/contact-messages', 'info', latestMessage);
+    const missingAdmissionRows = totalAdmissions > (rowCountByType.admission || 0);
+    const missingPaymentRows = pendingPayments > (rowCountByType.payment || 0);
+    const missingLeaveRows = pendingLeaveRequests > (rowCountByType.leave || 0);
+    const missingMessageRows = unreadMessages > (rowCountByType.contact || 0);
+    if (totalAdmissions > 0 && missingAdmissionRows) push('syn-admissions', 'admission', plural(totalAdmissions, 'pending admission application'), 'New applications awaiting review', '/admin/admissions', 'warning', latestAdmission);
+    if (pendingPayments > 0 && missingPaymentRows) push('syn-payments', 'payment', plural(pendingPayments, 'pending payment'), 'Payments awaiting confirmation', '/admin/payments', 'warning', latestPayment);
+    if (pendingLeaveRequests > 0 && missingLeaveRows) push('syn-leaves', 'leave', plural(pendingLeaveRequests, 'pending leave request'), 'Leave requests awaiting review', '/admin/leave-requests', 'warning', latestLeave);
+    if (unreadMessages > 0 && missingMessageRows) push('syn-messages', 'contact', plural(unreadMessages, 'unread message'), 'New contact form messages', '/admin/contact-messages', 'info', latestMessage);
   }
 
   if (role === 'teacher') {
@@ -80,7 +96,7 @@ const buildSyntheticItems = async (user, after) => {
       models.AssignmentSubmission.count({ where: submissionWhere, include: submissionInclude }),
       models.AssignmentSubmission.max('updatedAt', { where: submissionWhere, include: submissionInclude }),
     ]);
-    if (latestSubmission) {
+    if (latestSubmission && pendingSubmissions > (rowCountByType.assignment || 0)) {
       synth.push({
         id: 'syn-reviews',
         synthetic: true,

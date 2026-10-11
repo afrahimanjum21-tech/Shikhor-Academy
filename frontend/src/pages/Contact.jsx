@@ -2,10 +2,16 @@ import { useEffect, useState } from "react";
 import api from "../services/api";
 import { Loader2, Mail, MapPin, Phone, Clock, Send, ArrowUpRight, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
+import usePageMeta from "../hooks/usePageMeta";
 import HERO_IMAGE from "../images/hero-background.jpg";
 import PageBackground from "../components/common/PageBackground";
 
 export default function Contact() {
+    usePageMeta({
+        title: "Contact Us — Uttoron Coaching Centre",
+        description: "Get in touch with Uttoron Coaching Centre: location, phone, email and hours. We're happy to answer your questions.",
+        path: "/contact",
+    });
     const [form, setForm] = useState({ name: "", email: "", subject: "", phone: "", message: "" });
     const [status, setStatus] = useState(null);
     const [statusMessage, setStatusMessage] = useState("");

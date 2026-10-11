@@ -1,9 +1,11 @@
-import models from '../models/index.js';
+import models, { sequelize } from '../models/index.js';
 import bcrypt from 'bcryptjs';
-import { Op } from 'sequelize';
 import crypto from 'crypto';
 import NotificationService from './NotificationService.js';
 import { sendEmail, escapeHtml, resolveSiteBaseUrl } from './mailer.js';
+import { normalizeEmail } from '../utils/normalizeEmail.js';
+import { nextStudentId, withStudentIdRetry } from './studentId.js';
+import { signSetupToken } from './passwordSetupToken.js';
 
 const STATUS_NAMES = { approved: 'Approved', rejected: 'Rejected', hold: 'On Hold' };
 
@@ -13,24 +15,6 @@ class AdmissionServiceError extends Error {
     this.status = status;
   }
 }
-
-const generateStudentId = async () => {
-  const year = new Date().getFullYear();
-  const prefix = `UCC-${year}-`;
-  // Use MAX(existing suffix) + 1 instead of COUNT + 1 so soft-deleted or
-  // re-used card numbers can never collide.
-  const rows = await models.Student.findAll({
-    where: { student_id_card_no: { [Op.like]: `${prefix}%` } },
-    attributes: ['student_id_card_no'],
-  });
-  let max = 0;
-  for (const row of rows) {
-    const suffix = row.student_id_card_no.slice(prefix.length);
-    const n = parseInt(suffix, 10);
-    if (!Number.isNaN(n) && n > max) max = n;
-  }
-  return `${prefix}${String(max + 1).padStart(4, '0')}`;
-};
 
 const findDefaultBatchId = async (courseId) => {
   if (!courseId) return null;
@@ -44,7 +28,6 @@ const findDefaultBatchId = async (courseId) => {
 const buildStudentFromAdmission = async (admission, userId) => ({
   user_id: userId,
   admission_id: admission.id,
-  student_id_card_no: await generateStudentId(),
   current_batch_id: await findDefaultBatchId(admission.course_id),
   guardian_phone: admission.guardian_phone,
   emergency_contact_name: admission.emergency_name || admission.emergency_contact_name,
@@ -64,9 +47,6 @@ const buildStudentFromAdmission = async (admission, userId) => ({
   mother_occupation: admission.mother_occupation,
   present_address: admission.address,
   permanent_address: admission.permanent_address,
-  emergency_contact_phone: admission.emergency_contact,
-  emergency_contact_name: admission.guardian_name,
-  emergency_contact_relation: admission.guardian_relation,
   last_school: admission.last_school,
   jsc_roll: admission.jsc_roll,
   jsc_registration: admission.jsc_registration,
@@ -90,7 +70,7 @@ const getCourseTitle = async (courseId) => {
   return course?.title || null;
 };
 
-const sendStudentStatusEmail = async ({ admission, status, user, plainPassword, isNewUser }) => {
+const sendStudentStatusEmail = async ({ admission, status, user, setupUrl, isNewUser }) => {
   const email = admission.email;
   if (!email) {
     console.warn(`No student email on admission #${admission.id}; skipping ${status} email`);
@@ -112,11 +92,12 @@ const sendStudentStatusEmail = async ({ admission, status, user, plainPassword, 
       <p>Dear ${name},</p>
       <p>We are delighted to inform you that your admission to <strong>Uttoron Coaching Centre</strong> has been <strong>approved</strong>.</p>
       ${courseLine}
-      ${isNewUser && user && plainPassword ? `
-        <p>Your student account has been created. Here are your login credentials:</p>
-        <p><strong>Username (Email):</strong> ${safe(user.email)}</p>
-        <p><strong>Password:</strong> ${safe(plainPassword)}</p>
-        <p>Please log in at <a href="${loginUrl}">${loginUrl}</a> and change your password after your first login.</p>
+      ${isNewUser && setupUrl ? `
+        <p>Your student account has been created. For your security we do not send passwords by email — please set your own password using the secure link below:</p>
+        <p><a href="${setupUrl}" style="display:inline-block;padding:10px 18px;background:#1d4ed8;color:#ffffff;text-decoration:none;border-radius:6px">Set your password</a></p>
+        <p>Or paste this link into your browser:<br/><a href="${setupUrl}">${setupUrl}</a></p>
+        <p>This link is valid for 48 hours and can be used once. If it expires, please contact Uttoron Coaching Centre for a new link.</p>
+        <p><strong>Username (Email):</strong> ${safe(user ? user.email : email)}</p>
       ` : `
         <p>You can log in to your student account at <a href="${loginUrl}">${loginUrl}</a>.</p>
       `}
@@ -176,49 +157,76 @@ const notifyStudent = async ({ admission, status, userId }) => {
   }).catch(err => console.warn('Student notification failed:', err.message));
 };
 
-export async function approveAdmission({ admissionId, email }) {
-  const admission = await models.AdmissionApplication.findByPk(admissionId);
-  if (!admission) throw new AdmissionServiceError('Admission application not found', 404);
-  if (!['pending', 'hold'].includes(admission.status)) {
-    throw new AdmissionServiceError(`Admission is already ${admission.status}`, 400);
+export async function approveAdmission({ admissionId, email, password }) {
+  // Atomic identity writes; the student id is generated inside the tx and the
+  // whole tx is retried on a concurrent id collision.
+  const outcome = await withStudentIdRetry(() => sequelize.transaction(async (t) => {
+    const admission = await models.AdmissionApplication.findByPk(admissionId, { transaction: t, lock: t.LOCK.UPDATE });
+    if (!admission) throw new AdmissionServiceError('Admission application not found', 404);
+    if (!['pending', 'hold'].includes(admission.status)) throw new AdmissionServiceError(`Admission is already ${admission.status}`, 400);
+
+    const userEmail = normalizeEmail(email || admission.email);
+    if (!userEmail) throw new AdmissionServiceError('Email is required to create a student account', 400);
+
+    let user = await models.User.findOne({ where: { email: userEmail }, paranoid: false, transaction: t });
+    let plainPassword;
+    let isNewUser = false;
+
+    if (!user) {
+      isNewUser = true;
+      plainPassword = password && password !== '' ? password : generatePassword();
+      user = await models.User.create({ name: admission.full_name, email: userEmail, password: await bcrypt.hash(plainPassword, 12), role: 'student', phone: admission.phone, profile_photo_path: admission.photo_path }, { transaction: t });
+    } else if (user.role && user.role !== 'student') {
+      throw new AdmissionServiceError(`An account with this email already exists as "${user.role}". Use a different email for the student.`, 409);
+    } else if (user.deletedAt) {
+      await user.restore({ transaction: t });
+      isNewUser = true;
+      plainPassword = password && password !== '' ? password : generatePassword();
+      user.password = await bcrypt.hash(plainPassword, 12);
+      if (!user.name) user.name = admission.full_name;
+      await user.save({ transaction: t });
+    } else if (password && password !== '') {
+      plainPassword = password;
+      user.password = await bcrypt.hash(plainPassword, 12);
+      await user.save({ transaction: t });
+    }
+
+    let student = await models.Student.findOne({ where: { user_id: user.id }, transaction: t });
+    if (!student) {
+      const values = await buildStudentFromAdmission(admission, user.id);
+      values.student_id_card_no = await nextStudentId({ transaction: t });
+      student = await models.Student.create(values, { transaction: t });
+    }
+
+    await admission.update({ status: 'approved' }, { transaction: t });
+    return { admission, user, student, isNewUser, plainPassword };
+  }));
+
+  // Post-commit side effects must never turn a committed approval into a 500.
+  // E5: for a freshly-created account with an auto-generated (unknown) password
+  // we email a one-time SETUP LINK instead of a plaintext password. The token
+  // is bound to the account's current bcrypt hash, so it self-invalidates the
+  // moment the student sets their password. When an admin supplied an explicit
+  // password we send a neutral "log in" email (admin shares it out-of-band) and
+  // never email the password.
+  let setupUrl = null;
+  const adminSuppliedPassword = !!(password && password !== '');
+  if (outcome.isNewUser && !adminSuppliedPassword && outcome.user?.password) {
+    try {
+      const setupToken = signSetupToken({ userId: outcome.user.id, passwordHash: outcome.user.password });
+      setupUrl = `${resolveSiteBaseUrl()}/set-password?token=${encodeURIComponent(setupToken)}`;
+    } catch (err) {
+      console.warn('Setup-link generation failed (approval already committed):', err.message);
+    }
   }
 
-  const userEmail = email || admission.email;
-  if (!userEmail) {
-    throw new AdmissionServiceError('Email is required to create a student account', 400);
+  try {
+    await sendStudentStatusEmail({ admission: outcome.admission, status: 'approved', user: outcome.user, setupUrl, isNewUser: outcome.isNewUser });
+  } catch (err) {
+    console.warn('Approval email failed (approval already committed):', err.message);
   }
-
-  let user = await models.User.findOne({ where: { email: userEmail }, paranoid: false });
-  let plainPassword;
-  let isNewUser = false;
-
-  if (!user) {
-    isNewUser = true;
-    plainPassword = generatePassword();
-    const hashedPassword = await bcrypt.hash(plainPassword, 12);
-    user = await models.User.create({
-      name: admission.full_name,
-      email: userEmail,
-      password: hashedPassword,
-      role: 'student',
-      phone: admission.phone,
-      profile_photo_path: admission.photo_path,
-    });
-  } else if (user.deletedAt) {
-    await user.restore();
-  }
-
-  let student = await models.Student.findOne({ where: { user_id: user.id } });
-  if (!student) {
-    student = await models.Student.create(await buildStudentFromAdmission(admission, user.id));
-  }
-
-  await admission.update({ status: 'approved' });
-
-  await sendStudentStatusEmail({ admission, status: 'approved', user, plainPassword, isNewUser });
-  await notifyStudent({ admission, status: 'approved', userId: user.id });
-
-  return { admission, user, student, isNewUser, plainPassword };
+  await notifyStudent({ admission: outcome.admission, status: 'approved', userId: outcome.user.id });
+  return outcome;
 }
 
 export async function rejectAdmission({ admissionId }) {

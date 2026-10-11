@@ -21,13 +21,18 @@ export const AuthProvider = ({ children }) => {
     };
 
     const [user, setUser] = useState(getStoredUser());
-    const [token, setToken] = useState(localStorage.getItem('ACCESS_TOKEN'));
+    // J: the JWT now lives ONLY in a HttpOnly cookie (not readable by JS), so we
+    // no longer keep it in localStorage. `authed` is a non-secret flag mirroring
+    // "do we believe there is a session?" — seeded from the cached USER profile.
+    // The cookie is what actually authenticates every request.
+    const [authed, setAuthed] = useState(() => !!getStoredUser());
 
     useEffect(() => {
         const handleStorageChange = (e) => {
-            if (e.key === 'ACCESS_TOKEN' && !e.newValue) {
+            // Cross-tab logout: another tab cleared the cached profile.
+            if (e.key === 'USER' && !e.newValue) {
                 setUser(null);
-                setToken(null);
+                setAuthed(false);
             }
         };
         window.addEventListener('storage', handleStorageChange);
@@ -35,31 +40,34 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     useEffect(() => {
-        if (!token) return;
+        if (!authed) return;
 
+        // Validate the cookie session and refresh the profile. A 401 means the
+        // cookie is gone/expired → clear the optimistic session.
         api.get('/user')
             .then(({ data }) => {
                 setUser(data);
                 localStorage.setItem('USER', JSON.stringify(data));
             })
-            .catch(() => {
-                if (!localStorage.getItem('ACCESS_TOKEN')) {
+            .catch((err) => {
+                if (err?.response?.status === 401) {
                     setUser(null);
-                    setToken(null);
+                    setAuthed(false);
+                    localStorage.removeItem('USER');
                 }
             });
-    }, [token]);
+    }, [authed]);
 
     const login = async (credentials) => {
         try {
             const { data } = await api.post('/login', credentials);
-            
+
             setUser(data.user);
-            setToken(data.token);
-            
-            localStorage.setItem('ACCESS_TOKEN', data.token);
+            setAuthed(true);
+            // NOTE: data.token is intentionally NOT stored — the HttpOnly cookie
+            // set by the server authenticates subsequent requests.
             localStorage.setItem('USER', JSON.stringify(data.user));
-            
+
             return { success: true, user: data.user };
         } catch (error) {
             return { success: false, error: error.response?.data?.message || 'Login failed' };
@@ -73,9 +81,9 @@ export const AuthProvider = ({ children }) => {
             logger.error(e);
         }
         setUser(null);
-        setToken(null);
-        localStorage.removeItem('ACCESS_TOKEN');
+        setAuthed(false);
         localStorage.removeItem('USER');
+        localStorage.removeItem('ACCESS_TOKEN'); // drop any legacy stored token
     };
 
     const refreshUser = async () => {
@@ -87,6 +95,10 @@ export const AuthProvider = ({ children }) => {
             // ignore
         }
     };
+
+    // `token` is kept in the context shape for backward compatibility with
+    // existing route guards; it is now a non-secret presence flag, NOT the JWT.
+    const token = authed ? 'cookie' : null;
 
     return (
         <AuthContext.Provider value={{ user, token, login, logout, refreshUser }}>

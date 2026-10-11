@@ -36,9 +36,11 @@ export default function AdmissionManager() {
     useEffect(() => { 
         markViewed('admissions');
         fetchApplications();
-        document.addEventListener("click", (e) => {
+        const onDocClick = (e) => {
             if (!e.target.closest(".action-menu-btn")) setOpenMenuId(null);
-        });
+        };
+        document.addEventListener("click", onDocClick);
+        return () => document.removeEventListener("click", onDocClick);
     }, []);
 
     const handleSelectAll = (e) => {
@@ -271,9 +273,9 @@ export default function AdmissionManager() {
                                 <InfoRow label="Application ID" value={`#${a.id}`} />
                                 <InfoRow label="Applied Course" value={a.course_title || a.course?.title || 'N/A'} />
                                 <InfoRow label="Status" value={a.status} />
-                                <InfoRow label="Submitted" value={new Date(a.created_at).toLocaleString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })} />
-                                {a.updated_at !== a.created_at && (
-                                    <InfoRow label="Last Updated" value={new Date(a.updated_at).toLocaleString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })} />
+                                <InfoRow label="Submitted" value={new Date(a.createdAt).toLocaleString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })} />
+                                {a.updatedAt !== a.createdAt && (
+                                    <InfoRow label="Last Updated" value={new Date(a.updatedAt).toLocaleString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })} />
                                 )}
                             </div>
                         </div>

@@ -66,7 +66,7 @@ export default function FacultyProfile() {
   const hasCert = faculty.certifications?.length > 0;
   const hasSubjects = faculty.subjects?.length > 0;
   const hasBatches = faculty.batches?.length > 0;
-  const hasGallery = faculty.gallery?.length > 0;
+  const hasGallery = faculty.galleries?.length > 0;
   const hasSocials = faculty.social_links?.length > 0;
 
   const expertiseTags = [];
@@ -461,7 +461,7 @@ export default function FacultyProfile() {
                   Gallery
                 </h2>
                 <div className="mt-[24px] grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {faculty.gallery.map((img, i) => (
+                  {faculty.galleries.map((img, i) => (
                     <a
                       key={i}
                       href={buildAssetUrl(img.image_path)}

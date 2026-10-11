@@ -104,11 +104,18 @@ export default function StatsSection() {
 
   const stats = [];
 
-  if (settings?.real_student_count > 0) {
+  // I-8: honour the admin "Student Count" override (SiteSettings.student_count)
+  // and fall back to the real DB count — the SAME mapping the About page uses,
+  // so Home and About never disagree.
+  const studentCount = settings?.student_count > 0
+    ? settings.student_count
+    : (settings?.real_student_count ?? 0);
+
+  if (studentCount > 0) {
     stats.push({
       key: "students",
       ...statTemplates.students,
-      value: settings.real_student_count,
+      value: studentCount,
     });
   }
 

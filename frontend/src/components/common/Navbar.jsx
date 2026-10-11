@@ -1,31 +1,49 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { useState } from "react";
-import { Menu, X } from "lucide-react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import {
+    Menu, X, Home, Info, BookOpen, Users, Image, Megaphone, Mail, LayoutDashboard, LogOut, Trophy
+} from "lucide-react";
 import { useConfirm } from "./ConfirmDialog";
 
 import LOGO_IMAGE from "../../images/hero-background.jpg";
 
-const navItems = ["Home", "About", "Courses", "Faculty", "Gallery", "Notices", "Contact"];
+const navItems = ["Home", "About", "Courses", "Faculty", "Gallery", "Notices", "Success Stories", "Contact"];
 
-const stagger = {
-    animate: {
-        transition: { staggerChildren: 0.07, delayChildren: 0.1 },
-    },
+const navIcons = {
+    Home: Home,
+    About: Info,
+    Courses: BookOpen,
+    Faculty: Users,
+    Gallery: Image,
+    Notices: Megaphone,
+    "Success Stories": Trophy,
+    Contact: Mail,
 };
 
-const fadeIn = {
-    initial: { opacity: 0, x: -20 },
-    animate: { opacity: 1, x: 0, transition: { duration: 0.3, ease: "easeOut" } },
+const navPath = (item) => (item === "Home" ? "/" : `/${item.toLowerCase().replace(/\s+/g, "-")}`);
+
+// §D/O: the public DASHBOARD button must route to the signed-in user's OWN
+// panel, not always /admin/dashboard. Mirrors AppRoutes/Login role mapping;
+// an unknown/missing role falls back safely to login.
+const dashboardPath = (role) => {
+    if (role === "admin" || role === "super_admin") return "/admin/dashboard";
+    if (role === "teacher") return "/teacher/dashboard";
+    if (role === "student") return "/student/dashboard";
+    return "/login";
 };
 
 export default function Navbar() {
     const { user, logout } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
+    const closeRef = useRef(null);
+    const hamburgerRef = useRef(null);
 
     const confirm = useConfirm();
+
+    const closeDrawer = () => setIsOpen(false);
 
     const handleLogout = async () => {
         const ok = await confirm({
@@ -40,10 +58,48 @@ export default function Navbar() {
         navigate('/login');
     };
 
+    // Lock body scroll while the drawer is open
+    useEffect(() => {
+        if (!isOpen) return;
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        return () => { document.body.style.overflow = prev; };
+    }, [isOpen]);
+
+    // Close on Escape
+    useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e) => { if (e.key === "Escape") closeDrawer(); };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [isOpen]);
+
+    // Close on browser back
+    useEffect(() => {
+        if (!isOpen) return;
+        const onPop = () => closeDrawer();
+        window.addEventListener("popstate", onPop);
+        return () => window.removeEventListener("popstate", onPop);
+    }, [isOpen]);
+
+    // Always close the drawer when the route changes
+    useEffect(() => {
+        if (isOpen) setIsOpen(false);
+    }, [location.pathname]);
+
+    // Focus management
+    useEffect(() => {
+        if (isOpen && closeRef.current) {
+            closeRef.current.focus();
+        } else if (!isOpen && hamburgerRef.current) {
+            hamburgerRef.current.focus();
+        }
+    }, [isOpen]);
+
     return (
         <nav className="bg-white shadow-sm sticky top-0 z-50 font-sans border-b border-gray-100">
             <div className="max-w-7xl mx-auto px-4">
-                <div className="flex justify-between items-center h-16">
+                <div className="flex justify-between items-center h-14 sm:h-16">
                     {/* Logo */}
                     <Link to="/" className="flex items-center gap-2 md:gap-3 group flex-shrink-0">
                         <img
@@ -64,7 +120,7 @@ export default function Navbar() {
                         {navItems.map((item) => (
                             <Link
                                 key={item}
-                                to={item === "Home" ? "/" : `/${item.toLowerCase()}`}
+                                to={navPath(item)}
                                 className="text-gray-600 hover:text-[#1F4F78] font-medium transition text-xs xl:text-sm uppercase tracking-wide hover:underline underline-offset-4 whitespace-nowrap"
                             >
                                 {item}
@@ -73,7 +129,7 @@ export default function Navbar() {
 
                         {user ? (
                             <div className="flex gap-4">
-                                <Link to="/admin/dashboard" className="bg-[#1F4F78] text-white px-4 xl:px-5 py-2 rounded-md font-bold hover:opacity-90 transition shadow-sm text-[10px] xl:text-xs uppercase whitespace-nowrap">
+                                <Link to={dashboardPath(user.role)} className="bg-[#1F4F78] text-white px-4 xl:px-5 py-2 rounded-md font-bold hover:opacity-90 transition shadow-sm text-[10px] xl:text-xs uppercase whitespace-nowrap">
                                     DASHBOARD
                                 </Link>
                             </div>
@@ -87,89 +143,121 @@ export default function Navbar() {
                     {/* Hamburger */}
                     <div className="lg:hidden flex items-center">
                         <button
+                            ref={hamburgerRef}
                             onClick={() => setIsOpen(!isOpen)}
-                            className="relative p-2 rounded-lg hover:bg-gray-100 transition"
-                            aria-label="Toggle menu"
+                            className="relative p-2 rounded-lg hover:bg-gray-100 active:bg-gray-200/70 transition"
+                            aria-label={isOpen ? "Close menu" : "Open menu"}
+                            aria-expanded={isOpen}
+                            aria-controls="mobile-navigation-drawer"
                         >
-                            <motion.div
-                                animate={{ rotate: isOpen ? 90 : 0 }}
-                                transition={{ duration: 0.3, ease: "easeInOut" }}
-                            >
-                                {isOpen ? <X size={28} color="#1F4F78" /> : <Menu size={28} color="#1F4F78" />}
-                            </motion.div>
+                            {isOpen ? <X size={24} color="#1F4F78" /> : <Menu size={24} color="#1F4F78" />}
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Mobile Menu */}
-            {isOpen && (
-                <>
-                    {/* Backdrop */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.25 }}
-                        className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-                        onClick={() => setIsOpen(false)}
-                    />
+            {/* Mobile Side Drawer - always mounted, animated with CSS transitions */}
+            <div
+                className={`fixed inset-0 z-[70] lg:hidden ${isOpen ? "" : "pointer-events-none"}`}
+                aria-hidden={!isOpen}
+            >
+                {/* Backdrop */}
+                <div
+                    onClick={closeDrawer}
+                    className={`absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-300 ease-out ${isOpen ? "opacity-100" : "opacity-0"}`}
+                    aria-hidden="true"
+                />
 
-                    {/* Menu Panel */}
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        transition={{ duration: 0.35, ease: "easeInOut" }}
-                        className="lg:hidden bg-white border-t border-gray-100 overflow-hidden shadow-xl relative z-50"
-                    >
-                        <motion.div
-                            variants={stagger}
-                            initial="initial"
-                            animate="animate"
-                            className="px-4 py-4 space-y-1"
+                {/* Drawer Panel */}
+                <div
+                    id="mobile-navigation-drawer"
+                    role="dialog"
+                    aria-modal={isOpen || undefined}
+                    aria-label="Navigation menu"
+                    className={`absolute inset-y-0 right-0 w-[84vw] max-w-[380px] bg-white border-l border-gray-200 shadow-xl flex flex-col transition-transform duration-300 ease-out ${isOpen ? "translate-x-0" : "translate-x-full"}`}
+                >
+                    {/* Drawer Header */}
+                    <div className="h-14 sm:h-16 flex items-center px-4 border-b border-gray-100 flex-shrink-0">
+                        <Link to="/" onClick={closeDrawer} className="flex items-center gap-2.5 min-w-0">
+                            <img
+                                src={LOGO_IMAGE}
+                                alt="Uttoron Logo"
+                                className="h-7 w-7 sm:h-8 sm:w-8 object-contain flex-shrink-0"
+                            />
+                            <span
+                                className="font-bold text-sm sm:text-base text-[#1F4E79] tracking-tight whitespace-nowrap overflow-hidden text-ellipsis"
+                                style={{ fontFamily: '"Tiro Bangla", serif' }}
+                            >
+                                উত্তরণ কোচিং সেন্টার
+                            </span>
+                        </Link>
+                        <button
+                            ref={closeRef}
+                            onClick={closeDrawer}
+                            className="ml-auto p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition active:bg-gray-200/70"
+                            aria-label="Close menu"
                         >
-                            {navItems.map((item) => (
-                                <motion.div key={item} variants={fadeIn}>
-                                    <Link
-                                        to={item === "Home" ? "/" : `/${item.toLowerCase()}`}
-                                        onClick={() => setIsOpen(false)}
-                                        className="block px-4 py-3 text-gray-700 hover:bg-[#1F4F78] hover:text-white rounded-lg font-medium transition-all duration-200"
-                                    >
-                                        {item}
-                                    </Link>
-                                </motion.div>
-                            ))}
+                            <X size={20} />
+                        </button>
+                    </div>
 
-                            <motion.div variants={fadeIn} className="pt-2 space-y-2">
-                                {user ? (
-                                    <>
-                                        <Link
-                                            to="/admin/dashboard"
-                                            onClick={() => setIsOpen(false)}
-                                            className="block text-center bg-[#1F4F78] text-white py-3 rounded-lg font-bold hover:opacity-90 transition"
-                                        >
-                                            Dashboard
-                                        </Link>
-                                        <button
-                                            onClick={handleLogout}
-                                            className="block w-full text-center border border-red-300 text-red-600 py-3 rounded-lg font-bold hover:bg-red-50 transition"
-                                        >
-                                            Logout
-                                        </button>
-                                    </>
-                                ) : (
-                                    <Link
-                                        to="/login"
-                                        onClick={() => setIsOpen(false)}
-                                        className="block text-center border border-[#1F4F78] text-[#1F4F78] py-3 rounded-lg font-bold hover:bg-[#1F4F78] hover:text-white transition"
-                                    >
-                                        Login
-                                    </Link>
-                                )}
-                            </motion.div>
-                        </motion.div>
-                    </motion.div>
-                </>
-            )}
+                    {/* Navigation Items */}
+                    <nav className="flex-1 overflow-y-auto overscroll-contain py-4 px-2 space-y-0.5">
+                        {navItems.map((item) => {
+                            const to = navPath(item);
+                            const isActive =
+                                location.pathname === to ||
+                                (to !== "/" && location.pathname.startsWith(`${to}/`));
+                            const Icon = navIcons[item];
+                            return (
+                                <Link
+                                    key={item}
+                                    to={to}
+                                    onClick={closeDrawer}
+                                    aria-current={isActive ? "page" : undefined}
+                                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-200 font-medium text-sm ${
+                                        isActive
+                                            ? "bg-[#1F4E79] text-white shadow-md"
+                                            : "text-gray-500 hover:bg-gray-100 hover:text-[#1F4E79]"
+                                    }`}
+                                >
+                                    <Icon size={18} className="flex-shrink-0" />
+                                    <span className="flex-1 truncate">{item}</span>
+                                </Link>
+                            );
+                        })}
+                    </nav>
+
+                    {/* Auth Footer */}
+                    <div className="flex-shrink-0 p-3 border-t border-gray-100 bg-gray-50/50 space-y-2">
+                        {user ? (
+                            <>
+                                <Link
+                                    to={dashboardPath(user.role)}
+                                    onClick={closeDrawer}
+                                    className="flex items-center justify-center gap-2.5 w-full px-3 py-3 rounded-lg bg-[#1F4E79] text-white font-medium text-sm shadow-md hover:bg-[#1a3d66] transition-colors active:scale-[0.98]"
+                                >
+                                    <LayoutDashboard size={18} /> Dashboard
+                                </Link>
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center justify-center gap-2.5 w-full px-3 py-3 rounded-lg border border-red-200 bg-red-50/60 text-red-600 font-medium text-sm hover:bg-red-100/70 transition-colors active:scale-[0.98]"
+                                >
+                                    <LogOut size={18} /> Logout
+                                </button>
+                            </>
+                        ) : (
+                            <Link
+                                to="/login"
+                                onClick={closeDrawer}
+                                className="flex items-center justify-center gap-2.5 w-full px-3 py-3 rounded-lg bg-[#1F4E79] text-white font-medium text-sm shadow-md hover:bg-[#1a3d66] transition-colors active:scale-[0.98]"
+                            >
+                                Login
+                            </Link>
+                        )}
+                    </div>
+                </div>
+            </div>
         </nav>
     );
 }

@@ -13,6 +13,7 @@ const AssignmentSubmission = sequelize.define('AssignmentSubmission', {
    submitted_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
 }, {
   indexes: [
+    { unique: true, fields: ['assignment_id', 'student_id'] },
     { fields: ['assignment_id'] },
     { fields: ['student_id'] },
     { fields: ['status'] },

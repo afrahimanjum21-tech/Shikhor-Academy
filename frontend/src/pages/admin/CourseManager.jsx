@@ -90,9 +90,16 @@ function CoursesSection() {
         setSaving(true);
         try {
             const data = new FormData();
+            // I-16: optional fields must be CLEARABLE on edit. The old loop
+            // dropped every empty string, so a cleared category/discount/seats/
+            // duration/teacher/class-mode was never sent and could not be
+            // cleared. On edit, send these as '' so the backend stores NULL
+            // (it coerces '' → null); on create, keep omitting empties.
+            const CLEARABLE = new Set(['category_id', 'discount_price', 'duration', 'seats', 'teacher_name', 'class_mode']);
             Object.keys(formData).forEach(key => {
                 const value = formData[key];
                 if ((key === 'features' || key === 'description') && value) data.append(key, value);
+                else if (editingId && CLEARABLE.has(key)) data.append(key, value ?? '');
                 else if (value !== null && value !== undefined && value !== '') data.append(key, value);
             });
             if (thumbnail) data.append('thumbnail', thumbnail);
@@ -226,14 +233,14 @@ function CoursesSection() {
                                         </div>
                                     </td>
                                     <td className="p-4 hidden md:table-cell">
-                                        {course.course_category ? (
+                                        {course.CourseCategory ? (
                                             <span className="px-2 py-1 rounded text-xs font-bold"
                                                 style={{
-                                                    backgroundColor: course.course_category.color
-                                                        ? `${course.course_category.color}15` : '#1F4E7915',
-                                                    color: course.course_category.color || '#1F4E79',
+                                                    backgroundColor: course.CourseCategory.color
+                                                        ? `${course.CourseCategory.color}15` : '#1F4E7915',
+                                                    color: course.CourseCategory.color || '#1F4E79',
                                                 }}>
-                                                {course.course_category.name}
+                                                {course.CourseCategory.name}
                                             </span>
                                         ) : course.category ? (
                                             <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-bold uppercase">
@@ -303,8 +310,8 @@ function CoursesSection() {
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100">
-                                {course.course_category ? (
-                                    <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ backgroundColor: course.course_category.color ? `${course.course_category.color}15` : '#1F4E7915', color: course.course_category.color || '#1F4E79' }}>{course.course_category.name}</span>
+                                {course.CourseCategory ? (
+                                    <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ backgroundColor: course.CourseCategory.color ? `${course.CourseCategory.color}15` : '#1F4E7915', color: course.CourseCategory.color || '#1F4E79' }}>{course.CourseCategory.name}</span>
                                 ) : null}
                                 <span className="text-xs text-gray-500">{course.teacher_name ? `by ${course.teacher_name}` : ''}</span>
                                 <div className="flex-1" />
@@ -509,36 +516,36 @@ function CategoriesSection() {
         catch (error) { logger.error('Failed to toggle visibility:', error); }
     };
 
+    // C20/I-9: actually REORDER the array (swap the two elements) and send
+    // display_order by the NEW position. The old code only swapped the two
+    // display_order VALUES while leaving the array order unchanged, then sent
+    // `i * 10` by the ORIGINAL index — a no-op that never persisted a new order.
+    const persistReorder = async (items) => {
+        setCategories(items); // optimistic
+        try {
+            await api.post('/admin/course-categories/reorder', {
+                categories: items.map((c, i) => ({ id: c.id, display_order: i * 10 })),
+            });
+            fetchCategories(); // reload the authoritative order
+        } catch (error) {
+            logger.error('Failed to reorder:', error);
+            notify.error('Failed to save the new order');
+            fetchCategories(); // revert to server state
+        }
+    };
+
     const handleMoveUp = async (index) => {
         if (index === 0) return;
         const items = [...categories];
-        const temp = items[index].display_order;
-        items[index].display_order = items[index - 1].display_order;
-        items[index - 1].display_order = temp;
-        try {
-            await api.post('/admin/course-categories/reorder', {
-                categories: items.map((c, i) => ({ id: c.id, display_order: i * 10 }))
-            });
-            fetchCategories();
-        } catch (error) {
-            logger.error('Failed to reorder:', error);
-        }
+        [items[index - 1], items[index]] = [items[index], items[index - 1]];
+        await persistReorder(items);
     };
 
     const handleMoveDown = async (index) => {
         if (index === categories.length - 1) return;
         const items = [...categories];
-        const temp = items[index].display_order;
-        items[index].display_order = items[index + 1].display_order;
-        items[index + 1].display_order = temp;
-        try {
-            await api.post('/admin/course-categories/reorder', {
-                categories: items.map((c, i) => ({ id: c.id, display_order: i * 10 }))
-            });
-            fetchCategories();
-        } catch (error) {
-            logger.error('Failed to reorder:', error);
-        }
+        [items[index], items[index + 1]] = [items[index + 1], items[index]];
+        await persistReorder(items);
     };
 
     if (loading) {

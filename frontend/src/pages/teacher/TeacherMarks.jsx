@@ -110,15 +110,21 @@ export default function TeacherMarks() {
         if (!examId) return;
         setSaving(true);
         try {
+            const fullMarks = Number(examMeta?.full_marks) || Infinity;
             const payload = {
                 exam_id: examId,
                 batch_id: batchId,
                 subject,
-                marks: students.map(s => ({
-                    student_id: s.student.id,
-                    obtained: marks[s.student.id] === '' ? 0 : marks[s.student.id],
-                    teacher_comment: comments[s.student.id] || null,
-                })),
+                marks: students
+                    .filter(s => {
+                        const v = marks[s.student.id];
+                        return v !== '' && v !== undefined && v !== null && Number.isFinite(Number(v));
+                    })
+                    .map(s => ({
+                        student_id: s.student.id,
+                        obtained: Math.min(Math.max(Number(marks[s.student.id]), 0), fullMarks),
+                        teacher_comment: comments[s.student.id] || null,
+                    })),
             };
             const { data } = await api.post('/teacher/results/marks', payload);
             notify.success(`Marks saved for ${data.count} students`);

@@ -1,4 +1,5 @@
 import models from '../../models/index.js';
+import { encryptSecret } from '../../services/secretCrypto.js';
 
 export const show = async (req, res) => {
   try {
@@ -12,8 +13,11 @@ export const show = async (req, res) => {
     data.has_store_password = Boolean(data.store_password);
     delete data.store_password;
 
-    res.json({ data });
+    res.json(data);
   } catch (error) {
+    // D20: log a safe diagnostic (message only — never the full error, which
+    // could carry the encrypted store_password in its SQL parameters).
+    console.error('PaymentSettingController.show error:', error.message);
     res.status(500).json({ message: 'Failed to fetch payment settings' });
   }
 };
@@ -32,7 +36,7 @@ export const update = async (req, res) => {
     if (is_active !== undefined) updateData.is_active = is_active === true || is_active === 'true';
     if (mode !== undefined) updateData.mode = mode;
     if (store_id !== undefined) updateData.store_id = store_id;
-    if (store_password !== undefined) updateData.store_password = store_password;
+    if (store_password !== undefined) updateData.store_password = encryptSecret(store_password);
     if (enabled_methods !== undefined) {
       updateData.enabled_methods = typeof enabled_methods === 'string'
         ? JSON.parse(enabled_methods)
@@ -41,6 +45,7 @@ export const update = async (req, res) => {
     if (settlement_account_name !== undefined) updateData.settlement_account_name = settlement_account_name;
     if (settlement_account_number !== undefined) updateData.settlement_account_number = settlement_account_number;
     if (settlement_bank !== undefined) updateData.settlement_bank = settlement_bank;
+    if (req.body.settlement_bank_name !== undefined) updateData.settlement_bank = req.body.settlement_bank_name;
     if (instructions !== undefined) updateData.instructions = instructions;
 
     await setting.update(updateData);
@@ -50,8 +55,9 @@ export const update = async (req, res) => {
     data.has_store_password = Boolean(data.store_password);
     delete data.store_password;
 
-    res.json({ message: 'Payment settings updated successfully', data });
+    res.json({ message: 'Payment settings updated successfully', settings: data });
   } catch (error) {
+    console.error('PaymentSettingController.update error:', error.message);
     res.status(500).json({ message: 'Failed to update payment settings' });
   }
 };

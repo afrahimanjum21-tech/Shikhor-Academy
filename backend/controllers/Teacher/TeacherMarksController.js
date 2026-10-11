@@ -1,6 +1,7 @@
 import models from '../../models/index.js';
 import { Op } from 'sequelize';
-import GradeService from '../../services/GradeService.js';
+import ExamResultService from '../../services/ExamResultService.js';
+import { validateMarksDetails } from '../../services/marksValidation.js';
 
 export const getExams = async (req, res) => {
   try {
@@ -47,16 +48,24 @@ export const getStudentsForExam = async (req, res) => {
       attributes: ['id'],
     }).then(rows => rows.map(r => r.id));
 
-    const assignment = await models.TeacherBatchAssignment.findOne({
+    // The teacher's OWN assigned batches within this course — not every batch
+    // of the course. getStudentsForExam previously listed students (with their
+    // name/email/phone/photo PII) for ALL course batches, leaking sibling-batch
+    // students the teacher does not teach. Scope to the assigned batches, the
+    // same authorization model as saveMarks / TeacherResultController.
+    const assignments = await models.TeacherBatchAssignment.findAll({
       where: { teacher_id: teacherId, batch_id: { [Op.in]: courseIds } },
+      attributes: ['batch_id'],
     });
 
-    if (!assignment) {
+    if (assignments.length === 0) {
       return res.status(403).json({ message: 'You are not assigned to this exam\'s course' });
     }
 
+    const assignedBatchIds = [...new Set(assignments.map(a => a.batch_id))];
+
     const students = await models.Student.findAll({
-      where: { current_batch_id: { [Op.in]: courseIds } },
+      where: { current_batch_id: { [Op.in]: assignedBatchIds } },
       include: [{ model: models.User, attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'] }],
       order: [['admission_date', 'ASC']],
     });
@@ -94,55 +103,86 @@ export const saveMarks = async (req, res) => {
       return res.status(404).json({ message: 'Exam not found' });
     }
 
-    const courseIds = await models.Batch.findAll({
+    const courseBatchIds = await models.Batch.findAll({
       where: { course_id: exam.course_id },
       attributes: ['id'],
     }).then(rows => rows.map(r => r.id));
 
-    const assignment = await models.TeacherBatchAssignment.findOne({
-      where: { teacher_id: teacherId, batch_id: { [Op.in]: courseIds } },
+    // The teacher's own assignments within this course decide BOTH which
+    // batches' students and which subjects they may write. This endpoint
+    // previously only checked a course-level assignment and then wrote the
+    // ENTIRE marks_details object for any student in the course — letting a
+    // teacher overwrite subjects they do not teach, mark students in batches
+    // they are not assigned to, and clobber marks entered via
+    // /teacher/results/marks. We now scope to the teacher's assigned batches
+    // and subjects (same authorization model as TeacherResultController).
+    const assignments = await models.TeacherBatchAssignment.findAll({
+      where: { teacher_id: teacherId, batch_id: { [Op.in]: courseBatchIds } },
+      attributes: ['batch_id', 'subject'],
     });
-
-    if (!assignment) {
+    if (assignments.length === 0) {
       return res.status(403).json({ message: 'You are not assigned to this exam\'s course' });
     }
 
-    // Never write results for students who are not actually enrolled in the
-    // course the exam belongs to.
-    const studentIds = marks.map(m => m.student_id);
-    const validStudents = await models.Student.findAll({
-      where: { id: { [Op.in]: studentIds }, current_batch_id: { [Op.in]: courseIds } },
-      attributes: ['id'],
-    });
-    if (validStudents.length !== studentIds.length) {
-      return res.status(400).json({ message: 'Some students are not enrolled in this exam\'s course' });
+    const assignedBatchIds = [...new Set(assignments.map(a => a.batch_id))];
+    const examSubjects = Array.isArray(exam.subjects) ? exam.subjects : [];
+    const allowedSubjects = new Set(
+      assignments.map(a => a.subject).filter(s => s != null && examSubjects.includes(s))
+    );
+    if (allowedSubjects.size === 0) {
+      return res.status(403).json({ message: 'You are not assigned to teach any subject in this exam' });
     }
 
-    const results = await Promise.all(marks.map(async (entry) => {
-      const totalObtained = GradeService.calculateTotalObtained(entry.marks_details);
-      const totalMarks = exam.total_marks || 100;
-      const gradeInfo = GradeService.calculate(totalObtained, totalMarks);
+    // Students must be in a batch THIS teacher is assigned to (not merely the
+    // course), mirroring /teacher/results/marks.
+    const studentIds = marks.map(m => m.student_id);
+    const validStudents = await models.Student.findAll({
+      where: { id: { [Op.in]: studentIds }, current_batch_id: { [Op.in]: assignedBatchIds } },
+      attributes: ['id'],
+    });
+    if (validStudents.length !== new Set(studentIds).size) {
+      return res.status(400).json({ message: 'Some students are not in a batch you are assigned to' });
+    }
 
-      const values = {
-        marks_details: entry.marks_details,
-        total_obtained: totalObtained,
-        grade: gradeInfo.grade,
-        gpa: gradeInfo.gpa,
-        teacher_comment: entry.teacher_comment || null,
-      };
+    // I-14: validate the incoming marks for the subjects this teacher may write
+    // and reject the whole batch on any invalid value (never persist partial).
+    const cleanByStudent = new Map();
+    for (const entry of marks) {
+      const incoming = entry.marks_details && typeof entry.marks_details === 'object' ? entry.marks_details : {};
+      const check = validateMarksDetails(exam, incoming, allowedSubjects);
+      if (!check.ok) {
+        return res.status(400).json({ message: `Student ${entry.student_id}: ${check.reason}` });
+      }
+      cleanByStudent.set(entry.student_id, check.clean);
+    }
 
-      // Explicit find-or-update: upsert has no conflict target unless the
-      // unique (exam_id, student_id) index exists, so it could duplicate rows.
+    await Promise.all(marks.map(async (entry) => {
       const [result] = await models.ExamResult.findOrCreate({
         where: { exam_id, student_id: entry.student_id },
-        defaults: values,
+        defaults: { marks_details: {}, total_obtained: 0, grade: 'F', gpa: 0 },
       });
-      await result.update(values);
 
-      return result;
+      // Merge ONLY the subjects this teacher is allowed to write; preserve every
+      // other subject already recorded (e.g. by a different subject teacher).
+      const details = { ...(result.marks_details || {}), ...cleanByStudent.get(entry.student_id) };
+
+      // Canonical computation (per-subject full marks), same service the admin
+      // path and the student/enriched views use — no more total_marks||100.
+      const calc = ExamResultService.computeForExam(exam, details);
+      await result.update({
+        marks_details: details,
+        total_obtained: calc.total_obtained,
+        grade: calc.grade,
+        gpa: calc.gpa,
+        teacher_id: teacherId,
+        teacher_comment: entry.teacher_comment != null ? entry.teacher_comment : result.teacher_comment,
+      });
     }));
 
-    res.json({ message: 'Marks saved successfully', count: results.length });
+    // Persist canonical grade/gpa + competition rank for every student (I-4).
+    await ExamResultService.recomputeExam(exam);
+
+    res.json({ message: 'Marks saved successfully', count: marks.length });
   } catch (error) {
     console.error('TeacherMarksController.saveMarks error:', error);
     res.status(500).json({ message: 'Failed to save marks' });

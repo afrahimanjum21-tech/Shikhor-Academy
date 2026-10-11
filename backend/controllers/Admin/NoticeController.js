@@ -1,4 +1,5 @@
 import models from '../../models/index.js';
+import NotificationService from '../../services/NotificationService.js';
 
 export const index = async (req, res) => {
   try {
@@ -25,6 +26,18 @@ export const store = async (req, res) => {
       type: type || 'general',
       date: date || new Date().toISOString().split('T')[0],
     });
+
+    try {
+      await NotificationService.createForAllStudents({
+        type: 'notice',
+        title: 'New Notice',
+        body: `${title}${description ? ` — ${description.slice(0, 120)}` : ''}`,
+        actionUrl: '/notices',
+        actionLabel: 'View Notice',
+      });
+    } catch (notifErr) {
+      console.error('Failed to notify students about notice:', notifErr);
+    }
 
     res.status(201).json({ message: 'Notice created successfully', data: notice });
   } catch (error) {

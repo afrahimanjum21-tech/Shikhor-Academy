@@ -38,6 +38,9 @@ const Student = sequelize.define('Student', {
   section: { type: DataTypes.STRING(20) },
     group_name: { type: DataTypes.STRING(50) },
     subject: { type: DataTypes.STRING },
+    // Enrollment id this student has on the biometric/fingerprint device; a raw
+    // punch carrying this id is mapped back to the student (migration 018).
+    device_user_id: { type: DataTypes.STRING(64), allowNull: true, unique: true },
 }, {
     indexes: [
         { fields: ['current_batch_id'] },

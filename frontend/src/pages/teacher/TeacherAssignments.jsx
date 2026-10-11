@@ -99,13 +99,18 @@ export default function TeacherAssignments() {
     };
 
     const handleGrade = async (submissionId, marks, feedback) => {
-        if (parseFloat(marks) < 0) {
-            notify.error('Marks cannot be negative');
+        const numeric = parseFloat(marks);
+        if (!Number.isFinite(numeric) || numeric < 0) {
+            notify.error('Marks cannot be empty or negative');
+            return;
+        }
+        if (numeric > selectedAssignment.total_marks) {
+            notify.error(`Marks cannot exceed ${selectedAssignment.total_marks}`);
             return;
         }
         try {
             await api.post(`/teacher/assignments/submissions/${submissionId}/grade`, {
-                marks_obtained: parseFloat(marks),
+                marks_obtained: numeric,
                 feedback
             });
             await fetchAssignmentDetails(selectedAssignment.id);
@@ -168,16 +173,21 @@ export default function TeacherAssignments() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Batch</label>
                                 <select
                                     value={formData.batch_id}
-                                    onChange={(e) => setFormData({ ...formData, batch_id: e.target.value })}
+                                    onChange={(e) => {
+                                        const batch = batches.find((b) => String(b.batch_id) === String(e.target.value));
+                                        setFormData({ ...formData, batch_id: e.target.value, subject: batch?.subject || '' });
+                                    }}
                                     required
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F4E79] focus:border-transparent"
                                 >
                                     <option value="">Select a batch</option>
-                                    {batches.map((assignment) => (
-                                        <option key={assignment.id} value={assignment.batch_id}>
-                                            {assignment.name} - {assignment.subject}
-                                        </option>
-                                    ))}
+                                    {batches
+                                        .filter((batch, index, self) => self.findIndex((b) => b.batch_id === batch.batch_id) === index)
+                                        .map((batch) => (
+                                            <option key={batch.id} value={batch.batch_id}>
+                                                {batch.name} - {batch.subject}
+                                            </option>
+                                        ))}
                                 </select>
                             </div>
                             <div>
@@ -185,9 +195,9 @@ export default function TeacherAssignments() {
                                 <input
                                     type="text"
                                     value={formData.subject}
-                                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                                    required
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F4E79] focus:border-transparent"
+                                    readOnly
+                                    placeholder="Select a batch to auto-fill subject"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 focus:ring-2 focus:ring-[#1F4E79] focus:border-transparent"
                                 />
                             </div>
                         </div>
@@ -309,14 +319,14 @@ export default function TeacherAssignments() {
                                             </div>
                                         </div>
                                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                            submission.status === 'reviewed' ? 'bg-green-100 text-green-700' :
+                                            submission.status === 'reviewed' || submission.status === 'graded' ? 'bg-green-100 text-green-700' :
                                             submission.status === 'submitted' ? 'bg-blue-100 text-blue-700' :
                                             'bg-gray-100 text-gray-700'
                                         }`}>
                                             {submission.status}
                                         </span>
                                     </div>
-                                    {submission.status === 'submitted' || submission.status === 'reviewed' ? (
+                                    {submission.status === 'submitted' || submission.status === 'reviewed' || submission.status === 'graded' ? (
                                         <div className="mt-4 space-y-3">
                                             {submission.submission_file_path && (
                                                 <a href={buildAssetUrl(submission.submission_file_path)} target="_blank" rel="noopener noreferrer" className="text-[#1F4E79] hover:underline text-sm">

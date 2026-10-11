@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { useNotificationCounts } from "../../context/NotificationContext";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, Banknote, Search, Settings, ChevronLeft, ChevronRight, Eye, X } from "lucide-react";
+import { Plus, Trash2, Banknote, Search, Settings, ChevronLeft, ChevronRight, Eye, X, Loader2 } from "lucide-react";
 import notify from "../../services/notification";
 import { useConfirm } from "../../components/common/ConfirmDialog";
 import logger from '../../services/logger';
@@ -21,6 +21,7 @@ export default function PaymentManager() {
     const [lastPage, setLastPage] = useState(1);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
 
     const [formData, setFormData] = useState({
         student_id: '', month: '', amount: '', method: 'Cash', date: '', trx_id: ''
@@ -76,6 +77,8 @@ export default function PaymentManager() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitting) return;
+        setSubmitting(true);
         try {
             await api.post('/admin/payments', formData);
             notify.success("Payment Recorded!");
@@ -83,13 +86,18 @@ export default function PaymentManager() {
             setFormData({ student_id: '', month: '', amount: '', method: 'Cash', date: '', trx_id: '' });
             fetchData();
         } catch (err) { notify.error(err.response?.data?.message || "Failed to record payment"); }
+        finally { setSubmitting(false); }
     };
 
     const handleDelete = async (id) => {
         const ok = await confirm({ title: "Delete Record?", message: "Delete this record?", confirmText: "Delete", variant: "destructive" }); if (ok) {
-            await api.delete(`/admin/payments/${id}`);
-            notify.success("Payment record deleted");
-            fetchData();
+            try {
+                await api.delete(`/admin/payments/${id}`);
+                notify.success("Payment record deleted");
+                fetchData();
+            } catch (err) {
+                notify.error(err.response?.data?.message || "Failed to delete payment record");
+            }
         }
     };
 
@@ -267,7 +275,7 @@ export default function PaymentManager() {
 
                             <div className="flex justify-end gap-2 mt-4">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
-                                <button type="submit" className="px-4 py-2 text-sm bg-[#1F4E79] text-white rounded hover:bg-[#163859]">Save Payment</button>
+                                <button type="submit" disabled={submitting} className="px-4 py-2 text-sm bg-[#1F4E79] text-white rounded hover:bg-[#163859] disabled:opacity-60 disabled:cursor-not-allowed">{submitting ? <Loader2 size={16} className="animate-spin" /> : null} {submitting ? "Saving..." : "Save Payment"}</button>
                             </div>
                         </form>
                     </div>

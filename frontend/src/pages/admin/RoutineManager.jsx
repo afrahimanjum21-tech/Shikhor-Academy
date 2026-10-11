@@ -68,7 +68,7 @@ export default function RoutineManager() {
 
   const [publishing, setPublishing] = useState(false);
   const [statusInfo, setStatusInfo] = useState({ hasDraft: false, hasPublished: false });
-  const [message, setMessage] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [clipboard, setClipboard] = useState(null);
 
   const gridRefMorning = useRef(null);
@@ -87,7 +87,7 @@ export default function RoutineManager() {
 
   // ---------- data loading ----------
   useEffect(() => {
-    api.get('/public/courses').then(res => setCourses(res.data)).catch(() => {});
+    api.get('/admin/courses').then(res => setCourses(res.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -113,8 +113,9 @@ export default function RoutineManager() {
   useEffect(() => { localStorage.setItem('routine_mode', editingMode); }, [editingMode]);
 
   const showMessage = (text, type = 'success') => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage(null), 3200);
+    const id = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+    setMessages(prev => [...prev, { id, text, type }]);
+    setTimeout(() => setMessages(prev => prev.filter(m => m.id !== id)), 3200);
   };
 
   const loadMeta = useCallback(async (batchId) => {
@@ -581,12 +582,16 @@ export default function RoutineManager() {
         )}
       </div>
 
-      {/* Toast */}
-      {message && (
-        <div className={`px-4 py-3 rounded-lg text-sm font-semibold shadow-sm no-print ${
-          message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-        }`}>
-          {message.text}
+      {/* Toasts */}
+      {messages.length > 0 && (
+        <div className="space-y-2">
+          {messages.map(m => (
+            <div key={m.id} className={`px-4 py-3 rounded-lg text-sm font-semibold shadow-sm no-print ${
+              m.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+            }`}>
+              {m.text}
+            </div>
+          ))}
         </div>
       )}
 

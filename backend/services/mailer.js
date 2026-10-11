@@ -2,6 +2,8 @@ import nodemailer from 'nodemailer';
 import jwt from 'jsonwebtoken';
 import authConfig from '../config/auth.js';
 import models from '../models/index.js';
+import EmailService from './email/EmailService.js';
+import { decryptSecret } from './secretCrypto.js';
 
 const CONFIG_CACHE_TTL_MS = 60 * 1000;
 
@@ -25,7 +27,7 @@ function getDbMailConfig(row) {
     host: row.smtp_host,
     port: String(row.smtp_port || 587),
     username: row.smtp_username || '',
-    password: row.smtp_password || '',
+    password: decryptSecret(row.smtp_password) || '',
     encryption: row.smtp_encryption || 'tls',
     fromAddress: row.smtp_from_address || row.email || 'noreply@uttoron.com',
     fromName: row.smtp_from_name || row.site_name || 'Uttoron Coaching Centre',
@@ -49,6 +51,25 @@ export async function getSiteMailConfig() {
     console.error('[mailer] Failed to load SMTP settings from DB:', err.message);
   }
 
+  const dbFromCandidate = dbConfig?.fromAddress || 'noreply@uttoron.com';
+  const fromCandidate = process.env.MAIL_FROM_ADDRESS || dbFromCandidate;
+
+  // Gmail hard-fails SPF/DKIM alignment when the From address is a different
+  // Gmail account than the authenticated SMTP user — the mail is accepted by
+  // SMTP but silently sent to spam or dropped. Pinning the From to the
+  // authenticated account keeps delivery working.
+  let fromAddress = fromCandidate;
+  const authUser = process.env.MAIL_USERNAME || dbConfig?.username || '';
+  if (
+    authUser &&
+    /@(gmail\.com|googlemail\.com)$/i.test(authUser) &&
+    /@(gmail\.com|googlemail\.com)$/i.test(fromAddress) &&
+    fromAddress.toLowerCase() !== authUser.toLowerCase()
+  ) {
+    console.warn(`[mailer] From '${fromAddress}' differs from the authenticated Gmail account; using '${authUser}' for deliverability (SPF/DKIM).`);
+    fromAddress = authUser;
+  }
+
   const config = {
     host: process.env.MAIL_HOST || dbConfig?.host || 'smtp.gmail.com',
     port: parseInt(process.env.MAIL_PORT || dbConfig?.port || '587', 10),
@@ -57,7 +78,7 @@ export async function getSiteMailConfig() {
       user: process.env.MAIL_USERNAME || dbConfig?.username || '',
       pass: process.env.MAIL_PASSWORD || dbConfig?.password || '',
     },
-    fromAddress: process.env.MAIL_FROM_ADDRESS || dbConfig?.fromAddress || 'noreply@uttoron.com',
+    fromAddress,
     fromName: process.env.MAIL_FROM_NAME || dbConfig?.fromName || 'Uttoron Coaching Centre',
   };
 
@@ -113,6 +134,33 @@ export async function getTransport() {
 }
 
 export async function sendEmail({ to, subject, html, text }) {
+  // Primary path: the dynamic provider configured in the admin panel
+  // (Brevo/Resend API key + sender). SMTP is only a fallback for setups
+  // where the provider isn't configured but SMTP explicitly is.
+  try {
+    const cfg = await EmailService.getConfig();
+    if (cfg.enabled && cfg.apiKey && cfg.from) {
+      const result = await EmailService.sendRaw(to, { subject, text, html });
+      if (result.skipped) {
+        console.log('[mailer] Email skipped (provider not configured/enabled):', subject);
+        return { messageId: null, error: 'Email sending is not configured. Set the sender and API key in Site Settings.' };
+      }
+      if (!result.ok) {
+        console.error('[mailer] Email provider rejected:', result.raw || result.error);
+        return { messageId: null, error: result.raw || result.error };
+      }
+      let messageId = 'sent';
+      try {
+        messageId = JSON.parse(result.raw || '{}').messageId || 'sent';
+      } catch (e) { /* keep default */ }
+      console.log('[mailer] Email sent via provider:', messageId);
+      return { messageId };
+    }
+  } catch (error) {
+    console.error('[mailer] Provider config lookup failed:', error.message);
+  }
+
+  // Fallback: explicit SMTP (MAIL_* env vars or SMTP fields in Site Settings).
   try {
     const config = await getSiteMailConfig();
     const transport = await getTransport();

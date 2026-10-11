@@ -43,11 +43,18 @@ const defaultForm = {
     smtp_from_address: "",
     smtp_from_name: "Uttoron Coaching Center",
     smtp_encryption: "tls",
+    email_enabled: false,
+    email_provider: "brevo",
+    email_api_key: "",
+    email_from: "",
 };
 
 export default function SiteSettings() {
     const [form, setForm] = useState(defaultForm);
     const [hasSmtpPassword, setHasSmtpPassword] = useState(false);
+    const [hasEmailApiKey, setHasEmailApiKey] = useState(false);
+    const [testTo, setTestTo] = useState("");
+    const [testingEmail, setTestingEmail] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState("");
@@ -57,8 +64,9 @@ export default function SiteSettings() {
         api.get("/admin/site-settings")
             .then((res) => {
                 const settings = res.data.data || res.data;
-                setForm({ ...defaultForm, ...settings, smtp_password: "" });
+                setForm({ ...defaultForm, ...settings, smtp_password: "", email_api_key: "" });
                 setHasSmtpPassword(Boolean(settings.has_smtp_password));
+                setHasEmailApiKey(Boolean(settings.has_email_api_key));
             })
             .catch((err) => setError(err.response?.data?.message || "Unable to load site settings"))
             .finally(() => setLoading(false));
@@ -75,17 +83,41 @@ export default function SiteSettings() {
         try {
             const payload = { ...form };
             if (!payload.smtp_password) delete payload.smtp_password;
+            if (!payload.email_api_key) delete payload.email_api_key;
             if (typeof payload.success_rate === 'string') payload.success_rate = parseInt(payload.success_rate.replace(/%/g, ''), 10) || 0;
 
             const { data } = await api.post("/admin/site-settings", payload);
             const updated = data.data || data;
-            setForm({ ...defaultForm, ...updated, smtp_password: "" });
+            setForm({ ...defaultForm, ...updated, smtp_password: "", email_api_key: "" });
             setHasSmtpPassword(Boolean(updated.has_smtp_password));
+            setHasEmailApiKey(Boolean(updated.has_email_api_key));
             setMessage(data.message || "Site settings saved");
         } catch (err) {
             setError(err.response?.data?.message || "Failed to save site settings");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const sendTestEmail = async () => {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(testTo || "").trim())) {
+            setError("Enter a valid test recipient email first");
+            return;
+        }
+        setTestingEmail(true);
+        setMessage("");
+        setError("");
+        try {
+            const { data } = await api.post("/admin/site-settings/test-email", { to: testTo.trim() });
+            if (data.ok) {
+                setMessage(data.message || "Test email sent");
+            } else {
+                setError(`${data.message || "Test email failed"}${data.detail ? ` — ${data.detail}` : ""}`);
+            }
+        } catch (err) {
+            setError(err.response?.data?.message || "Test email request failed");
+        } finally {
+            setTestingEmail(false);
         }
     };
 
@@ -109,9 +141,9 @@ export default function SiteSettings() {
                         Manage public institute information, location, email routing, and editable page content.
                     </p>
                 </div>
-                <div className={`rounded-lg border px-4 py-3 text-sm font-bold flex items-center gap-2 ${hasSmtpPassword ? "bg-green-50 border-green-200 text-green-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
+                <div className={`rounded-lg border px-4 py-3 text-sm font-bold flex items-center gap-2 ${hasSmtpPassword || hasEmailApiKey ? "bg-green-50 border-green-200 text-green-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
                     <MailCheck size={16} />
-                    {hasSmtpPassword ? "Email configured" : "Email not configured"}
+                    {hasSmtpPassword || hasEmailApiKey ? "Email configured" : "Email not configured"}
                 </div>
             </div>
 
@@ -159,6 +191,70 @@ export default function SiteSettings() {
 
                         <div className="rounded-lg bg-blue-50 border border-blue-100 p-3 text-xs text-blue-700 leading-relaxed">
                             <strong>Gmail App Password:</strong> Google Account, Security, 2-Step Verification, App Passwords, then create one for Mail. Your normal Gmail password will <strong>not</strong> work.
+                        </div>
+                    </Section>
+
+                    <Section icon={<MailCheck size={20} />} title="Student Notification Emails" subtitle="Broadcast emails to students when you post a notice, publish results, confirm payments, or add materials/assignments. Config is stored in the database and changeable here — no redeploy needed.">
+                        <div className="space-y-4">
+                            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={Boolean(form.email_enabled)}
+                                    onChange={(e) => update("email_enabled", e.target.checked)}
+                                    className="h-4 w-4 accent-[#1F4E79]"
+                                />
+                                Enable broadcast emails to students
+                            </label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Provider</label>
+                                    <select
+                                        value={form.email_provider || "brevo"}
+                                        onChange={(e) => update("email_provider", e.target.value)}
+                                        className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-[#1F4E79] bg-white"
+                                    >
+                                        <option value="brevo">Brevo (free — sender verified by email, no domain needed)</option>
+                                        <option value="resend">Resend (free — requires a verified domain)</option>
+                                    </select>
+                                </div>
+                                <Field
+                                    label="Sender Email (verified in Brevo)"
+                                    value={form.email_from || ""}
+                                    onChange={(v) => update("email_from", v)}
+                                    placeholder="your-verified-sender@gmail.com"
+                                />
+                            </div>
+                            <Field
+                                label="API Key"
+                                type="password"
+                                value={form.email_api_key}
+                                onChange={(v) => update("email_api_key", v)}
+                                placeholder={hasEmailApiKey ? "Saved. Enter a new key to replace it" : "Paste your provider API key"}
+                            />
+                            <div className="rounded-lg bg-blue-50 border border-blue-100 p-3 text-xs text-blue-700 leading-relaxed">
+                                <strong>Brevo setup:</strong> free account at brevo.com → click-link verify your sender email (no domain or DNS) → Settings → SMTP &amp; API → API Keys → create a key. The key is never shown again after saving.
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-2 items-end">
+                                <div className="flex-1 w-full">
+                                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Send Test Email To</label>
+                                    <input
+                                        type="email"
+                                        value={testTo}
+                                        onChange={(e) => setTestTo(e.target.value)}
+                                        placeholder="student@example.com"
+                                        className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-[#1F4E79]"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={sendTestEmail}
+                                    disabled={testingEmail || saving}
+                                    className="rounded bg-[#1F4E79] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#163859] disabled:opacity-60 flex items-center justify-center gap-2"
+                                >
+                                    {testingEmail ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                                    Send Test Email
+                                </button>
+                            </div>
                         </div>
                     </Section>
 

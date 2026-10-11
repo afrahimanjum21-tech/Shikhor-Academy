@@ -13,7 +13,7 @@ import {
     Home, Building2,
     ChevronRight,
     Percent, CreditCard, BookMarked,
-    Globe, Bell, Image, Printer
+    Globe, Bell, Image, Printer, Video
 } from "lucide-react";
 
 function Skeleton({ className = "" }) {
@@ -147,6 +147,7 @@ export default function StudentProfile() {
     const routineMeta = routine?.meta || {};
     const courseName = dash.course || profile.batch?.course?.title || profile.admission?.course?.title || "Not Assigned";
     const batchName = dash.batch || profile.batch?.name || "Not Assigned";
+    const classLink = dash.batch_class_link || profile.batch?.class_link || null;
     const attPercent = att.percentage ?? att.attendancePercentage ?? "-";
     const totalDue = pay.total_due ?? pay.totalDue ?? pay.currentDue ?? 0;
     const courseFee = pay.course_fee ?? pay.monthlyFee ?? 0;
@@ -156,6 +157,9 @@ export default function StudentProfile() {
 
     const gpa = useMemo(() => {
         if (!results?.length) return null;
+        // Prefer the per-exam GPA sent by the server (same basis as the marksheet).
+        const gpas = results.map(r => r.gpa).filter(g => g != null);
+        if (gpas.length) return (gpas.reduce((s, g) => s + g, 0) / gpas.length).toFixed(2);
         const valid = results.filter(r => r.total_obtained != null && (r.exam?.total_marks ?? r.total_marks) != null);
         if (!valid.length) return null;
         const avg = valid.reduce((s, r) => s + (r.total_obtained / (r.exam?.total_marks ?? r.total_marks)) * 5, 0) / valid.length;
@@ -278,6 +282,12 @@ export default function StudentProfile() {
                             <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-white tracking-tight leading-tight">
                                 {user.name}
                             </h1>
+                            {classLink && (
+                                <a href={classLink} target="_blank" rel="noopener noreferrer"
+                                    className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-[#1F4E79] text-xs font-bold shadow hover:bg-blue-50 transition">
+                                    <Video size={13} /> Join Class
+                                </a>
+                            )}
                             <div className="flex flex-wrap gap-1.5 md:gap-2 mt-2.5 md:mt-3">
                                 <HeroBadge icon={IdCard}>
                                     ID: {profile.student_id_card_no || dash.card_no || "---"}
@@ -430,7 +440,7 @@ export default function StudentProfile() {
                                 </div>
                             ) : getDocPreviewType(idCardDoc) === "pdf" ? (
                                 <embed
-                                    src={buildAuthenticatedAssetUrl(idCardDoc.file_path)}
+                                    src={buildAuthenticatedAssetUrl(idCardDoc.file_path, idCardDoc.download_token)}
                                     type="application/pdf"
                                     className="w-full h-72 rounded-xl border border-gray-100"
                                     title={idCardDoc.name || "Student ID Card"}
@@ -440,7 +450,7 @@ export default function StudentProfile() {
                                     <FileText size={36} className="text-gray-300 mb-2" />
                                     <p className="text-sm font-semibold text-gray-800 truncate">{idCardDoc.name || "ID Card"}</p>
                                     <a
-                                        href={buildAuthenticatedAssetUrl(idCardDoc.file_path)}
+                                        href={buildAuthenticatedAssetUrl(idCardDoc.file_path, idCardDoc.download_token)}
                                         download={idCardDoc.original_name}
                                         target="_blank"
                                         rel="noopener noreferrer"
@@ -450,7 +460,7 @@ export default function StudentProfile() {
                             ) : (
                                 <div className="w-full bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center overflow-hidden p-2">
                                     <img
-                                        src={buildAuthenticatedAssetUrl(idCardDoc.file_path)}
+                                        src={buildAuthenticatedAssetUrl(idCardDoc.file_path, idCardDoc.download_token)}
                                         alt={idCardDoc.name || "Student ID Card"}
                                         className="max-w-full max-h-[300px] w-auto h-auto object-contain"
                                         loading="lazy"
@@ -460,14 +470,14 @@ export default function StudentProfile() {
                             {idCardDoc && idCardDoc.file_path && (getDocPreviewType(idCardDoc) === "image" || getDocPreviewType(idCardDoc) === "pdf") && (
                                 <div className="mt-3 flex items-center gap-2">
                                     <button
-                                        onClick={() => handlePrintDocument(buildAuthenticatedAssetUrl(idCardDoc.file_path))}
+                                        onClick={() => handlePrintDocument(buildAuthenticatedAssetUrl(idCardDoc.file_path, idCardDoc.download_token))}
                                         className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
                                         title="Print"
                                         aria-label="Print ID card">
                                         <Printer size={14} />
                                     </button>
                                     <a
-                                        href={buildAuthenticatedAssetUrl(idCardDoc.file_path)}
+                                        href={buildAuthenticatedAssetUrl(idCardDoc.file_path, idCardDoc.download_token)}
                                         download={idCardDoc.original_name || idCardDoc.name || "id-card"}
                                         className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[#1F4E79] text-white hover:bg-[#163859] transition-colors"
                                         title="Download"
@@ -505,7 +515,7 @@ export default function StudentProfile() {
                                             key={doc.id}
                                             name={doc.name}
                                             type={doc.type}
-                                            fileUrl={buildAuthenticatedAssetUrl(doc.file_path)}
+                                            fileUrl={buildAuthenticatedAssetUrl(doc.file_path, doc.download_token)}
                                             loading={false}
                                         />
                                     ))

@@ -3,6 +3,8 @@ import { Op } from 'sequelize';
 import crypto from 'crypto';
 import https from 'https';
 import NotificationService from '../../services/NotificationService.js';
+import { decryptSecret } from '../../services/secretCrypto.js';
+import { canonicalMonthKey, isValidMonthInput, todayDhaka } from '../../services/paymentMonth.js';
 
 // Payment credentials come from the PaymentSetting row when present
 // (editable in admin), falling back to environment variables.
@@ -16,7 +18,7 @@ async function getPaymentConfig() {
     if (setting) {
       if (setting.mode) mode = setting.mode;
       if (setting.store_id) storeId = setting.store_id;
-      if (setting.store_password) storePassword = setting.store_password;
+      if (setting.store_password) storePassword = decryptSecret(setting.store_password) || storePassword;
       isActive = setting.is_active !== false;
     }
   } catch (err) {
@@ -97,15 +99,15 @@ async function validateWithGateway(config, data) {
   try {
     if (data.val_id) {
       const res = await httpsGetJson(`${host}/validator/api/validationserverAPI.php?val_id=${encodeURIComponent(data.val_id)}&${creds}`);
-      if (res?.status) return { status: normalizeGwStatus(res.status), amount: res.amount };
+      if (res?.status) return { status: normalizeGwStatus(res.status), amount: res.amount, valId: res.val_id || data.val_id };
     }
     if (data.tran_id) {
       const res = await httpsGetJson(`${host}/validator/api/merchantTransIDvalidationAPI.php?tran_id=${encodeURIComponent(data.tran_id)}&${creds}`);
       if (res?.status && Array.isArray(res.element) && res.element.length) {
         const first = res.element[0];
-        return { status: normalizeGwStatus(first.status || res.status), amount: first.amount || res.amount };
+        return { status: normalizeGwStatus(first.status || res.status), amount: first.amount || res.amount, valId: first.val_id || null };
       }
-      if (res?.status) return { status: normalizeGwStatus(res.status), amount: res.amount };
+      if (res?.status) return { status: normalizeGwStatus(res.status), amount: res.amount, valId: res.val_id || null };
     }
   } catch (err) {
     console.error('SslCommerzController.validateWithGateway error:', err.message);
@@ -164,12 +166,8 @@ async function resolveMonthlyFee(studentId) {
 }
 
 function validPaymentMonth(month) {
-  const value = String(month || '').trim();
-  if (/^\d{4}-\d{2}$/.test(value)) return true;
-  // The app's canonical month format, produced by buildMonthlyBreakdown
-  // (PaymentController): e.g. "Aug 2026". Payment rows, due lists and admin
-  // filters all use this format, so it must be accepted here too.
-  return /^[A-Za-z]{3} \d{4}$/.test(value);
+  // Canonical check (accepts 'YYYY-MM', 'Mon YYYY', 'YYYY-MM-DD'); see services/paymentMonth.js.
+  return isValidMonthInput(month);
 }
 
 function amountsMatch(expected, gatewayAmount) {
@@ -196,6 +194,93 @@ async function notifyPaymentSuccess(payments, totalExpected) {
   }
 }
 
+// C6 config: how old (minutes) a 'pending' row must be before it is treated as
+// abandoned and reconciled. Below this it is a live, in-progress payment.
+export const STALE_PENDING_MINUTES = parseInt(process.env.SSLC_PENDING_STALE_MINUTES || '30', 10);
+// D7/§I: cap how long a USER-FACING response waits on best-effort notification.
+// The in-app notification (DB write) is fast; SMS/email are slow external calls
+// that the server-to-server IPN callback also delivers, so bounding the wait
+// keeps the redirect/initiate snappy without dropping delivery.
+const NOTIFY_BUDGET_MS = parseInt(process.env.PAYMENT_NOTIFY_BUDGET_MS || '3000', 10);
+const GATEWAY_VALIDATE_BUDGET_MS = parseInt(process.env.SSLC_VALIDATE_BUDGET_MS || '8000', 10);
+
+// Resolve `promise` but never wait longer than `ms`; on timeout resolve with a
+// sentinel (never rejects — the inner promise keeps running best-effort).
+function withTimeout(promise, ms) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => { if (!settled) { settled = true; resolve({ __timedOut: true }); } }, ms);
+    Promise.resolve(promise).then(
+      (v) => { if (!settled) { settled = true; clearTimeout(timer); resolve(v); } },
+      () => { if (!settled) { settled = true; clearTimeout(timer); resolve({ __errored: true }); } }
+    );
+  });
+}
+
+// Pure decision for a stale pending transaction group (C6). NEVER returns
+// 'reclaim' unless the gateway positively reports a non-paid outcome, so a lost
+// success callback can never lead to a double charge.
+//   'keep'    — still live, gateway unreachable, or VALID-but-amount-mismatch
+//               anomaly: do nothing (fail-safe).
+//   'settle'  — gateway confirms VALID + amount matches: mark paid (no recharge).
+//   'reclaim' — gateway confirms a non-paid outcome: release the month to retry.
+export function decideStalePending({ ageMinutes, staleMinutes, gateway, expectedTotal }) {
+  if (!(ageMinutes >= staleMinutes)) return 'keep';
+  if (!gateway || !gateway.status) return 'keep';
+  if (gateway.status === 'VALID') {
+    return amountsMatch(expectedTotal, gateway.amount) ? 'settle' : 'keep';
+  }
+  return 'reclaim';
+}
+
+// Reconcile abandoned 'pending' rows for the given months BEFORE they are
+// treated as "already awaiting verification" (which would otherwise lock the
+// month forever). DB + gateway effects live here; the decision is the pure
+// function above. `validate` is injectable for tests.
+export async function reconcileStalePendingForMonths({ config, studentId, months, now = Date.now(), validate = validateWithGateway }) {
+  const pending = await models.Payment.findAll({
+    where: { student_id: studentId, month: { [Op.in]: months }, status: 'pending' },
+  });
+  if (!pending.length) return;
+
+  const groups = new Map();
+  for (const row of pending) {
+    const key = row.trx_id || `__no_trx_${row.id}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+
+  for (const [tranId, group] of groups) {
+    const times = group.map(r => new Date(r.createdAt).getTime()).filter(Number.isFinite);
+    const oldest = times.length ? Math.min(...times) : NaN;
+    const ageMinutes = Number.isFinite(oldest) ? (now - oldest) / 60000 : Infinity;
+    if (ageMinutes < STALE_PENDING_MINUTES) continue; // live — leave it
+
+    const expectedTotal = group.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+    // Bounded so a slow/hung gateway can't stall the student's new payment; a
+    // timeout yields no gateway result ⇒ decideStalePending returns 'keep'.
+    const raw = tranId.startsWith('__no_trx_') ? null : await withTimeout(validate(config, { tran_id: tranId }), GATEWAY_VALIDATE_BUDGET_MS);
+    const gateway = raw && !raw.__timedOut && !raw.__errored ? raw : null;
+    const decision = decideStalePending({ ageMinutes, staleMinutes: STALE_PENDING_MINUTES, gateway, expectedTotal });
+
+    if (decision === 'settle') {
+      const paidDate = todayDhaka();
+      for (const p of group) {
+        if (p.status !== 'paid') {
+          p.status = 'paid';
+          p.ssl_val_id = gateway.valId || p.ssl_val_id || null;
+          p.date = paidDate;
+          await p.save();
+        }
+      }
+      await withTimeout(notifyPaymentSuccess(group, expectedTotal), NOTIFY_BUDGET_MS);
+    } else if (decision === 'reclaim') {
+      await models.Payment.destroy({ where: { trx_id: tranId, student_id: studentId, status: 'pending' } });
+    }
+    // 'keep' — do nothing (fail-safe).
+  }
+}
+
 export const initiate = async (req, res) => {
   try {
     const student = await models.Student.findOne({
@@ -217,7 +302,9 @@ export const initiate = async (req, res) => {
     if (rawMonths.some(m => !validPaymentMonth(m))) {
       return res.status(400).json({ message: 'A valid month (e.g. Aug 2026) is required for every month' });
     }
-    const months = [...new Set(rawMonths)];
+    // Canonicalize to the one stored month key so pending rows match the fee
+    // breakdown + the (student_id, month) unique index exactly.
+    const months = [...new Set(rawMonths.map((m) => canonicalMonthKey(m)))];
 
     const { monthlyFee } = await resolveMonthlyFee(student.id);
     if (monthlyFee <= 0) {
@@ -232,15 +319,32 @@ export const initiate = async (req, res) => {
       return res.status(500).json({ message: 'Payment gateway is not configured yet' });
     }
 
+    // C6: reconcile abandoned 'pending' rows for these months BEFORE deciding
+    // what is chargeable. Without this a pending row whose callback never
+    // arrived locks the month forever. reconcileStalePendingForMonths asks the
+    // gateway what really happened and settles (paid) or releases each stale
+    // transaction — never a blind delete, so it stays double-charge-safe.
+    await reconcileStalePendingForMonths({ config: paymentConfig, studentId: student.id, months });
+
     // Never double-charge: months that already have a pending or paid record
-    // for this student are dropped silently.
+    // for this student are dropped silently. Failed/cancelled gateway attempts
+    // leave rows behind with status 'due'; those months are simply retried —
+    // the stale 'due' rows are removed so the unique (student_id, month) index
+    // never blocks a re-attempt.
     const existing = await models.Payment.findAll({
-      where: { student_id: student.id, month: { [Op.in]: months }, status: { [Op.in]: ['pending', 'paid'] } },
-      attributes: ['month'],
+      where: { student_id: student.id, month: { [Op.in]: months } },
+      attributes: ['month', 'status'],
     });
-    const chargeable = months.filter(m => !existing.some(e => e.month === m));
+    const lockedMonths = new Set(existing.filter(p => p.status !== 'due').map(p => p.month));
+    const staleDue = existing.filter(p => p.status === 'due');
+    const chargeable = months.filter(m => !lockedMonths.has(m));
     if (chargeable.length === 0) {
       return res.status(400).json({ message: 'These months are already paid or awaiting verification' });
+    }
+    if (staleDue.length > 0) {
+      await models.Payment.destroy({
+        where: { student_id: student.id, month: { [Op.in]: staleDue.map(p => p.month) }, status: 'due' },
+      });
     }
 
     const amount = parseFloat((monthlyFee * chargeable.length).toFixed(2));
@@ -363,7 +467,7 @@ export const success = async (req, res) => {
       return res.redirect(`${frontendUrl}/payment/failed?status=not_pending&tran_id=${data.tran_id}`);
     }
 
-    const now = new Date().toISOString().split('T')[0];
+    const now = todayDhaka();
     for (const payment of payable) {
       payment.status = 'paid';
       payment.ssl_val_id = data.val_id || null;
@@ -376,7 +480,12 @@ export const success = async (req, res) => {
       await payment.save();
     }
 
-    await notifyPaymentSuccess(payable, totalExpected);
+    // D7/§I: the payments are already settled above (the critical work). The
+    // notification does a fast in-app DB write plus SLOW external SMS/email —
+    // don't let those stall the student's redirect. Bound the wait; the
+    // server-to-server IPN callback delivers the same notification reliably if
+    // this path runs out of budget.
+    await withTimeout(notifyPaymentSuccess(payable, totalExpected), NOTIFY_BUDGET_MS);
 
     res.redirect(`${frontendUrl}/payment/success?status=success&tran_id=${data.tran_id}`);
   } catch (error) {
@@ -463,7 +572,7 @@ export const ipn = async (req, res) => {
         console.error('PaymentController.ipn rejected', { trx: data.tran_id, status });
         return res.status(400).json({ message: 'Invalid hash' });
       }
-      const now = new Date().toISOString().split('T')[0];
+      const now = todayDhaka();
       let markedPaid = false;
       for (const payment of payments) {
         if (payment.status !== 'paid') {

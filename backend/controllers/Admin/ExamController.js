@@ -1,5 +1,7 @@
-import models from '../../models/index.js';
+import models, { sequelize } from '../../models/index.js';
 import GradeService from '../../services/GradeService.js';
+import ExamResultService from '../../services/ExamResultService.js';
+import { validateMarksDetails } from '../../services/marksValidation.js';
 import { Op } from 'sequelize';
 import NotificationService from '../../services/NotificationService.js';
 
@@ -62,10 +64,22 @@ export const getExamData = async (req, res) => {
       return res.status(404).json({ message: 'Exam not found' });
     }
 
-    const students = await models.Student.findAll({
-      where: { current_batch_id: { [Op.ne]: null } },
-      include: [{ model: models.User, attributes: ['id', 'name', 'email', 'phone'] }],
-      attributes: ['id', 'user_id', 'student_id_card_no', 'current_batch_id'],
+    const batches = await models.Batch.findAll({ where: { course_id: exam.course_id }, attributes: ['id'] });
+    const batchIds = batches.map(b => b.id);
+
+    const students = batchIds.length
+      ? await models.Student.findAll({
+          where: { current_batch_id: { [Op.in]: batchIds } },
+          include: [{ model: models.User, attributes: ['id', 'name', 'email', 'phone'] }],
+          attributes: ['id', 'user_id', 'student_id_card_no', 'current_batch_id'],
+        })
+      : [];
+
+    const studentsJson = students.map(s => {
+      const json = s.toJSON();
+      json.user = json.User || null;
+      delete json.User;
+      return json;
     });
 
     const results = await models.ExamResult.findAll({
@@ -73,7 +87,7 @@ export const getExamData = async (req, res) => {
       include: [{ model: models.Student, include: [{ model: models.User, attributes: ['name', 'email'] }] }],
     });
 
-    return res.json({ data: { exam, students, results } });
+    return res.json({ data: { ...exam.toJSON(), students: studentsJson, results } });
   } catch (error) {
     console.error('ExamController.getExamData error:', error);
     return res.status(500).json({ message: 'Failed to fetch exam data' });
@@ -94,28 +108,57 @@ export const storeMarks = async (req, res) => {
       return res.status(404).json({ message: 'Exam not found' });
     }
 
-    const results = [];
-
-    for (const entry of entries) {
-      const student_id = entry.student_id;
-      const subjectMarks = entry.details || entry.marks_details || {};
-      const teacher_comment = entry.teacher_comment;
-
-      const totalObtained = GradeService.calculateTotalObtained(subjectMarks);
-      const { grade, gpa } = GradeService.calculate(totalObtained, exam.total_marks);
-
-      const [result, created] = await models.ExamResult.upsert({
-        exam_id,
-        student_id,
-        marks_details: subjectMarks,
-        total_obtained: totalObtained,
-        grade,
-        gpa,
-        teacher_comment: teacher_comment || null,
-      });
-
-      results.push({ student_id, created, total_obtained: totalObtained, grade, gpa });
+    // (B) Every student must belong to a batch of the exam's course before we
+    // accept any marks — a client must not post marks for arbitrary students.
+    const batchIds = await models.Batch.findAll({
+      where: { course_id: exam.course_id }, attributes: ['id'],
+    }).then(rows => rows.map(r => r.id));
+    const studentIds = [...new Set(entries.map(e => e.student_id))];
+    const validStudents = batchIds.length
+      ? await models.Student.findAll({
+          where: { id: { [Op.in]: studentIds }, current_batch_id: { [Op.in]: batchIds } },
+          attributes: ['id'],
+        })
+      : [];
+    if (validStudents.length !== studentIds.length) {
+      return res.status(400).json({ message: 'Some students do not belong to this exam\'s course' });
     }
+
+    // (I-14) Validate every mark up front; reject the WHOLE batch on any bad
+    // value so nothing invalid is persisted.
+    const prepared = [];
+    for (const entry of entries) {
+      const subjectMarks = entry.details || entry.marks_details || {};
+      const check = validateMarksDetails(exam, subjectMarks);
+      if (!check.ok) {
+        return res.status(400).json({ message: `Student ${entry.student_id}: ${check.reason}` });
+      }
+      prepared.push({ student_id: entry.student_id, marks_details: check.clean, teacher_comment: entry.teacher_comment || null });
+    }
+
+    // (B) Save the batch transactionally — a mid-batch failure rolls back every
+    // row, never a partial save.
+    await sequelize.transaction(async (t) => {
+      for (const p of prepared) {
+        const calc = ExamResultService.computeForExam(exam, p.marks_details);
+        await models.ExamResult.upsert({
+          exam_id,
+          student_id: p.student_id,
+          marks_details: p.marks_details,
+          total_obtained: calc.total_obtained,
+          grade: calc.grade,
+          gpa: calc.gpa,
+          teacher_comment: p.teacher_comment,
+        }, { transaction: t });
+      }
+      // Rank + persist canonical grade/gpa/position for every student (I-4).
+      await ExamResultService.recomputeExam(exam, { transaction: t });
+    });
+
+    const results = prepared.map(p => {
+      const calc = ExamResultService.computeForExam(exam, p.marks_details);
+      return { student_id: p.student_id, total_obtained: calc.total_obtained, grade: calc.grade, gpa: calc.gpa };
+    });
 
     return res.json({ message: 'Marks saved successfully', data: results });
   } catch (error) {
@@ -134,6 +177,12 @@ export const togglePublish = async (req, res) => {
     exam.is_published = !exam.is_published;
     if (exam.is_published) {
       exam.published_subjects = exam.subjects || [];
+    } else {
+      // E4: unpublishing must REVOKE visibility. myResults treats a non-empty
+      // published_subjects as "partially published / visible", so a stale list
+      // would keep the result on the student page after an unpublish. Clear it
+      // (marks/data are untouched).
+      exam.published_subjects = [];
     }
     await exam.save();
 
@@ -223,7 +272,13 @@ export const myResults = async (req, res) => {
         return data;
       });
 
-    return res.json({ data: visibleResults });
+    // Recompute percentage/grade/gpa/position so rows saved before positions
+    // were computed (or graded on the full exam total) still render correctly.
+    // restrictToPublished (I-18): hide unpublished-subject marks AND compute the
+    // summary/rank only over the subjects this student may see.
+    const enriched = await ExamResultService.enrichResults(visibleResults, { restrictToPublished: true });
+
+    return res.json({ data: enriched });
   } catch (error) {
     console.error('ExamController.myResults error:', error);
     return res.status(500).json({ message: 'Failed to fetch results' });

@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { LayoutDashboard, Users, FileText, BookOpen, LogOut, Menu, X, Image as ImageIcon, Bell, Calendar, CalendarDays, Library, GraduationCap, Layers, Banknote, Settings, UserCog, Building2, Laptop, MessageSquare, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Users, FileText, BookOpen, LogOut, Menu, X, Image as ImageIcon, Bell, Calendar, CalendarDays, Library, GraduationCap, Layers, Banknote, Settings, UserCog, Building2, Laptop, MessageSquare, ShieldCheck, Trophy } from "lucide-react";
 import { useState } from "react";
 import FloatingUploadWidget from "../components/common/FloatingUploadWidget";
 import ErrorBoundary from "../components/common/ErrorBoundary";
@@ -53,6 +53,7 @@ export default function AdminLayout() {
         { name: 'E-Learning', path: '/admin/e-learning', icon: <Laptop size={20}/> },
         { name: 'Messages', path: '/admin/contact-messages', icon: <MessageSquare size={20}/>, count: counts.unread_messages || 0 },
         { name: 'Notices', path: '/admin/notices', icon: <Bell size={20}/> },
+        { name: 'Success Stories', path: '/admin/success-stories', icon: <Trophy size={20}/> },
     ];
 
     return (
@@ -96,7 +97,7 @@ export default function AdminLayout() {
                         <img src={HERO_IMAGE} alt="Uttoron" className="h-7 w-7 md:h-9 md:w-9 rounded-full object-cover border-2 border-gray-100" />
                     </div>
                 </header>
-                <main className="flex-1 overflow-auto p-3 md:p-8 bg-[#F8FAFC]"><div className="max-w-6xl mx-auto"><ErrorBoundary><Outlet /></ErrorBoundary></div></main>
+                <main className="flex-1 overflow-auto p-3 md:p-8 bg-[#F8FAFC]"><div className="max-w-6xl mx-auto"><ErrorBoundary key={location.pathname}><Outlet /></ErrorBoundary></div></main>
             </div>
 
             <FloatingUploadWidget />

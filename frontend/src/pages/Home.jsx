@@ -8,8 +8,15 @@ import logger from '../services/logger';
 import HeroSection from "../components/home/HeroSection";
 import StatsSection from "../components/home/StatsSection";
 import FeatureCards from "../components/home/FeatureCards";
+import SuccessStories from "../components/home/SuccessStories";
+import usePageMeta from "../hooks/usePageMeta";
 
 export default function Home() {
+  usePageMeta({
+    title: "Uttoron Coaching Centre — HSC, SSC & English Coaching in Bangladesh",
+    description: "Uttoron Coaching Centre offers quality HSC, SSC and English coaching with experienced teachers and proven academic results. Enroll today.",
+    path: "/",
+  });
   const [featuredFaculty, setFeaturedFaculty] = useState([]);
 
   useEffect(() => {
@@ -18,8 +25,8 @@ export default function Home() {
 
   const fetchFeaturedFaculty = async () => {
     try {
-      const { data } = await api.get('/public/faculty/featured?limit=4');
-      setFeaturedFaculty(data);
+      const { data } = await api.get('/public/faculty/featured');
+      setFeaturedFaculty((data || []).slice(0, 4));
     } catch (error) {
       logger.error('Failed to fetch featured faculty:', error);
     }
@@ -30,6 +37,7 @@ export default function Home() {
       <HeroSection />
       <StatsSection />
       <FeatureCards />
+      <SuccessStories />
 
       {featuredFaculty.length > 0 && (
         <section className="bg-white pt-4 pb-20">

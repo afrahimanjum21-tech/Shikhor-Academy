@@ -28,8 +28,7 @@ export default function TeacherStudents() {
         const searchLower = searchTerm.toLowerCase();
         return (
             student.User?.name?.toLowerCase().includes(searchLower) ||
-            student.student_id_card_no?.toLowerCase().includes(searchLower) ||
-            student.roll?.toLowerCase().includes(searchLower)
+            student.student_id_card_no?.toLowerCase().includes(searchLower)
         );
     });
 
@@ -70,7 +69,6 @@ export default function TeacherStudents() {
                             <div className="flex-1">
                                 <h3 className="font-bold text-gray-800">{student.User?.name}</h3>
                                 <p className="text-sm text-gray-500">ID: {student.student_id_card_no}</p>
-                                {student.roll && <p className="text-sm text-gray-500">Roll: {student.roll}</p>}
                             </div>
                         </div>
                         <div className="mt-4 space-y-2">

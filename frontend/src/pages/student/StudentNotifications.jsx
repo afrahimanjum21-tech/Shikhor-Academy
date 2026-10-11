@@ -1,19 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, Bell } from "lucide-react";
 import RecentActivity from "../../components/notifications/RecentActivity";
-import { useNotificationCounts } from "../../context/NotificationContext";
 
 export default function StudentNotifications() {
     const navigate = useNavigate();
-    const { counts } = useNotificationCounts();
     const [limit, setLimit] = useState(50);
-
-    useEffect(() => {
-        // Reset the unread counts for messages/activities when viewing the full list.
-        // (count hook is read here only to keep stale badge counters in sync visually.)
-        void counts;
-    }, [counts]);
 
     return (
         <div className="min-h-screen bg-[#F8FAFC] font-sans pb-10">

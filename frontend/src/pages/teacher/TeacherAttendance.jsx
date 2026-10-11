@@ -44,7 +44,7 @@ export default function TeacherAttendance() {
             setStudents(data.students || []);
             const initialAttendance = {};
             (data.students || []).forEach(entry => {
-                initialAttendance[entry.student.id] = entry.attendance?.status || 'present';
+                initialAttendance[entry.student.id] = entry.attendance?.status || '';
             });
             setAttendance(initialAttendance);
         } catch (error) {
@@ -78,10 +78,17 @@ export default function TeacherAttendance() {
     const markAttendance = async () => {
         if (!selectedBatch) return;
 
-        const attendanceData = Object.keys(attendance).map(studentId => ({
-            student_id: parseInt(studentId),
-            status: attendance[studentId]
-        }));
+        const attendanceData = Object.entries(attendance)
+            .filter(([, status]) => status)
+            .map(([studentId, status]) => ({
+                student_id: parseInt(studentId),
+                status
+            }));
+
+        if (attendanceData.length === 0) {
+            notify.warning('No attendance marked yet');
+            return;
+        }
 
         try {
             await api.post('/teacher/attendance/mark', {
@@ -91,6 +98,7 @@ export default function TeacherAttendance() {
                 records: attendanceData
             });
             notify.success('Attendance marked successfully');
+            fetchStudents(selectedBatch, date, session);
         } catch (error) {
             logger.error('Failed to mark attendance:', error);
             notify.error('Failed to mark attendance');

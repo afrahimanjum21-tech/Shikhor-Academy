@@ -174,10 +174,10 @@ export const store = async (req, res) => {
     const faculty = await models.Faculty.create({
       full_name, employee_id, slug,
       profile_photo_path, cover_photo_path,
-      gender, dob, designation,
+      gender, dob: dob || null, designation,
       department_id: department_id || null,
       faculty_category_id: faculty_category_id || null,
-      specialization, qualification, teaching_experience, biography,
+      specialization, qualification, teaching_experience: teaching_experience || null, biography,
       awards: awards ? (typeof awards === 'string' ? JSON.parse(awards) : awards) : null,
       achievements: achievements ? (typeof achievements === 'string' ? JSON.parse(achievements) : achievements) : null,
       certifications: certifications ? (typeof certifications === 'string' ? JSON.parse(certifications) : certifications) : null,
@@ -252,13 +252,13 @@ export const update = async (req, res) => {
     }
     if (employee_id !== undefined) updateData.employee_id = employee_id;
     if (gender !== undefined) updateData.gender = gender;
-    if (dob !== undefined) updateData.dob = dob;
+    if (dob !== undefined) updateData.dob = dob || null;
     if (designation !== undefined) updateData.designation = designation;
     if (department_id !== undefined) updateData.department_id = department_id || null;
     if (faculty_category_id !== undefined) updateData.faculty_category_id = faculty_category_id || null;
     if (specialization !== undefined) updateData.specialization = specialization;
     if (qualification !== undefined) updateData.qualification = qualification;
-    if (teaching_experience !== undefined) updateData.teaching_experience = teaching_experience;
+    if (teaching_experience !== undefined) updateData.teaching_experience = teaching_experience || null;
     if (biography !== undefined) updateData.biography = biography;
     if (research !== undefined) updateData.research = research;
     if (official_email !== undefined) updateData.official_email = official_email;
@@ -362,18 +362,16 @@ export const destroy = async (req, res) => {
       await MediaDeleteService.deleteByUrl(faculty.cover_photo_path).catch(err => console.warn('Media cleanup:', err.message));
     }
 
-    if (faculty.user_id) {
-      const teacher = await models.User.findOne({ where: { id: faculty.user_id, role: 'teacher' } });
-      if (teacher) {
-        await models.TeacherBatchAssignment.destroy({ where: { teacher_id: teacher.id } });
-        await models.TeacherProfile.destroy({ where: { user_id: teacher.id } });
-        await teacher.destroy();
-      }
-    }
-
+    // E1 safety fix: removing the PUBLIC Faculty card must NOT delete the linked
+    // teacher's User account, TeacherProfile, or batch assignments — those are
+    // the teacher record and its academic links, managed by the teacher-account
+    // flow (TeacherController). Deleting them here destroyed accounts + wiped
+    // teaching assignments just because an admin hid a public profile. We now
+    // only soft-delete the Faculty card (Faculty is paranoid, so it can be
+    // restored); the teacher account and all academic records are retained.
     await faculty.destroy();
 
-    res.json({ message: 'Faculty deleted successfully' });
+    res.json({ message: 'Faculty profile removed' });
   } catch (error) {
     res.status(500).json({ message: 'Failed to delete faculty' });
   }
@@ -407,10 +405,10 @@ export const forceDelete = async (req, res) => {
       return res.status(404).json({ message: 'Faculty not found' });
     }
 
-    await models.FacultyQualification.destroy({ where: { faculty_id: faculty.id }, force: true });
-    await models.FacultyAchievement.destroy({ where: { faculty_id: faculty.id }, force: true });
-    await models.FacultyCertification.destroy({ where: { faculty_id: faculty.id }, force: true });
-    await models.FacultySocialLink.destroy({ where: { faculty_id: faculty.id }, force: true });
+    // E2: FacultyQualification/Achievement/Certification/SocialLink were
+    // orphaned tables (data superseded by JSON columns on Faculty); their models
+    // and tables are retired (see migration 017), so there are no child rows to
+    // clean up here. Gallery / Subject / Batch are still live.
     await models.FacultyGallery.destroy({ where: { faculty_id: faculty.id }, force: true });
     await models.FacultySubject.destroy({ where: { faculty_id: faculty.id }, force: true });
     await models.FacultyBatch.destroy({ where: { faculty_id: faculty.id }, force: true });

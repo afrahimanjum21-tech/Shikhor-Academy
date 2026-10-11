@@ -47,10 +47,10 @@ export default function NotificationDropdown({ open, onClose, triggerRef }) {
         return () => document.removeEventListener("mousedown", handleClick);
     }, [open, onClose, triggerRef]);
 
-    const handleMarkRead = (id) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
-        if (typeof id === 'number') {
-            markNotificationRead(id);
+    const handleMarkRead = (item) => {
+        setNotifications(prev => prev.filter(n => n.id !== item.id));
+        if (typeof item.id === 'number') {
+            markNotificationRead(item.id, item.type);
         }
         if (hasMore && notifications.length === 1) {
             fetch(0);

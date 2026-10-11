@@ -15,7 +15,10 @@ export default function StudentManager() {
     const [subjects, setSubjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [entries, setEntries] = useState(10);
+    const [page, setPage] = useState(1);
+    const [perPage, setPerPage] = useState(20);
+    const [lastPage, setLastPage] = useState(1);
+    const [total, setTotal] = useState(0);
     const [openMenuId, setOpenMenuId] = useState(null);
     const navigate = useNavigate();
 
@@ -39,27 +42,50 @@ export default function StudentManager() {
     });
     const [addPhoto, setAddPhoto] = useState(null);
     const [saving, setSaving] = useState(false);
+    // C18: a one-time generated credential to show the admin after creating a
+    // student without a manual password (shown once, not persisted/logged).
+    const [newCredential, setNewCredential] = useState(null);
 
-    const fetchData = async () => {
+    const fetchData = async (pageNo = page, query = searchTerm) => {
         try {
+            setLoading(true);
             const [stdRes, batchRes, subRes] = await Promise.all([
-                api.get('/admin/students'),
+                api.get('/admin/students', { params: { page: pageNo, limit: perPage, search: query || undefined } }),
                 api.get('/admin/batches'),
                 api.get('/admin/faculty/subjects')
             ]);
             setStudents(stdRes.data);
+            setTotal(stdRes.data.total || stdRes.data.length || 0);
+            setLastPage(stdRes.data.last_page || 1);
             setBatches(batchRes.data);
-            setSubjects(subRes.data?.data || []);
+            setSubjects(subRes.data || []);
         } catch (err) { logger.error(err); } 
         finally { setLoading(false); }
     };
 
     useEffect(() => { 
         fetchData();
-        document.addEventListener("click", (e) => {
+        const onDocClick = (e) => {
             if (!e.target.closest(".action-menu-btn")) setOpenMenuId(null);
-        });
+        };
+        document.addEventListener("click", onDocClick);
+        return () => document.removeEventListener("click", onDocClick);
     }, []);
+
+    // Debounced search against the server-side search param.
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setPage(1);
+            fetchData(1, searchTerm);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const goToPage = (nextPage) => {
+        if (nextPage < 1 || nextPage > lastPage) return;
+        setPage(nextPage);
+        fetchData(nextPage, searchTerm);
+    };
 
     const goToDetails = (id) => navigate(`/admin/students/${id}`);
 
@@ -107,10 +133,16 @@ export default function StudentManager() {
             const fd = new FormData();
             Object.keys(addForm).forEach(k => fd.append(k, addForm[k] ?? ''));
             if (addPhoto) fd.append('photo', addPhoto);
-            await api.post('/admin/students', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+            const res = await api.post('/admin/students', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+            // C18: if the backend generated a password (none supplied), surface
+            // it ONCE so the admin can hand it over — otherwise the account is
+            // unusable. If the admin typed a password, they already know it.
+            const tempPw = res?.data?.data?.user?.temp_password;
+            const createdEmail = addForm.email;
             notify.success("Student created successfully!");
             setIsAddOpen(false);
             setAddPhoto(null);
+            if (tempPw) setNewCredential({ email: createdEmail || '(no email set)', password: tempPw });
             setAddForm({ name: '', email: '', password: '', phone: '', student_id_card_no: '', current_batch_id: '', gender: '', guardian_phone: '', dob: '', religion: 'islam', blood_group: '', nationality: 'Bangladeshi', father_name: '', father_phone: '', father_occupation: '', mother_name: '', mother_phone: '', mother_occupation: '', present_address: '', permanent_address: '', emergency_contact_name: '', emergency_contact_phone: '', emergency_contact_relation: '', last_school: '', jsc_gpa: '', ssc_gpa: '', subject: '' });
             fetchData();
         } catch (err) {
@@ -120,9 +152,10 @@ export default function StudentManager() {
         } finally { setSaving(false); }
     };
 
-    const filteredStudents = students.filter(std => 
-        std.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // C17: the server already searches name/email/phone/ID across the WHOLE
+    // dataset (see fetchData's `search` param), so there is NO client-side
+    // name-only re-filter here — that previously hid email/phone/ID matches
+    // returned by the server. Render the server page as-is.
 
     // ইমেজ ইউআরএল জেনারেটর
     const getPhotoUrl = (student) => {
@@ -145,13 +178,27 @@ export default function StudentManager() {
                 </div>
             </div>
 
+            {newCredential && (
+                <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 flex items-start justify-between gap-3">
+                    <div>
+                        <p className="font-bold">Student account created — save this one-time login:</p>
+                        <p className="mt-1">Email: <span className="font-mono font-semibold">{newCredential.email}</span></p>
+                        <p>Temporary password: <span className="font-mono font-semibold">{newCredential.password}</span></p>
+                        <p className="mt-1 text-xs text-green-700">This password is shown only once. Share it securely with the student; they can change it after logging in.</p>
+                    </div>
+                    <button onClick={() => setNewCredential(null)} className="text-green-700 hover:text-green-900 shrink-0" aria-label="Dismiss">
+                        <X size={18} />
+                    </button>
+                </div>
+            )}
+
             <div className="overflow-x-auto min-h-[400px] hidden md:block">
                 <table className="w-full text-left border-collapse text-sm">
                     <thead className="bg-gray-50 border-b text-gray-500 uppercase text-xs">
                         <tr><th className="p-3">Name</th><th className="p-3 hidden md:table-cell">ID</th><th className="p-3 hidden sm:table-cell">Batch</th><th className="p-3 text-right">Action</th></tr>
                     </thead>
                     <tbody className="divide-y">
-                        {filteredStudents.slice(0, entries).map(std => (
+                        {students.map(std => (
                             <tr key={std.id} className="hover:bg-gray-50 transition cursor-pointer" onClick={() => goToDetails(std.id)}>
                                 <td className="p-3">
                                     <div className="flex items-center gap-3">
@@ -203,7 +250,7 @@ export default function StudentManager() {
             </div>
 
             <div className="md:hidden space-y-1 mt-2">
-                {filteredStudents.slice(0, entries).map(std => (
+                {students.map(std => (
                     <div key={std.id} className="bg-white rounded-lg border border-gray-200 px-3 py-2" onClick={() => goToDetails(std.id)}>
                         <div className="flex items-center gap-2.5">
                             <div className="w-7 h-7 rounded-full bg-gray-200 overflow-hidden border border-gray-300 flex-shrink-0">
@@ -241,6 +288,37 @@ export default function StudentManager() {
                     </div>
                 ))}
             </div>
+
+            {!loading && students.length === 0 && (
+                <div className="py-16 text-center text-gray-500">
+                    <Search className="mx-auto mb-3 text-gray-300" size={40} />
+                    <p className="text-sm font-semibold">{searchTerm ? "No students match your search" : "No students found yet"}</p>
+                    <button onClick={() => setIsAddOpen(true)} className="mt-4 px-4 py-2 bg-[#1F4E79] text-white rounded-lg text-sm font-bold hover:bg-[#163859]">
+                        Add the first student
+                    </button>
+                </div>
+            )}
+
+            {total > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-5 pt-4 border-t border-gray-200">
+                    <p className="text-xs text-gray-500">
+                        Showing {loading ? 0 : (page - 1) * perPage + 1}-{Math.min(page * perPage, total)} of {total} students
+                    </p>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => goToPage(page - 1)}
+                            disabled={page <= 1 || loading}
+                            className="px-3 py-1.5 rounded border text-xs font-bold text-[#1F4E79] hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >&laquo; Prev</button>
+                        <span className="px-3 py-1.5 text-xs font-semibold text-gray-600">Page {page} of {lastPage}</span>
+                        <button
+                            onClick={() => goToPage(page + 1)}
+                            disabled={page >= lastPage || loading}
+                            className="px-3 py-1.5 rounded border text-xs font-bold text-[#1F4E79] hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >Next &raquo;</button>
+                    </div>
+                </div>
+            )}
 
             {/* Add Student Modal */}
             {isAddOpen && (

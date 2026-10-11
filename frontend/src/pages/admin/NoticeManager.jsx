@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
-import { Plus, MoreVertical, Trash2, Bell, Calendar } from "lucide-react";
+import { Plus, MoreVertical, Trash2, Bell, Calendar, Loader2 } from "lucide-react";
 import notify from "../../services/notification";
 import { useConfirm } from "../../components/common/ConfirmDialog";
 import logger from '../../services/logger';
@@ -11,23 +11,28 @@ export default function NoticeManager() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState({ title: '', description: '', type: 'general', date: '' });
     const [openMenuId, setOpenMenuId] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
 
     const fetchNotices = async () => {
         try {
-            const res = await api.get('/public/notices');
-            setNotices(res.data);
+            const res = await api.get('/admin/notices');
+            setNotices(Array.isArray(res.data) ? res.data : []);
         } catch (err) { logger.error(err); }
     };
 
     useEffect(() => {
         fetchNotices();
-        document.addEventListener("click", (e) => {
+        const onDocClick = (e) => {
             if (!e.target.closest(".action-menu-btn")) setOpenMenuId(null);
-        });
+        };
+        document.addEventListener("click", onDocClick);
+        return () => document.removeEventListener("click", onDocClick);
     }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitting) return;
+        setSubmitting(true);
         try {
             await api.post('/admin/notices', formData);
             notify.success("Posted!");
@@ -35,12 +40,18 @@ export default function NoticeManager() {
             setFormData({ title: '', description: '', type: 'general', date: '' });
             fetchNotices();
         } catch (error) { notify.error("Failed"); }
+        finally { setSubmitting(false); }
     };
 
     const handleDelete = async (id) => {
         const ok = await confirm({ title: "Delete Notice?", message: "Delete notice?", confirmText: "Delete", variant: "destructive" }); if (ok) {
-            await api.delete(`/admin/notices/${id}`);
-            fetchNotices();
+            try {
+                await api.delete(`/admin/notices/${id}`);
+                notify.success("Notice deleted");
+                fetchNotices();
+            } catch (err) {
+                notify.error(err.response?.data?.message || "Failed to delete notice");
+            }
         }
     }
 
@@ -136,7 +147,7 @@ export default function NoticeManager() {
                             </div>
                             <div className="flex justify-end gap-2 mt-4">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
-                                <button type="submit" className="px-4 py-2 text-sm bg-[#1F4E79] text-white rounded hover:opacity-90">Post</button>
+                                <button type="submit" disabled={submitting} className="px-4 py-2 text-sm bg-[#1F4E79] text-white rounded hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed">{submitting ? <Loader2 size={16} className="animate-spin" /> : null} {submitting ? "Saving..." : "Post"}</button>
                             </div>
                         </form>
                     </div>

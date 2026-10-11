@@ -8,6 +8,12 @@ const responseForError = (error, fallback) => {
   return { status, message: status === 500 ? `Internal server error: ${error.message}` : error.message };
 };
 
+// NEW-001: the approve response must never serialize the raw User instance —
+// that leaks the bcrypt `password` hash and token_version to the client. Keep
+// only the fields the admin UI needs.
+export const toSafeApprovedUser = (u) =>
+  u ? { id: u.id, name: u.name, email: u.email, role: u.role, phone: u.phone } : null;
+
 export const index = async (req, res) => {
   try {
     const admissions = await models.AdmissionApplication.findAll({
@@ -34,13 +40,13 @@ export const index = async (req, res) => {
 export const approve = async (req, res) => {
   try {
     const { id } = req.params;
-    const { email } = req.body || {};
+    const { email, password } = req.body || {};
 
-    const result = await AdmissionService.approveAdmission({ admissionId: id, email });
+    const result = await AdmissionService.approveAdmission({ admissionId: id, email, password });
 
     res.json({
       message: 'Admission approved successfully',
-      data: { admission: result.admission, user: result.user, student: result.student },
+      data: { admission: result.admission, user: toSafeApprovedUser(result.user), student: result.student },
     });
   } catch (error) {
     const { status, message } = responseForError(error, 'AdmissionManagerController.approve error:');

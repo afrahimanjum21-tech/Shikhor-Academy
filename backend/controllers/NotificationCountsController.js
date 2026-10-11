@@ -1,6 +1,22 @@
 import models from '../models/index.js';
-import { Op } from 'sequelize';
+import { Op, fn, col } from 'sequelize';
 import { parseSince, makeAfter } from '../utils/sinceFilters.js';
+
+// Most business events (contact messages, admission applications, leave
+// requests) create BOTH a Notification row and a business-table row. Summing
+// them would double-count every new event in the bell bubble. Instead, for
+// each type the bubble counts the LARGER of the two representations; unread
+// rows of types with no business counter are added on top.
+const distinctNotificationsFor = (businessByType, rowCountByType) => {
+  let total = 0;
+  const extraRows = { ...rowCountByType };
+  for (const [type, business] of Object.entries(businessByType)) {
+    total += Math.max(business, extraRows[type] || 0);
+    delete extraRows[type];
+  }
+  for (const n of Object.values(extraRows)) total += n;
+  return total;
+};
 
 // Short-lived in-memory cache: the frontend polls this endpoint every 60s per
 // tab, and several tabs can be open at once. Serving repeated identical
@@ -40,6 +56,16 @@ export const counts = async (req, res) => {
       where: { user_id: user.id, read_at: null },
     });
 
+    const unreadRows = await models.Notification.findAll({
+      where: { user_id: user.id, read_at: null },
+      attributes: ['type', [fn('COUNT', col('id')), 'n']],
+      group: ['type'],
+    });
+    const rowCountByType = unreadRows.reduce((m, r) => {
+      m[r.type] = Number(r.get('n'));
+      return m;
+    }, {});
+
     if (user.role === 'admin' || user.role === 'super_admin') {
       const [pendingAdmissions, holdAdmissions, pendingPayments, pendingLeaveRequests, unreadMessages] = await Promise.all([
         models.AdmissionApplication.count({ where: { status: 'pending', ...after('createdAt', 'admissions') } }),
@@ -56,8 +82,18 @@ export const counts = async (req, res) => {
       counts.unread_messages = unreadMessages;
 
       // The bell bubble is the total of everything actionable, so it matches
-      // the items listed in the notification dropdown.
-      counts.notifications = unreadNotifications + pendingAdmissions + holdAdmissions + pendingPayments + pendingLeaveRequests + unreadMessages;
+      // the items listed in the notification dropdown. Events are represented
+      // both as notification rows and business-table rows, so take the larger
+      // side per type instead of summing (no double counting).
+      counts.notifications = distinctNotificationsFor(
+        {
+          contact: unreadMessages,
+          admission: pendingAdmissions + holdAdmissions,
+          payment: pendingPayments,
+          leave: pendingLeaveRequests,
+        },
+        rowCountByType,
+      );
     }
 
     if (user.role === 'teacher') {
@@ -85,7 +121,10 @@ export const counts = async (req, res) => {
       counts.pending_submissions = pendingSubmissions;
       counts.pending_reviews = pendingSubmissions;
       counts.total_students = totalStudents;
-      counts.notifications = unreadNotifications + pendingSubmissions;
+      counts.notifications = distinctNotificationsFor(
+        { assignment: pendingSubmissions },
+        rowCountByType,
+      );
     }
 
     if (user.role === 'student') {

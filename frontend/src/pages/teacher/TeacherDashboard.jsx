@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
-import { LayoutDashboard, Users, BookOpen, Calendar, FileText, CheckCircle, Bell, Upload } from "lucide-react";
+import { LayoutDashboard, Users, BookOpen, Calendar, FileText, CheckCircle, Bell, Upload, Video } from "lucide-react";
 import logger from '../../services/logger';
 
 export default function TeacherDashboard() {
@@ -64,9 +64,17 @@ export default function TeacherDashboard() {
                             <p className="font-medium text-gray-800">{assignment.name}</p>
                             <p className="text-sm text-gray-500">{assignment.course?.title} - {assignment.subject}</p>
                         </div>
-                        <span className="px-3 py-1 bg-[#1F4E79]/10 text-[#1F4E79] rounded-full text-xs font-medium">
-                            {assignment.student_count || 0} Students
-                        </span>
+                        <div className="flex items-center gap-3">
+                            {assignment.class_link && (
+                                <a href={assignment.class_link} target="_blank" rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1F4E79] text-white text-xs font-bold hover:bg-[#163859] transition shadow">
+                                    <Video size={13} /> Join Class
+                                </a>
+                            )}
+                            <span className="px-3 py-1 bg-[#1F4E79]/10 text-[#1F4E79] rounded-full text-xs font-medium">
+                                {assignment.student_count || 0} Students
+                            </span>
+                        </div>
                     </div>
                 ))}
                     </div>

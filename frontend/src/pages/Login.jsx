@@ -2,11 +2,17 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import PageBackground from "../components/common/PageBackground";
 import PasswordInput from "../components/common/PasswordInput";
+import usePageMeta from "../hooks/usePageMeta";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { LogIn } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Login() {
+    usePageMeta({
+        title: "Login — Uttoron Coaching Centre",
+        description: "Sign in to your Uttoron Coaching Centre account for students, teachers and staff.",
+        path: "/login",
+    });
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const { login } = useAuth();

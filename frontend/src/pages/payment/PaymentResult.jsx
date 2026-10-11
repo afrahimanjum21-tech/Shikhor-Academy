@@ -53,7 +53,7 @@ export default function PaymentResult({ type = "pending" }) {
         let active = true;
         const loadStatus = async () => {
             try {
-                const { data } = await api.get("/student/payment/status", { params: { tran_id: tranId } });
+                const { data } = await api.get("/student/payment/status", { params: { trx_id: tranId } });
                 if (!active) return;
                 const list = Array.isArray(data) ? data : (data?.payments || [data]).filter(Boolean);
                 const matched = list.find((p) => p?.trx_id === tranId) || list[0] || null;

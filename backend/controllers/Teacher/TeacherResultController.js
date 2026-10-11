@@ -1,6 +1,7 @@
 import models from '../../models/index.js';
 import { Op } from 'sequelize';
-import GradeService from '../../services/GradeService.js';
+import ExamResultService from '../../services/ExamResultService.js';
+import { validateMark, fullMarksForSubject } from '../../services/marksValidation.js';
 import NotificationService from '../../services/NotificationService.js';
 
 const STUDENT_USER_ATTRIBUTES = ['id', 'name', 'email', 'phone', 'profile_photo_path'];
@@ -233,39 +234,46 @@ export const saveMarks = async (req, res) => {
       return res.status(400).json({ message: 'Some students do not belong to the selected batch' });
     }
 
-    const fullMarks = Number(exam.subject_marks?.[subject] ?? exam.total_marks ?? 100);
-    const totalMarks = Number(exam.total_marks || 0);
-    const results = await Promise.all(marks.map(async (entry) => {
-      const obtained = Math.min(Math.max(Number(entry.obtained) || 0, 0), fullMarks);
+    const fullMarks = fullMarksForSubject(exam, subject);
 
-      const values = {
-        marks_details: {},
-        total_obtained: 0,
-        grade: 'F',
-        gpa: 0,
-      };
+    // I-14: validate every provided mark up front and REJECT the batch on any
+    // non-numeric / negative / above-full value (no silent clamp). A blank
+    // cell means "not entered" and is skipped, so a partial sheet still saves.
+    for (const entry of marks) {
+      if (entry.obtained === '' || entry.obtained === null || entry.obtained === undefined) continue;
+      const check = validateMark(entry.obtained, fullMarks);
+      if (!check.ok) {
+        return res.status(400).json({ message: `Student ${entry.student_id}: marks ${check.reason}` });
+      }
+    }
+
+    await Promise.all(marks.map(async (entry) => {
+      const blank = entry.obtained === '' || entry.obtained === null || entry.obtained === undefined;
       const [result] = await models.ExamResult.findOrCreate({
         where: { exam_id: exam.id, student_id: entry.student_id },
-        defaults: values,
+        defaults: { marks_details: {}, total_obtained: 0, grade: 'F', gpa: 0 },
       });
 
-      const details = { ...(result.marks_details || {}), [subject]: obtained };
-      const totalObtained = GradeService.calculateTotalObtained(details);
-      const gradeInfo = GradeService.calculate(totalObtained, totalMarks);
+      const details = { ...(result.marks_details || {}) };
+      if (!blank) details[subject] = Number(entry.obtained);
 
+      // Canonical computation (per-subject full marks, never total_marks||0).
+      const calc = ExamResultService.computeForExam(exam, details);
       await result.update({
         marks_details: details,
-        total_obtained: totalObtained,
-        grade: gradeInfo.grade,
-        gpa: gradeInfo.gpa,
+        total_obtained: calc.total_obtained,
+        grade: calc.grade,
+        gpa: calc.gpa,
         teacher_id: teacherId,
         teacher_comment: entry.teacher_comment != null ? entry.teacher_comment : result.teacher_comment,
       });
-
-      return result;
     }));
 
-    res.json({ message: 'Marks saved successfully', count: results.length });
+    // Persist canonical grade/gpa + competition rank for every student (I-4),
+    // so admin/teacher/student views all agree.
+    await ExamResultService.recomputeExam(exam);
+
+    res.json({ message: 'Marks saved successfully', count: marks.length });
   } catch (error) {
     console.error('TeacherResultController.saveMarks error:', error);
     res.status(500).json({ message: 'Failed to save marks' });

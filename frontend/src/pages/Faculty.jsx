@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../services/api";
 import { buildAssetUrl } from "../services/config";
 import { User, Search, Star, BookOpen, Award, Briefcase, GraduationCap, ArrowRight, Users2, SlidersHorizontal, X, Mail, Phone, BadgeCheck, ExternalLink, FlaskConical } from "lucide-react";
+import usePageMeta from "../hooks/usePageMeta";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
@@ -32,6 +33,11 @@ const SocialColors = {
 };
 
 export default function Faculty() {
+    usePageMeta({
+        title: "Our Faculty — Uttoron Coaching Centre",
+        description: "Meet the experienced teachers of Uttoron Coaching Centre who guide students toward academic excellence in HSC and SSC.",
+        path: "/faculty",
+    });
     const [faculty, setFaculty] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [subjects, setSubjects] = useState([]);
@@ -41,6 +47,8 @@ export default function Faculty() {
     const [filterDepartment, setFilterDepartment] = useState('');
     const [filterSubject, setFilterSubject] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
     const [selectedFaculty, setSelectedFaculty] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const navigate = useNavigate();
@@ -68,13 +76,19 @@ export default function Faculty() {
             setLoading(true);
             try {
                 const params = new URLSearchParams();
-                if (searchTerm) params.append('search', searchTerm);
-                if (filterDepartment) params.append('department_id', filterDepartment);
+                if (searchTerm) params.append('q', searchTerm);
+                if (filterDepartment) params.append('department', filterDepartment);
                 if (filterSubject) params.append('subject_id', filterSubject);
-                if (filterCategory) params.append('faculty_category_id', filterCategory);
-                const { data } = await api.get(`/public/faculty?${params}`);
+                if (filterCategory) params.append('category', filterCategory);
+                params.append('page', '1');
+                params.append('limit', '12');
+                const endpoint = searchTerm ? '/public/faculty/search' : '/public/faculty';
+                const { data } = await api.get(`${endpoint}?${params}`);
                 if (active) {
-                    setFaculty(Array.isArray(data) ? data : (data.data || []));
+                    const list = Array.isArray(data) ? data : (data.data || []);
+                    setFaculty(list);
+                    setTotal(data.total ?? list.length);
+                    setPage(1);
                 }
             } catch (error) {
                 logger.error('Failed to fetch faculty:', error);
@@ -86,6 +100,32 @@ export default function Faculty() {
         return () => { active = false; };
     }, [searchTerm, filterDepartment, filterSubject, filterCategory]);
 
+    const loadMore = async () => {
+        try {
+            const params = new URLSearchParams();
+            if (searchTerm) params.append('q', searchTerm);
+            if (filterDepartment) params.append('department', filterDepartment);
+            if (filterSubject) params.append('subject_id', filterSubject);
+            if (filterCategory) params.append('category', filterCategory);
+            params.append('page', String(page + 1));
+            params.append('limit', '12');
+            const endpoint = searchTerm ? '/public/faculty/search' : '/public/faculty';
+            const { data } = await api.get(`${endpoint}?${params}`);
+            const list = Array.isArray(data) ? data : (data.data || []);
+            setFaculty(prev => [...prev, ...list]);
+            setPage(page + 1);
+        } catch (error) {
+            logger.error('Failed to load more faculty:', error);
+        }
+    };
+
+    // §D/P: DEAD CODE — superseded by the dedicated detail PAGE. Both the
+    // faculty card (navigate(`/faculty/:slug`)) and its button go to the full
+    // profile page, which is the confirmed live product behaviour; this
+    // handler + the "Faculty Details Modal" below are never invoked. Left in
+    // place (not deleted) and documented rather than re-wired, to avoid
+    // changing the current UX / inventing new modal behaviour. Safe to remove
+    // in a dedicated cleanup once product confirms the modal is retired.
     const handleViewDetails = (fac) => {
         setSelectedFaculty(fac);
         setShowModal(true);
@@ -144,7 +184,7 @@ export default function Faculty() {
                 {!loading && faculty.length > 0 && (
                     <div className="flex items-center justify-between mb-6">
                         <p className="text-sm text-gray-500">
-                            Found <span className="font-semibold text-gray-800">{faculty.length}</span> faculty member{faculty.length !== 1 ? 's' : ''}
+                            Found <span className="font-semibold text-gray-800">{total}</span> faculty member{total !== 1 ? 's' : ''}
                         </p>
                     </div>
                 )}
@@ -226,6 +266,15 @@ export default function Faculty() {
                                 </div>
                             </motion.div>
                         ))}
+                    </div>
+                )}
+
+                {!loading && faculty.length > 0 && faculty.length < total && (
+                    <div className="flex justify-center mt-10">
+                        <button onClick={loadMore}
+                            className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-[#1F4E79] border border-[#1F4E79] rounded-full hover:bg-[#1F4E79] hover:text-white transition-all duration-300">
+                            Load More
+                        </button>
                     </div>
                 )}
             </div>

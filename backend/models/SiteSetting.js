@@ -8,6 +8,7 @@ const SiteSetting = sequelize.define('SiteSetting', {
   hero_subtitle: { type: DataTypes.TEXT },
   hero_bg_image: { type: DataTypes.STRING },
   about_content: { type: DataTypes.TEXT },
+  footer_description: { type: DataTypes.TEXT },
   address: { type: DataTypes.STRING },
   map_link: { type: DataTypes.STRING },
   map_embed_url: { type: DataTypes.TEXT },
@@ -28,10 +29,14 @@ const SiteSetting = sequelize.define('SiteSetting', {
   smtp_host: { type: DataTypes.STRING },
   smtp_port: { type: DataTypes.INTEGER },
   smtp_username: { type: DataTypes.STRING },
-  smtp_password: { type: DataTypes.STRING },
+  smtp_password: { type: DataTypes.TEXT },
   smtp_encryption: { type: DataTypes.STRING(10) },
   smtp_from_address: { type: DataTypes.STRING },
   smtp_from_name: { type: DataTypes.STRING },
+  email_enabled: { type: DataTypes.BOOLEAN, allowNull: true },
+  email_provider: { type: DataTypes.STRING(20) },
+  email_api_key: { type: DataTypes.TEXT },
+  email_from: { type: DataTypes.STRING(255) },
 });
 
 SiteSetting.instance = async function() {

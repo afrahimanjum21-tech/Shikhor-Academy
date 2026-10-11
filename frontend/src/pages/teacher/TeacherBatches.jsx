@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
-import { BookOpen, Users, Clock } from "lucide-react";
+import { BookOpen, Users, Clock, Video } from "lucide-react";
 import logger from '../../services/logger';
 
 export default function TeacherBatches() {
@@ -26,6 +26,7 @@ export default function TeacherBatches() {
                         course: assignment.course,
                         start_time: assignment.start_time,
                         end_time: assignment.end_time,
+                        class_link: assignment.class_link || null,
                         student_count: assignment.student_count || 0,
                         subjects: [],
                     };
@@ -81,6 +82,12 @@ export default function TeacherBatches() {
                                 </div>
                             )}
                         </div>
+                        {batch.class_link && (
+                            <a href={batch.class_link} target="_blank" rel="noopener noreferrer"
+                                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#1F4E79] text-white text-xs font-bold hover:bg-[#163859] transition shadow">
+                                <Video size={14} /> Join Class
+                            </a>
+                        )}
                     </div>
                 ))}
             </div>

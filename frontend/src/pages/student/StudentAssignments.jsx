@@ -46,7 +46,7 @@ export default function StudentAssignments() {
         setSubmitting(assignmentId);
         try {
             const fd = new FormData();
-            fd.append("submission_file", file);
+            fd.append("file", file);
             await api.post(`/student/assignments/${assignmentId}/submit`, fd);
             await fetchAssignments();
         } catch (err) {

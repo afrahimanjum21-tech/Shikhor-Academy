@@ -13,3 +13,23 @@ backend/connect-neon.js
 backend/test-connection.js
 backend/backend-test-neon.js
 *.log
+
+# ============================================================
+# Security hardening — never bundle local secrets into a deployment.
+# Production reads these from Vercel project Environment Variables,
+# so excluding the local files here does NOT affect production.
+# ============================================================
+*.env
+.env
+.env.*
+backend/.env
+*secret*.txt
+*password*.txt
+*credential*.txt
+admin password.txt
+smtp key.txt
+steam password.txt
+*.pem
+*.key
+*.pfx
+*.p12

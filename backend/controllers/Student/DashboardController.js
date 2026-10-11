@@ -1,5 +1,8 @@
 import models, { sequelize } from '../../models/index.js';
 import { Op } from 'sequelize';
+import ExamResultService from '../../services/ExamResultService.js';
+import { summarizeFees } from '../../services/feeBreakdown.js';
+import { attendanceSummary } from '../../services/attendanceStats.js';
 
 export const summary = async (req, res) => {
   try {
@@ -9,7 +12,7 @@ export const summary = async (req, res) => {
         include: [
           {
             model: models.Batch,
-            attributes: ['id', 'name'],
+            attributes: ['id', 'name', 'class_link'],
             include: [{ model: models.Course, attributes: ['id', 'title', 'fee'] }],
           },
         ],
@@ -53,9 +56,21 @@ export const summary = async (req, res) => {
     attendanceRows.forEach((row) => {
       attendanceMap[row.status] = parseInt(row.get('cnt'), 10) || 0;
     });
-    const totalClasses = Object.values(attendanceMap).reduce((sum, n) => sum + n, 0);
+    // I-19: use the SAME eligible-day rule as the attendance page (present +
+    // absent + late + approved leave; pending/rejected leave excluded) so the
+    // dashboard percentage can never disagree with /student/attendance stats.
     const presentCount = attendanceMap.present || 0;
-    const attendancePercentage = totalClasses > 0 ? Math.round((presentCount / totalClasses) * 100) : 0;
+    const approvedLeaveCount = await models.Attendance.count({
+      where: { student_id: student.id, status: 'leave', leave_status: 'approved' },
+    });
+    const attendanceCalc = attendanceSummary({
+      present: presentCount,
+      absent: attendanceMap.absent || 0,
+      late: attendanceMap.late || 0,
+      approvedLeave: approvedLeaveCount,
+    });
+    const totalClasses = attendanceCalc.eligibleDays;
+    const attendancePercentage = attendanceCalc.percentage;
 
     const totalPaid = payments
       .filter(p => p.status === 'paid')
@@ -66,34 +81,30 @@ export const summary = async (req, res) => {
       .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
 
     const pendingCount = payments.filter(p => p.status === 'pending').length;
-    const dueMonths = payments
-      .filter(p => p.status === 'due' || p.status === 'pending')
-      .map(p => p.month)
-      .filter(Boolean);
-
-    let totalDue = pendingAmount;
-    if (student.admission_date && monthlyFee > 0) {
-      const admission = new Date(student.admission_date);
-      const now = new Date();
-      const months = (now.getFullYear() - admission.getFullYear()) * 12 +
-        (now.getMonth() - admission.getMonth()) + 1;
-      totalDue = Math.max(0, months * monthlyFee - totalPaid);
-    }
+    // I-11: derive due-months + total due from the SAME monthly breakdown the
+    // fees page uses (summarizeFees), so the dashboard and fees page can never
+    // disagree on what the student owes.
+    const { dueMonths, totalDue } = summarizeFees(student, payments, monthlyFee);
 
     // Only show results that are published (fully or subject by subject), and
-    // normalize aliases to lowercase so consumers can read result.exam.
-    const normalizedRecentResults = recentResults
-      .filter(r => r.Exam?.is_published || (r.Exam?.published_subjects || []).length > 0)
-      .map(result => {
-        const data = result.toJSON();
-        data.exam = data.Exam || null;
-        if (data.exam?.Course) {
-          data.exam.course = data.exam.Course;
-          delete data.exam.Course;
-        }
-        delete data.Exam;
-        return data;
-      });
+    // normalize aliases to lowercase so consumers can read result.exam. Then
+    // recompute percentage/grade/gpa/position on the same basis the student
+    // results page uses.
+    const normalizedRecentResults = await ExamResultService.enrichResults(
+      recentResults
+        .filter(r => r.Exam?.is_published || (r.Exam?.published_subjects || []).length > 0)
+        .map(result => {
+          const data = result.toJSON();
+          data.exam = data.Exam || null;
+          if (data.exam?.Course) {
+            data.exam.course = data.exam.Course;
+            delete data.exam.Course;
+          }
+          delete data.Exam;
+          return data;
+        }),
+      { restrictToPublished: true }
+    );
 
     const paymentBlock = {
       course_fee: monthlyFee,
@@ -112,6 +123,7 @@ export const summary = async (req, res) => {
           student_id_card_no: student.student_id_card_no,
           card_no: student.student_id_card_no,
           batch: student.Batch?.name || null,
+          batch_class_link: student.Batch?.class_link || null,
           course: student.Batch?.Course?.title || null,
           admission_date: student.admission_date,
         },

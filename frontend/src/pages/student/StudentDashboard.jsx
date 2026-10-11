@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
-import { AlertCircle, BookOpen, Calendar, CheckCircle, Clock, Loader2, TrendingUp } from "lucide-react";
+import { AlertCircle, BookOpen, Calendar, CheckCircle, Clock, Loader2, TrendingUp, Video } from "lucide-react";
 
 const money = (value) => `BDT ${Number(value || 0).toLocaleString("en-BD", {
     minimumFractionDigits: 2,
@@ -68,9 +68,17 @@ export default function StudentDashboard() {
                         {student.course || "Course not assigned"}{student.batch ? ` - ${student.batch}` : ""}
                     </p>
                 </div>
-                <div className="text-left md:text-right">
-                    <p className="text-xs font-bold text-gray-400 uppercase">Student ID</p>
-                    <p className="text-lg font-mono font-bold text-[#1F4E79]">{student.card_no || "---"}</p>
+                <div className="flex items-center gap-3 text-left md:text-right">
+                    <div>
+                        <p className="text-xs font-bold text-gray-400 uppercase">Student ID</p>
+                        <p className="text-lg font-mono font-bold text-[#1F4E79]">{student.card_no || "---"}</p>
+                    </div>
+                    {student.batch_class_link && (
+                        <a href={student.batch_class_link} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#1F4E79] text-white text-xs font-bold hover:bg-[#163859] transition shadow">
+                            <Video size={14} /> Join Class
+                        </a>
+                    )}
                 </div>
             </div>
 
@@ -165,8 +173,8 @@ export default function StudentDashboard() {
                                 <p className="font-bold text-gray-800">{result.exam?.name || "Exam"}</p>
                                 <p className="text-xs text-gray-500">{result.exam?.course?.title || "Course"}</p>
                                 <div className="mt-3 flex items-center justify-between">
-                                    <span className="text-sm text-gray-600">GPA {result.gpa}</span>
-                                    <span className="rounded bg-blue-50 px-2 py-1 text-xs font-bold text-[#1F4E79]">{result.grade}</span>
+                                    <span className="text-sm text-gray-600">GPA {result.gpa != null ? result.gpa : "-"}</span>
+                                    <span className="rounded bg-blue-50 px-2 py-1 text-xs font-bold text-[#1F4E79]">{result.grade || "-"}</span>
                                 </div>
                             </div>
                         ))}

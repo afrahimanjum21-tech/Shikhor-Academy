@@ -61,3 +61,45 @@ Thumbs.db
 
 .vercel
 .env*
+
+# ============================================================
+# Security hardening (secrets & credentials) — added by security audit
+# Local env files and credential/key files must NEVER be committed.
+# Only the *.example templates (placeholders) are kept, re-included below.
+# ============================================================
+# Env files (all variants, any directory)
+*.env
+.env
+.env.*
+# ...but always keep the placeholder example templates
+!.env.example
+!**/.env.example
+!.env.staging.example
+!**/.env.staging.example
+
+# Known standalone credential files (also covered by *.txt above; explicit = documented intent)
+admin password.txt
+smtp key.txt
+steam password.txt
+*secret*.txt
+*password*.txt
+*credential*.txt
+secrets.json
+credentials.json
+
+# Private keys / certificates / auth tokens
+*.pem
+*.key
+*.pfx
+*.p12
+id_rsa
+id_rsa.*
+auth.json
+.npmrc
+.netrc
+
+# Local scratch / throwaway scripts (inspected during audit — never commit)
+Start SpiderFoot.bat
+tmp-*.mjs
+tmp-*.cjs
+smoke-harddel.mjs

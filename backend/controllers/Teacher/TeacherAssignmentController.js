@@ -3,6 +3,23 @@ import { Op } from 'sequelize';
 import MediaService from '../../services/media/MediaService.js';
 import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 import NotificationService from '../../services/NotificationService.js';
+import { validateMark } from '../../services/marksValidation.js';
+
+// Resolve the teacher's batch assignment and enforce subject-scoping:
+// the teacher may only post assignments for a (batch, subject) pair they
+// were assigned to. Teachers whose assignment row has no subject may post
+// without one (or any subject) for that batch.
+const resolveBatchAssignment = async (teacherId, batchId, subject) => {
+  const rows = await models.TeacherBatchAssignment.findAll({
+    where: { teacher_id: teacherId, batch_id: batchId },
+  });
+  if (!rows.length) return null;
+  if (!subject) return rows[0];
+  const normalized = (value) => String(value || '').trim().toLowerCase();
+  const exact = rows.find((row) => row.subject && normalized(row.subject) === normalized(subject));
+  if (exact) return exact;
+  return rows.find((row) => !row.subject) || null;
+};
 
 export const index = async (req, res) => {
   try {
@@ -51,11 +68,9 @@ export const store = async (req, res) => {
     }
 
     if (batch_id) {
-      const assignment = await models.TeacherBatchAssignment.findOne({
-        where: { teacher_id: teacherId, batch_id },
-      });
+      const assignment = await resolveBatchAssignment(teacherId, batch_id, subject);
       if (!assignment) {
-        return res.status(403).json({ message: 'You are not assigned to this batch' });
+        return res.status(403).json({ message: 'You are not assigned to teach this subject in this batch' });
       }
     }
 
@@ -149,11 +164,9 @@ export const update = async (req, res) => {
     }
 
     if (batch_id) {
-      const assn = await models.TeacherBatchAssignment.findOne({
-        where: { teacher_id: teacherId, batch_id },
-      });
+      const assn = await resolveBatchAssignment(teacherId, batch_id, subject);
       if (!assn) {
-        return res.status(403).json({ message: 'You are not assigned to this batch' });
+        return res.status(403).json({ message: 'You are not assigned to teach this subject in this batch' });
       }
     }
 
@@ -244,7 +257,15 @@ export const gradeSubmission = async (req, res) => {
       return res.status(404).json({ message: 'Submission not found or not associated with your assignment' });
     }
 
-    submission.marks_obtained = marks_obtained;
+    // J: marks_obtained must be numeric, non-negative, and within the
+    // assignment's total_marks (when set) — reject with 4xx, never store a bad
+    // value or let it surface as a 500.
+    const check = validateMark(marks_obtained, submission.Assignment?.total_marks);
+    if (!check.ok) {
+      return res.status(400).json({ message: `marks_obtained ${check.reason}` });
+    }
+
+    submission.marks_obtained = check.value;
     submission.feedback = feedback || null;
     submission.status = 'graded';
     await submission.save();

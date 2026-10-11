@@ -11,6 +11,11 @@ const BD_SUBJECTS = [
     "Higher Math", "ICT", "BGS", "Religion", "Accounting", "Finance"
 ];
 
+const totalMarksFor = (exam) => {
+    if (exam?.total_marks) return exam.total_marks;
+    return Object.values(exam?.subject_marks || {}).reduce((sum, marks) => sum + (Number(marks) || 0), 0) || null;
+};
+
 export default function ExamManager() {
     const confirm = useConfirm();
     const [exams, setExams] = useState([]);
@@ -25,7 +30,7 @@ export default function ExamManager() {
         try {
             const [examRes, courseRes] = await Promise.all([
                 api.get('/admin/exams'),
-                api.get('/public/courses')
+                api.get('/admin/courses')
             ]);
             setExams(examRes.data);
             setCourses(courseRes.data);
@@ -38,12 +43,13 @@ export default function ExamManager() {
         setSelectedExam(exam);
         try {
             const res = await api.get(`/admin/exams/${exam.id}/students`);
-            setExamData(res.data);
+            const payload = res.data.data;
+            setExamData(payload);
 
             const existing = {};
-            (res.data.students || []).forEach(std => {
-                if (std.exam_results && std.exam_results.length > 0) {
-                    existing[std.id] = std.exam_results[0].marks_details || {};
+            (payload.results || []).forEach(result => {
+                if (result.student_id && result.marks_details) {
+                    existing[result.student_id] = result.marks_details;
                 }
             });
             setMarksInput(existing);
@@ -170,7 +176,7 @@ export default function ExamManager() {
                                 return (
                                     <tr key={std.id} className="h-9 hover:bg-blue-50/30">
                                         <td className="border-b border-r border-gray-200 bg-gray-100 text-center text-xs text-gray-500">{idx + 1}</td>
-                                        <td className="border-b border-r border-gray-200 px-3 text-sm text-gray-800 whitespace-nowrap">{std.user?.name || 'Unknown'}</td>
+                                        <td className="border-b border-r border-gray-200 px-3 text-sm text-gray-800 whitespace-nowrap">{std.user?.name || std.User?.name || 'Unknown'}</td>
                                         <td className="border-b border-r border-gray-200 px-2 text-xs text-gray-500 font-mono text-center">{std.student_id_card_no}</td>
                                         {subjects.map(sub => {
                                             const full = subjectMarksMap[sub] || 100;
@@ -241,7 +247,7 @@ export default function ExamManager() {
                                 </span>
                             )}
                         </div>
-                        <p className="text-xs text-gray-500 mb-2">Course: <span className="font-medium text-gray-700">{exam.course?.title || 'N/A'}</span></p>
+                        <p className="text-xs text-gray-500 mb-2">Course: <span className="font-medium text-gray-700">{exam.Course?.title || exam.course?.title || 'N/A'}</span></p>
                         <p className="text-xs text-gray-500 mb-2">Date: {exam.date}</p>
                         <div className="flex flex-wrap gap-1 mb-3">
                             {exam.subjects?.map(sub => (
@@ -250,7 +256,7 @@ export default function ExamManager() {
                                 </span>
                             ))}
                         </div>
-                        <div className="text-xs text-gray-600 mb-3 bg-gray-50 px-2 py-1 rounded">Total Marks: <span className="font-bold">{exam.total_marks}</span></div>
+                        <div className="text-xs text-gray-600 mb-3 bg-gray-50 px-2 py-1 rounded">Total Marks: <span className="font-bold">{totalMarksFor(exam) ?? 'N/A'}</span></div>
 
                         <div className="flex gap-2 mt-auto">
                             <button onClick={() => openMarksEntry(exam)}
@@ -276,7 +282,7 @@ export default function ExamManager() {
                     courses={courses}
                     defaultType={activeTab}
                     onClose={() => setIsModalOpen(false)}
-                    onCreated={() => { setIsModalOpen(false); fetchData(); }}
+                    onCreated={() => { setIsModalOpen(false); notify.success("Exam created successfully"); fetchData(); }}
                 />
             )}
         </div>
@@ -309,7 +315,7 @@ function NewExamModal({ courses, defaultType, onClose, onCreated }) {
         if (selected.length === 0) return notify.warning("Select at least one subject");
         setSaving(true);
         try {
-            await api.post('/admin/exams', { ...form, subjects: selected, subject_marks: marks });
+            await api.post('/admin/exams', { ...form, subjects: selected, subject_marks: marks, total_marks: totalMarks });
             onCreated();
         } catch (err) {
             notify.error(err.response?.data?.message || "Failed to create exam");

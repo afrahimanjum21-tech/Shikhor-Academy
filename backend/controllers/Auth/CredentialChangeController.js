@@ -1,21 +1,16 @@
-import jwt from 'jsonwebtoken';
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
-import models from '../../models/index.js';
+import models, { sequelize } from '../../models/index.js';
 import authConfig from '../../config/auth.js';
 import { sendEmail, escapeHtml, resolveSiteBaseUrl } from '../../services/mailer.js';
 
-const VERIFY_EXPIRES_IN = '30m';
-
-// Email-only changes are sent to the current (old) address, so an attacker who
-// takes over the account cannot silently move it to their own inbox without
-// the owner confirming from the old mailbox.
-function buildVerifyToken({ userId, currentEmail, newEmail, newPasswordHash }) {
-  return jwt.sign(
-    { purpose: 'credential_change', userId, currentEmail, newEmail: newEmail || null, newPasswordHash: newPasswordHash || null },
-    authConfig.jwtSecret,
-    { algorithm: authConfig.jwtAlgorithm, expiresIn: VERIFY_EXPIRES_IN }
-  );
-}
+// Confirmation links carry an opaque, single-use random token — never a JWT,
+// password, or bcrypt hash. The server stores only the SHA-256 of that token
+// (plus the pending change), so no secret ever appears in a URL, query string,
+// JWT claim, or log. Email changes are still confirmed from the current (old)
+// mailbox so a hijacker who seizes the account cannot silently move it.
+const VERIFY_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const sha256 = (value) => crypto.createHash('sha256').update(String(value)).digest('hex');
 
 export async function requestChange(req, res) {
   try {
@@ -60,7 +55,7 @@ export async function requestChange(req, res) {
       if (cleanNewEmail === user.email.toLowerCase()) {
         return res.status(400).json({ message: 'New email is the same as the current email' });
       }
-      const existing = await models.User.findOne({ where: { email: cleanNewEmail } });
+      const existing = await models.User.findOne({ where: { email: cleanNewEmail }, paranoid: false });
       if (existing) {
         return res.status(400).json({ message: 'That email is already in use by another account' });
       }
@@ -68,21 +63,28 @@ export async function requestChange(req, res) {
     }
 
     const newPasswordHash = wantsNewPassword ? await bcrypt.hash(newPassword, 12) : null;
-    const token = buildVerifyToken({
-      userId: user.id,
-      currentEmail: user.email,
-      newEmail: wantsNewEmail ? req.body.newEmail : null,
-      newPasswordHash,
+
+    // One outstanding request per user: drop any prior unconsumed tokens.
+    await models.PendingCredentialChange.destroy({ where: { user_id: user.id, consumed_at: null } });
+
+    // Opaque 256-bit single-use token; only its SHA-256 is persisted server-side.
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    await models.PendingCredentialChange.create({
+      user_id: user.id,
+      new_email: wantsNewEmail ? req.body.newEmail : null,
+      new_password_hash: newPasswordHash,
+      token_hash: sha256(rawToken),
+      expires_at: new Date(Date.now() + VERIFY_TTL_MS),
     });
 
     const base = resolveSiteBaseUrl();
-    const verifyUrl = `${base}/verify-credential-change?token=${encodeURIComponent(token)}`;
+    const verifyUrl = `${base}/verify-credential-change?token=${encodeURIComponent(rawToken)}`;
 
     const changes = [];
     if (wantsNewEmail) changes.push(`your sign-in email address to <strong>${escapeHtml(req.body.newEmail)}</strong>`);
     if (wantsNewPassword) changes.push('your app password');
 
-    await sendEmail({
+    const mailResult = await sendEmail({
       to: user.email,
       subject: 'Confirm your account change - Uttoron Coaching Centre',
       html: `
@@ -99,6 +101,11 @@ export async function requestChange(req, res) {
       `,
     });
 
+    if (!mailResult || !mailResult.messageId) {
+      res.status(502).json({ message: 'The verification email could not be sent (SMTP delivery problem). Check the SMTP settings in Site Settings and try again.' });
+      return;
+    }
+
     res.json({ message: 'Verification email sent. Click the confirm link in the email to apply the change.' });
   } catch (error) {
     console.error('CredentialChangeController.requestChange error:', error);
@@ -113,45 +120,63 @@ export async function verify(req, res) {
       return res.status(400).json({ success: false, message: 'Missing verification token' });
     }
 
-    let payload;
-    try {
-      payload = jwt.verify(token, authConfig.jwtSecret);
-    } catch (err) {
+    const pending = await models.PendingCredentialChange.findOne({ where: { token_hash: sha256(token) } });
+
+    // Unknown, already-consumed, and expired tokens all return the same generic
+    // answer (no oracle). consumed_at enforces single use / replay protection.
+    if (!pending || pending.consumed_at || new Date(pending.expires_at).getTime() < Date.now()) {
       return res.status(400).json({ success: false, message: 'This confirmation link is invalid or has expired. Request a new one.' });
     }
 
-    if (!payload || payload.purpose !== 'credential_change' || !payload.userId) {
-      return res.status(400).json({ success: false, message: 'This confirmation link is invalid or has expired. Request a new one.' });
-    }
-
-    const user = await models.User.findByPk(payload.userId);
+    // The pending change is bound to exactly one user and one payload, so it
+    // can never be applied to another account or another operation.
+    const user = await models.User.findByPk(pending.user_id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'Account not found' });
     }
 
-    // The token must have been issued for the current email: if the email was
-    // already changed since, a stale token can never be replayed to change it again.
-    if (String(user.email).toLowerCase() !== String(payload.currentEmail || '').toLowerCase()) {
-      return res.status(400).json({ success: false, message: 'This confirmation link is no longer valid for this account.' });
-    }
-
-    if (payload.newEmail) {
-      const taken = await models.User.findOne({ where: { email: payload.newEmail } });
+    // If the requested email became occupied since the link was sent (including
+    // by soft-deleted accounts, which the unique index still counts), fail with
+    // a clear message instead of a 500.
+    if (pending.new_email) {
+      const taken = await models.User.findOne({ where: { email: pending.new_email }, paranoid: false });
       if (taken && taken.id !== user.id) {
         return res.status(400).json({ success: false, message: 'The requested email is already in use by another account.' });
       }
-      user.email = payload.newEmail;
     }
-
-    if (payload.newPasswordHash) {
-      user.password = payload.newPasswordHash;
-    }
-
-    await user.save();
 
     const applied = [];
-    if (payload.newEmail) applied.push('email');
-    if (payload.newPasswordHash) applied.push('password');
+    try {
+      await sequelize.transaction(async (t) => {
+        if (pending.new_email) {
+          user.email = pending.new_email;
+        }
+        if (pending.new_password_hash) {
+          // Already a bcrypt hash — the User beforeUpdate hook leaves $2a/$2b
+          // values untouched, so it is stored as-is (never re-hashed).
+          user.password = pending.new_password_hash;
+        }
+        // SEC-5: a confirmed credential change revokes all existing sessions.
+        user.token_version = (user.token_version || 0) + 1;
+        await user.save({ transaction: t });
+
+        // Consume this token (single use) and clear any other outstanding ones.
+        pending.consumed_at = new Date();
+        await pending.save({ transaction: t });
+        await models.PendingCredentialChange.destroy({
+          where: { user_id: user.id, consumed_at: null },
+          transaction: t,
+        });
+
+        if (pending.new_email) applied.push('email');
+        if (pending.new_password_hash) applied.push('password');
+      });
+    } catch (err) {
+      if (err.name === 'SequelizeUniqueConstraintError') {
+        return res.status(400).json({ success: false, message: 'The requested email is already in use by another account. Request a new change.' });
+      }
+      throw err;
+    }
 
     const message = applied.length
       ? `Your ${applied.join(' and ')} ${applied.length > 1 ? 'have' : 'has'} been updated. Please log in again with the new credentials.`

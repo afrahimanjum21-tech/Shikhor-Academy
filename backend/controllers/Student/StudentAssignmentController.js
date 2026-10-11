@@ -1,5 +1,6 @@
 import models from '../../models/index.js';
 import MediaService from '../../services/media/MediaService.js';
+import { todayLocalDate } from '../../services/attendanceSession.js';
 
 export const index = async (req, res) => {
   try {
@@ -47,7 +48,14 @@ export const index = async (req, res) => {
           assignments: [],
         };
       }
-      grouped[teacherId].assignments.push(assignment);
+      // The student panel renders one `submission` per assignment, so flatten
+      // the (usually single-row, student-scoped) include into `submission`.
+      const json = assignment.toJSON();
+      delete json.AssignmentSubmissions;
+      json.submission = Array.isArray(assignment.AssignmentSubmissions)
+        ? assignment.AssignmentSubmissions[0] || null
+        : null;
+      grouped[teacherId].assignments.push(json);
     });
 
     res.json({ data: Object.values(grouped) });
@@ -92,16 +100,25 @@ export const submit = async (req, res) => {
       submission_file_path = uploadResult.url;
     }
 
+    // K: keep the current policy — late submissions ARE accepted (no grace
+    // period invented, resubmission block above preserved) — but record the
+    // lateness explicitly instead of silently, by comparing against the
+    // assignment's due_date in the school's local (Dhaka) calendar.
+    const isLate = assignment.due_date ? todayLocalDate() > String(assignment.due_date) : false;
+
     const submission = await models.AssignmentSubmission.create({
       assignment_id: assignmentId,
       student_id: student.id,
       submission_file_path,
       submission_text: submission_text || null,
-      status: 'submitted',
+      status: isLate ? 'late' : 'submitted',
       submitted_at: new Date(),
     });
 
-    res.status(201).json({ message: 'Assignment submitted successfully', data: submission });
+    res.status(201).json({
+      message: isLate ? 'Assignment submitted late' : 'Assignment submitted successfully',
+      data: { ...submission.toJSON(), is_late: isLate },
+    });
   } catch (error) {
     console.error('StudentAssignmentController.submit error:', error);
     res.status(500).json({ message: 'Failed to submit assignment' });
@@ -156,6 +173,11 @@ export const results = async (req, res) => {
           results: [],
         };
       }
+      const dueDate = assignment.due_date || null;
+      const submittedDate = json.submitted_at ? new Date(json.submitted_at).toISOString().slice(0, 10) : null;
+      // Lateness survives grading (which overwrites status to 'graded') by also
+      // deriving it from submitted_at vs due_date.
+      const is_late = json.status === 'late' || !!(dueDate && submittedDate && submittedDate > dueDate);
       grouped[teacherId].results.push({
         id: json.id,
         title: assignment.title || 'Untitled Assignment',
@@ -164,6 +186,8 @@ export const results = async (req, res) => {
         marks_obtained: json.marks_obtained ?? null,
         status: json.status || 'submitted',
         submitted_at: json.submitted_at || null,
+        due_date: dueDate,
+        is_late,
         feedback: json.feedback || null,
       });
     });

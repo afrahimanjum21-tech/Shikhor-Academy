@@ -38,6 +38,7 @@ import * as TeacherController from '../controllers/Admin/TeacherController.js';
 import * as GalleryController from '../controllers/Admin/GalleryController.js';
 import * as ElearningVideoController from '../controllers/Admin/ElearningVideoController.js';
 import * as NoticeController from '../controllers/Admin/NoticeController.js';
+import * as SuccessStoryController from '../controllers/Admin/SuccessStoryController.js';
 import * as ExamController from '../controllers/Admin/ExamController.js';
 import * as AttendanceController from '../controllers/Admin/AttendanceController.js';
 import * as RoutineController from '../controllers/Admin/RoutineController.js';
@@ -136,8 +137,21 @@ admin.post('/e-learning/:id', uploadPhoto('elearning').single('thumbnail'), (req
 });
 admin.delete('/e-learning/:id', ElearningVideoController.destroy);
 
+admin.get('/notices', NoticeController.index);
 admin.post('/notices', NoticeController.store);
 admin.delete('/notices/:id', NoticeController.destroy);
+
+admin.get('/success-stories', SuccessStoryController.index);
+admin.post('/success-stories', uploadPhoto('success_stories').single('photo'), SuccessStoryController.store);
+admin.get('/success-stories/:id', SuccessStoryController.show);
+admin.put('/success-stories/:id', uploadPhoto('success_stories').single('photo'), SuccessStoryController.update);
+admin.post('/success-stories/:id', uploadPhoto('success_stories').single('photo'), (req, res) => {
+  if (req.body._method === 'PUT') {
+    return SuccessStoryController.update(req, res);
+  }
+  res.status(405).json({ message: 'Method not allowed' });
+});
+admin.delete('/success-stories/:id', SuccessStoryController.destroy);
 
 admin.get('/exams', ExamController.index);
 admin.post('/exams', ExamController.store);
@@ -183,6 +197,7 @@ admin.post('/payment-settings', PaymentSettingController.update);
 
 admin.get('/site-settings', SiteSettingController.show);
 admin.post('/site-settings', uploadPhoto('site').single('hero_bg_image'), SiteSettingController.update);
+admin.post('/site-settings/test-email', SiteSettingController.testEmail);
 
 admin.get('/student/:id/exam-results', PaymentController.studentExamResults);
 admin.get('/student/:id/attendance', PaymentController.studentAttendance);

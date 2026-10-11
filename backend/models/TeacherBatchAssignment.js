@@ -10,6 +10,7 @@ const TeacherBatchAssignment = sequelize.define('TeacherBatchAssignment', {
   indexes: [
     { fields: ['teacher_id'] },
     { fields: ['batch_id'] },
+    { unique: true, fields: ['teacher_id', 'batch_id', 'subject'] },
   ],
 });
 

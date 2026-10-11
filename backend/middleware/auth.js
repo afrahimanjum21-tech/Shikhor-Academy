@@ -14,7 +14,7 @@ export const authenticate = async (req, res, next) => {
     }
     let decoded;
     try {
-      decoded = jwt.verify(token, authConfig.jwtSecret);
+      decoded = jwt.verify(token, authConfig.jwtSecret, { algorithms: [authConfig.jwtAlgorithm] });
     } catch (jwtError) {
       return res.status(401).json({ message: 'Invalid or expired token' });
     }
@@ -37,6 +37,17 @@ export const authenticate = async (req, res, next) => {
 
     if (!user || !user.is_active) {
       return res.status(401).json({ message: 'User not found or inactive' });
+    }
+
+    // SEC-5: server-side revocation. The token embeds the account's
+    // token_version at issue time; logout and password/credential changes bump
+    // User.token_version, invalidating every previously issued token. A missing
+    // `tv` (tokens issued before this feature shipped) is treated as 0 so
+    // existing sessions keep working until the next bump.
+    const tokenVersion = Number.isInteger(decoded.tv) ? decoded.tv : 0;
+    const currentVersion = Number.isInteger(user.token_version) ? user.token_version : 0;
+    if (tokenVersion !== currentVersion) {
+      return res.status(401).json({ message: 'Session expired, please log in again' });
     }
 
     req.user = user;

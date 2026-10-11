@@ -121,6 +121,8 @@ export const changePassword = async (req, res) => {
     }
 
     user.password = new_password;
+    // SEC-5: changing the password revokes all previously issued tokens.
+    user.token_version = (user.token_version || 0) + 1;
     await user.save();
 
     res.json({ message: 'Password changed successfully' });

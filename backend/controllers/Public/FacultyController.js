@@ -1,14 +1,23 @@
 import { Op } from 'sequelize';
 import models from '../../models/index.js';
 
-const facultyIncludes = [
-  { model: models.Department, as: 'department' },
-  { model: models.FacultyCategory, as: 'category' },
-  { model: models.Subject, as: 'subjects', through: { attributes: [] } },
-  { model: models.Batch, as: 'batches', through: { attributes: ['subject'] } },
-  { model: models.FacultyGallery, as: 'galleries', order: [['display_order', 'ASC']] },
-  { model: models.User, as: 'user', attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'] },
-];
+// Faculty queries pull in several associations. Sequelize normalizes and
+// augments the `include` option objects in place while building a query, so a
+// single module-level include array (or its nested `through`/`attributes`/
+// `order` objects) shared across requests becomes mutable shared state: one
+// request's subject filter — or the ORM's own normalization — can bleed into a
+// concurrent request. To stay request-isolated, these builders return a brand
+// new array of brand new objects on every call; nothing is shared.
+function buildDetailIncludes() {
+  return [
+    { model: models.Department, as: 'department' },
+    { model: models.FacultyCategory, as: 'category' },
+    { model: models.Subject, as: 'subjects', through: { attributes: [] } },
+    { model: models.Batch, as: 'batches', through: { attributes: ['subject'] } },
+    { model: models.FacultyGallery, as: 'galleries', order: [['display_order', 'ASC']] },
+    { model: models.User, as: 'user', attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'] },
+  ];
+}
 
 const serializeFaculty = (faculty) => {
   const json = faculty.toJSON ? faculty.toJSON() : faculty;
@@ -22,12 +31,22 @@ const serializeFaculty = (faculty) => {
   return json;
 };
 
-const listIncludes = [
-  { model: models.Department, as: 'department' },
-  { model: models.FacultyCategory, as: 'category' },
-  { model: models.Subject, as: 'subjects', through: { attributes: [] } },
-  { model: models.Batch, as: 'batches', through: { attributes: ['subject'] } },
-];
+// List / featured / search views: the detail associations minus gallery + user.
+// `subjectId`, when provided, applies the subject filter to THIS request's own
+// Subject include only.
+function buildListIncludes({ subjectId } = {}) {
+  return [
+    { model: models.Department, as: 'department' },
+    { model: models.FacultyCategory, as: 'category' },
+    {
+      model: models.Subject,
+      as: 'subjects',
+      through: { attributes: [] },
+      ...(subjectId ? { where: { id: subjectId } } : {}),
+    },
+    { model: models.Batch, as: 'batches', through: { attributes: ['subject'] } },
+  ];
+}
 
 export async function index(req, res) {
   try {
@@ -38,8 +57,9 @@ export async function index(req, res) {
     if (department) where.department_id = department;
     if (category) where.faculty_category_id = category;
 
-    const include = [...listIncludes];
-    if (subject_id) include[2].where = { id: subject_id };
+    // Fresh, request-scoped includes; the subject filter applies to this
+    // request only (see buildListIncludes).
+    const include = buildListIncludes({ subjectId: subject_id });
 
     const { count, rows } = await models.Faculty.findAndCountAll({
       where,
@@ -67,7 +87,7 @@ export async function featured(req, res) {
   try {
     const faculty = await models.Faculty.findAll({
       where: { is_featured: true, is_active: true, public_profile_enabled: true },
-      include: listIncludes,
+      include: buildListIncludes(),
       order: [['display_order', 'ASC']],
       limit: 8,
     });
@@ -82,7 +102,7 @@ export async function show(req, res) {
   try {
     const member = await models.Faculty.findOne({
       where: { slug: req.params.slug, is_active: true, public_profile_enabled: true },
-      include: facultyIncludes,
+      include: buildDetailIncludes(),
     });
 
     if (!member) {
@@ -159,8 +179,9 @@ export async function search(req, res) {
     if (department) where.department_id = department;
     if (category) where.faculty_category_id = category;
 
-    const include = [...listIncludes];
-    if (subject_id) include[2].where = { id: subject_id };
+    // Fresh, request-scoped includes; the subject filter applies to this
+    // request only (see buildListIncludes).
+    const include = buildListIncludes({ subjectId: subject_id });
 
     const { count, rows } = await models.Faculty.findAndCountAll({
       where,

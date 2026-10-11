@@ -13,6 +13,7 @@ export default function StudentResults() {
     const { markViewed } = useNotificationCounts();
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
     const [activeType, setActiveType] = useState("monthly");
 
@@ -20,12 +21,17 @@ export default function StudentResults() {
         markViewed('exam_results');
     }, [markViewed]);
 
-    useEffect(() => {
+    // N/§D: distinguish a real load FAILURE from a genuinely empty result set,
+    // so a network/server error doesn't masquerade as "no results". Retryable.
+    const loadResults = () => {
+        setLoading(true);
         api.get("/student/results")
-            .then((res) => setResults(res.data))
-            .catch((err) => logger.error(err))
+            .then((res) => { setResults(Array.isArray(res.data) ? res.data : []); setError(""); })
+            .catch((err) => { logger.error(err); setError(err.response?.data?.message || "Couldn't load your results. Please try again."); })
             .finally(() => setLoading(false));
-    }, []);
+    };
+
+    useEffect(() => { loadResults(); }, []);
 
     const filteredResults = useMemo(() => {
         return results.filter((result) => {
@@ -38,12 +44,30 @@ export default function StudentResults() {
         });
     }, [results, activeType, searchTerm]);
 
+    // Percentage per result, on the same basis the marksheet below uses:
+    // published subjects the student actually has marks for. The server now
+    // sends a precomputed percentage; the fallback keeps old payloads correct.
+    const examPercentage = (result) => {
+        if (result.percentage != null) return result.percentage;
+        const exam = result.exam || {};
+        const allSubjects = exam.subjects || Object.keys(result.marks_details || {});
+        const subjectMarks = exam.subject_marks || {};
+        const publishedSubjects = exam.is_published
+            ? allSubjects
+            : (exam.published_subjects || []).filter(s => allSubjects.includes(s));
+        const visible = publishedSubjects.filter(s => (result.marks_details || {})[s] !== undefined);
+        const obtained = visible.reduce((sum, s) => sum + Number(result.marks_details?.[s] || 0), 0);
+        const full = visible.reduce((sum, s) => sum + Number(subjectMarks[s] || 100), 0);
+        return percent(obtained, full);
+    };
+
     const summary = useMemo(() => {
         const typed = results.filter((result) => (result.exam?.type || "monthly") === activeType);
-        const average = typed.length
-            ? Math.round(typed.reduce((sum, item) => sum + percent(item.total_obtained, item.exam?.total_marks), 0) / typed.length)
+        const percentages = typed.map(examPercentage);
+        const average = percentages.length
+            ? Math.round(percentages.reduce((sum, p) => sum + p, 0) / percentages.length)
             : 0;
-        const best = typed.reduce((max, item) => Math.max(max, percent(item.total_obtained, item.exam?.total_marks)), 0);
+        const best = percentages.length ? Math.round(Math.max(...percentages)) : 0;
         return { count: typed.length, average, best };
     }, [results, activeType]);
 
@@ -64,6 +88,13 @@ export default function StudentResults() {
                     <Search className="absolute left-3 top-3 text-gray-400" size={16} />
                 </div>
             </div>
+
+            {error && !loading && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
+                    <span>{error}</span>
+                    <button onClick={loadResults} className="px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-bold hover:bg-red-700">Retry</button>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <SummaryCard icon={FileText} label="Published Exams" value={summary.count} />

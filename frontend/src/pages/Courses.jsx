@@ -7,6 +7,7 @@ import {
   Search, BookOpen, Users, Award, BookX, Sparkles
 } from "lucide-react";
 import PageBackground from "../components/common/PageBackground";
+import usePageMeta from "../hooks/usePageMeta";
 
 
 function SkeletonCard() {
@@ -23,6 +24,11 @@ function SkeletonCard() {
 }
 
 export default function Courses() {
+  usePageMeta({
+    title: "Our Courses — Uttoron Coaching Centre",
+    description: "Browse HSC Science, Arts, Commerce and English courses at Uttoron Coaching Centre. View course details, fees and enroll online.",
+    path: "/courses",
+  });
   const [courses, setCourses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [stats, setStats] = useState(null);
@@ -58,7 +64,7 @@ export default function Courses() {
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
     const matchesCategory =
-      !selectedCategoryId || course.course_category?.id === selectedCategoryId;
+      !selectedCategoryId || course.CourseCategory?.id === selectedCategoryId;
     return matchesSearch && matchesCategory;
   });
 
@@ -213,6 +219,15 @@ export default function Courses() {
 
                 {/* Card Body */}
                 <div className="p-3 flex flex-col gap-1.5">
+                  {course.CourseCategory?.name && (
+                    <span className="self-start text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                      style={{
+                        backgroundColor: course.CourseCategory.color ? `${course.CourseCategory.color}15` : '#1F4E7915',
+                        color: course.CourseCategory.color || '#1F4E79',
+                      }}>
+                      {course.CourseCategory.name}
+                    </span>
+                  )}
                   <h3 className="text-sm font-bold text-gray-800 line-clamp-2 group-hover:text-[#1F4E79] transition-colors leading-snug">
                     {course.title}
                   </h3>

@@ -2,6 +2,19 @@ import models from '../../models/index.js';
 import NotificationService from '../../services/NotificationService.js';
 import { sendEmail, escapeHtml, buildAdminActionLinks, resolveAdminRecipients } from '../../services/mailer.js';
 import MediaService from '../../services/media/MediaService.js';
+import { normalizeEmail } from '../../utils/normalizeEmail.js';
+
+// Coerce optional typed admission fields and normalize the email. Multipart
+// forms send blanks as "" which break INTEGER (course_id) / DATEONLY (dob)
+// columns; a non-numeric course id is a real validation error. Exported for tests.
+export function prepareAdmissionFields({ course_id, dob, email } = {}) {
+  const courseId = (course_id === undefined || course_id === null || course_id === '') ? null : course_id;
+  if (courseId !== null && !Number.isInteger(Number(courseId))) {
+    return { error: 'Invalid course selected' };
+  }
+  const dobValue = (dob === undefined || dob === null || dob === '') ? null : dob;
+  return { course_id: courseId, dob: dobValue, email: normalizeEmail(email) || null };
+}
 
 export async function submit(req, res) {
   try {
@@ -20,6 +33,11 @@ export async function submit(req, res) {
       return res.status(400).json({ message: 'Full name and phone are required' });
     }
 
+    // Normalize optional typed fields + email (see prepareAdmissionFields).
+    const prepared = prepareAdmissionFields({ course_id, dob, email });
+    if (prepared.error) return res.status(400).json({ message: prepared.error });
+    const { course_id: courseId, dob: dobValue, email: normalizedEmail } = prepared;
+
     let photo_path = null;
     if (req.file) {
       try {
@@ -31,8 +49,8 @@ export async function submit(req, res) {
     }
 
     const application = await models.AdmissionApplication.create({
-      full_name, father_name, mother_name, phone, email, dob, address,
-      course_id, photo_path, status: 'pending',
+      full_name, father_name, mother_name, phone, email: normalizedEmail, dob: dobValue, address,
+      course_id: courseId, photo_path, status: 'pending',
       gender, nationality, religion, blood_group,
       guardian_phone, guardian_name, guardian_relation, guardian_occupation,
       guardian_address, emergency_contact, emergency_name, emergency_phone, emergency_relation, last_school,
@@ -42,7 +60,7 @@ export async function submit(req, res) {
       permanent_address, shift, section, group_name, subject,
     });
 
-    const course = course_id ? await models.Course.findByPk(course_id) : null;
+    const course = courseId ? await models.Course.findByPk(courseId) : null;
 
     await NotificationService.createForAdmins({
       type: 'admission',
@@ -59,7 +77,7 @@ export async function submit(req, res) {
       const infoRows = [
         ['Name', full_name],
         ['Phone', phone],
-        ['Email', email],
+        ['Email', normalizedEmail],
         ['Date of Birth', dob],
         ['Gender', gender],
         ['Blood Group', blood_group],
@@ -105,9 +123,9 @@ export async function submit(req, res) {
       });
     }
 
-    if (email) {
+    if (normalizedEmail) {
       await sendEmail({
-        to: email,
+        to: normalizedEmail,
         subject: 'Admission Application Received - Uttoron Coaching Centre',
         html: `
           <h2>Thank You for Your Application!</h2>

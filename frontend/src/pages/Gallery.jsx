@@ -2,12 +2,18 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import api from "../services/api";
 import { buildAssetUrl } from "../services/config";
 import { motion, AnimatePresence } from "framer-motion";
+import usePageMeta from "../hooks/usePageMeta";
 import { X, ChevronLeft, ChevronRight, Image } from "lucide-react";
 import { useNotificationCounts } from "../context/NotificationContext";
 import PageBackground from "../components/common/PageBackground";
 
 
 export default function Gallery() {
+    usePageMeta({
+        title: "Gallery — Uttoron Coaching Centre",
+        description: "Explore photos of life at Uttoron Coaching Centre: classes, events, programs and celebrations.",
+        path: "/gallery",
+    });
     const { markViewed } = useNotificationCounts();
     const [albums, setAlbums] = useState([]);
     const [selectedAlbum, setSelectedAlbum] = useState(null);
@@ -25,14 +31,22 @@ export default function Gallery() {
     const openLightbox = (idx) => {
         setLightboxIndex(idx);
         setIsLightboxOpen(true);
-        document.body.style.overflow = 'hidden';
     };
 
     const closeLightbox = () => {
         setIsLightboxOpen(false);
         setLightboxIndex(null);
-        document.body.style.overflow = '';
     };
+
+    // C22: lock body scroll only while the lightbox is open; restore the
+    // PREVIOUS overflow on close or on unmount (navigating away mid-view) so
+    // the scroll-lock never leaks to other pages.
+    useEffect(() => {
+        if (!isLightboxOpen) return undefined;
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = prev; };
+    }, [isLightboxOpen]);
 
     const goNext = useCallback(() => {
         if (!selectedAlbum?.images) return;

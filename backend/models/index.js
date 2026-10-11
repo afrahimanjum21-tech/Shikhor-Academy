@@ -10,6 +10,7 @@ import ContactMessage from './ContactMessage.js';
 import Exam from './Exam.js';
 import ExamResult from './ExamResult.js';
 import Attendance from './Attendance.js';
+import AttendancePunch from './AttendancePunch.js';
 import Routine from './Routine.js';
 import Assignment from './Assignment.js';
 import AssignmentSubmission from './AssignmentSubmission.js';
@@ -30,24 +31,21 @@ import FacultyCategory from './FacultyCategory.js';
 import Department from './Department.js';
 import Subject from './Subject.js';
 import FacultySubject from './FacultySubject.js';
-import FacultyQualification from './FacultyQualification.js';
-import FacultyAchievement from './FacultyAchievement.js';
-import FacultyCertification from './FacultyCertification.js';
-import FacultySocialLink from './FacultySocialLink.js';
 import FacultyGallery from './FacultyGallery.js';
 import FacultyBatch from './FacultyBatch.js';
 import MediaAsset from './MediaAsset.js';
+import SuccessStory from './SuccessStory.js';
+import PendingCredentialChange from './PendingCredentialChange.js';
 
 const models = {
   User, Student, TeacherProfile, Batch, Course, CourseCategory,
   AdmissionApplication, ContactMessage, Exam, ExamResult,
-  Attendance, Routine, Assignment, AssignmentSubmission, StudyMaterial,
+  Attendance, AttendancePunch, Routine, Assignment, AssignmentSubmission, StudyMaterial,
   AcademicEvent, Payment, PaymentSetting, ElearningVideo,
   TeacherBatchAssignment, Notice, Notification, Album, GalleryImage,
   SiteSetting, StudentDocument, Faculty, FacultyCategory, Department,
-  Subject, FacultySubject, FacultyQualification, FacultyAchievement,
-  FacultyCertification, FacultySocialLink, FacultyGallery, FacultyBatch,
-  MediaAsset,
+  Subject, FacultySubject, FacultyGallery, FacultyBatch,
+  MediaAsset, SuccessStory, PendingCredentialChange,
 };
 
 Object.values(models).forEach(model => {

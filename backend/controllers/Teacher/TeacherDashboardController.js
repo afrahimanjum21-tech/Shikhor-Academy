@@ -74,6 +74,7 @@ export const summary = async (req, res) => {
           course: batch.Course ? { id: batch.Course.id, title: batch.Course.title } : null,
           start_time: batch.start_time,
           end_time: batch.end_time,
+          class_link: batch.class_link || null,
           student_count: countMap[batch.id] || 0,
         };
       });
@@ -152,6 +153,7 @@ export const myBatches = async (req, res) => {
         start_time: batch.start_time,
         end_time: batch.end_time,
         capacity: batch.capacity,
+        class_link: batch.class_link || null,
         student_count: countMap[batch.id] || 0,
       };
     });

@@ -47,12 +47,19 @@ async function runSeeders() {
       { name: 'ICT', slug: 'ict', display_order: 7 },
     ], { ignoreDuplicates: true });
 
-    const courseCategories = await models.CourseCategory.bulkCreate([
+    await models.CourseCategory.bulkCreate([
       { name: 'Science Group', slug: 'science-group', icon: '🔬', color: '#3B82F6', display_order: 1 },
       { name: 'Arts Group', slug: 'arts-group', icon: '🎨', color: '#EC4899', display_order: 2 },
       { name: 'Commerce Group', slug: 'commerce-group', icon: '💰', color: '#10B981', display_order: 3 },
       { name: 'Language', slug: 'language', icon: '📝', color: '#F59E0B', display_order: 4 },
     ], { ignoreDuplicates: true });
+
+    // §H/F: resolve category ids by their stable SLUG, never a hardcoded
+    // auto-increment id — on a non-pristine DB (categories already present with
+    // other ids, or some skipped as duplicates) `category_id: 1/4` would point
+    // at the wrong category or a non-existent row.
+    const courseCategoryRows = await models.CourseCategory.findAll({ attributes: ['id', 'slug'] });
+    const categoryIdBySlug = Object.fromEntries(courseCategoryRows.map((c) => [c.slug, c.id]));
 
     const course1 = await models.Course.findOrCreate({
       where: { slug: 'hsc-science-batch' },
@@ -60,7 +67,7 @@ async function runSeeders() {
         title: 'HSC Science Batch',
         slug: 'hsc-science-batch',
         description: 'Complete HSC Science program with experienced faculty',
-        category_id: 1,
+        category_id: categoryIdBySlug['science-group'] || null,
         fee: 15000,
         duration: '6 months',
         teacher_name: 'Prof. Rahman',
@@ -76,7 +83,7 @@ async function runSeeders() {
         title: 'English Foundation Course',
         slug: 'english-foundation',
         description: 'Build strong English language skills',
-        category_id: 4,
+        category_id: categoryIdBySlug['language'] || null,
         fee: 8000,
         discount_price: 6500,
         duration: '3 months',

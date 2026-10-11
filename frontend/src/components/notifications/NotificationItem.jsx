@@ -15,7 +15,7 @@ export default function NotificationItem({ notification, onMarkRead, onClose }) 
 
     const handleClick = () => {
         if (!notification.is_read && onMarkRead) {
-            onMarkRead(notification.id);
+            onMarkRead(notification);
         }
         if (onClose) onClose();
         if (notification.action_url) {
@@ -74,7 +74,7 @@ export default function NotificationItem({ notification, onMarkRead, onClose }) 
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
-                        if (onMarkRead) onMarkRead(notification.id);
+                        if (onMarkRead) onMarkRead(notification);
                     }}
                     className="flex-shrink-0 p-1 rounded hover:bg-gray-200/50 transition-colors"
                     aria-label="Mark as read"

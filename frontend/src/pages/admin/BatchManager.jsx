@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
-import { Plus, MoreVertical, Edit, Trash2, Layers, Search, Clock, Save } from "lucide-react";
+import { Plus, MoreVertical, Edit, Trash2, Layers, Search, Clock, Save, Video, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import notify from "../../services/notification";
 import { useConfirm } from "../../components/common/ConfirmDialog";
@@ -12,16 +12,17 @@ export default function BatchManager() {
     const [courses, setCourses] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     
-    const [formData, setFormData] = useState({ name: '', course_id: '', start_time: '', end_time: '', capacity: '' });
+    const [formData, setFormData] = useState({ name: '', course_id: '', start_time: '', end_time: '', capacity: '', class_link: '' });
     const [editingId, setEditingId] = useState(null);
     const [openMenuId, setOpenMenuId] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [submitting, setSubmitting] = useState(false);
 
     const fetchData = async () => {
         try {
             const [bRes, cRes] = await Promise.all([
                 api.get('/admin/batches'),
-                api.get('/public/courses')
+                api.get('/admin/courses')
             ]);
             setBatches(bRes.data);
             setCourses(cRes.data);
@@ -30,9 +31,11 @@ export default function BatchManager() {
 
     useEffect(() => {
         fetchData();
-        document.addEventListener("click", (e) => {
+        const onDocClick = (e) => {
             if (!e.target.closest(".action-menu-btn")) setOpenMenuId(null);
-        });
+        };
+        document.addEventListener("click", onDocClick);
+        return () => document.removeEventListener("click", onDocClick);
     }, []);
 
     // Time Format Helper (24h -> 12h AM/PM)
@@ -47,19 +50,28 @@ export default function BatchManager() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitting) return;
+        setSubmitting(true);
+        const payload = {
+            ...formData,
+            capacity: formData.capacity === '' || formData.capacity === undefined || formData.capacity === null
+                ? null
+                : Number(formData.capacity),
+        };
         try {
             if (editingId) {
-                await api.put(`/admin/batches/${editingId}`, formData);
+                await api.put(`/admin/batches/${editingId}`, payload);
                 notify.success("Batch Updated!");
             } else {
-                await api.post('/admin/batches', formData);
+                await api.post('/admin/batches', payload);
                 notify.success("Batch Created!");
             }
             setIsModalOpen(false);
-            setFormData({ name: '', course_id: '', start_time: '', end_time: '', capacity: '' });
+            setFormData({ name: '', course_id: '', start_time: '', end_time: '', capacity: '', class_link: '' });
             setEditingId(null);
             fetchData();
         } catch (error) { notify.error("Failed: " + (error.response?.data?.message || error.message)); }
+        finally { setSubmitting(false); }
     };
 
     const handleEdit = (batch) => {
@@ -68,7 +80,8 @@ export default function BatchManager() {
             course_id: batch.course_id,
             start_time: batch.start_time || '',
             end_time: batch.end_time || '',
-            capacity: batch.capacity || ''
+            capacity: batch.capacity || '',
+            class_link: batch.class_link || ''
         });
         setEditingId(batch.id);
         setIsModalOpen(true);
@@ -77,14 +90,17 @@ export default function BatchManager() {
 
     const handleDelete = async (id) => {
         const ok = await confirm({ title: "Delete Batch?", message: "Delete batch?", confirmText: "Delete", variant: "destructive" }); if (ok) {
-            await api.delete(`/admin/batches/${id}`);
-            fetchData();
+            try {
+                await api.delete(`/admin/batches/${id}`);
+                notify.success("Batch Deleted!");
+                fetchData();
+            } catch (error) { notify.error("Failed: " + (error.response?.data?.message || error.message)); }
         }
     };
 
     const filteredBatches = batches.filter(b => 
         b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        b.course?.title.toLowerCase().includes(searchTerm.toLowerCase())
+        (b.Course?.title || b.course?.title || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -128,7 +144,7 @@ export default function BatchManager() {
                                             <div className="p-2 bg-blue-100 rounded-full text-[#1F4E79]"><Layers size={18} /></div>
                                             <div>
                                                 <p className="font-bold text-gray-800">{batch.name}</p>
-                                                <p className="text-xs text-[#1F4E79] font-medium bg-blue-50 px-2 py-0.5 rounded mt-1 inline-block">{batch.course?.title}</p>
+                                                <p className="text-xs text-[#1F4E79] font-medium bg-blue-50 px-2 py-0.5 rounded mt-1 inline-block">{batch.Course?.title || batch.course?.title}</p>
                                             </div>
                                         </div>
                                     </td>
@@ -166,7 +182,7 @@ export default function BatchManager() {
                                 <div className="p-2 bg-blue-100 rounded-full text-[#1F4E79] flex-shrink-0"><Layers size={16} /></div>
                                 <div className="flex-1 min-w-0">
                                     <p className="font-bold text-gray-800 text-sm">{batch.name}</p>
-                                    <p className="text-xs text-[#1F4E79] font-medium bg-blue-50 px-2 py-0.5 rounded mt-0.5 inline-block truncate max-w-full">{batch.course?.title}</p>
+                                    <p className="text-xs text-[#1F4E79] font-medium bg-blue-50 px-2 py-0.5 rounded mt-0.5 inline-block truncate max-w-full">{batch.Course?.title || batch.course?.title}</p>
                                 </div>
                                 <div className="flex gap-1 flex-shrink-0">
                                     <button onClick={() => handleEdit(batch)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Edit size={15} /></button>
@@ -223,11 +239,17 @@ export default function BatchManager() {
                                 <label className="text-xs font-bold text-gray-500">Capacity</label>
                                 <input type="number" className="w-full border p-2 rounded text-sm mt-1" placeholder="Max Students" value={formData.capacity} onChange={e => setFormData({...formData, capacity: e.target.value})} />
                             </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 flex items-center gap-1.5"><Video size={13} className="text-[#1F4E79]" /> Online Class Link <span className="font-normal text-gray-400">(optional)</span></label>
+                                <input type="url" className="w-full border p-2 rounded text-sm mt-1" placeholder="https://meet.google.com/..." value={formData.class_link} onChange={e => setFormData({...formData, class_link: e.target.value})} />
+                                <p className="text-[11px] text-gray-400 mt-1">Shown to enrolled students and assigned teachers. Leave empty for offline-only batches.</p>
+                            </div>
                             
                             <div className="flex justify-end gap-2 mt-6">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
-                                <button type="submit" className="px-6 py-2 text-sm bg-[#1F4E79] text-white rounded-lg hover:bg-[#163859] shadow-md flex items-center gap-2">
-                                    <Save size={16}/> Save Batch
+                                <button type="submit" disabled={submitting} className="px-6 py-2 text-sm bg-[#1F4E79] text-white rounded-lg hover:bg-[#163859] shadow-md flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                                    {submitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} {submitting ? "Saving..." : "Save Batch"}
                                 </button>
                             </div>
                         </form>

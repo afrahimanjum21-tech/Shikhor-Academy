@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { buildAssetUrl } from "../../services/config";
-import { Users, Plus, Edit, Trash2, Search, Filter, Star, Eye, EyeOff, ArrowUpDown, Upload, X, Tag, Mail, Phone, Award, BookOpen, Calendar, User } from "lucide-react";
+import { Users, Plus, Edit, Trash2, Search, Filter, Loader2, Star, Eye, EyeOff, ArrowUpDown, Upload, X, Tag, Mail, Phone, Award, BookOpen, Calendar, User } from "lucide-react";
 import notify from "../../services/notification";
 import { useConfirm } from "../../components/common/ConfirmDialog";
 import PasswordInput from "../../components/common/PasswordInput";
@@ -26,6 +26,7 @@ export default function FacultyManager() {
     const [filterActive, setFilterActive] = useState('');
     const [showTrashed, setShowTrashed] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [categorySaving, setCategorySaving] = useState(false);
     const [categoryForm, setCategoryForm] = useState({ name: '', description: '', is_active: true, display_order: 0 });
     const [editingCategory, setEditingCategory] = useState(null);
     const [departmentSearch, setDepartmentSearch] = useState('');
@@ -328,6 +329,8 @@ export default function FacultyManager() {
 
     const handleCategorySubmit = async (e) => {
         e.preventDefault();
+        if (categorySaving) return;
+        setCategorySaving(true);
         try {
             if (editingCategory) {
                 await api.put(`/admin/faculty/categories/${editingCategory.id}`, categoryForm);
@@ -338,6 +341,8 @@ export default function FacultyManager() {
             setShowCategoryModal(false);
         } catch (error) {
             notify.error(error.response?.data?.message || 'Failed to save category');
+        } finally {
+            setCategorySaving(false);
         }
     };
 
@@ -1464,8 +1469,8 @@ export default function FacultyManager() {
                                     <span className="text-sm text-gray-700">Active</span>
                                 </label>
                                 <div className="flex gap-2">
-                                    <button type="submit" className="px-4 py-2 bg-[#1F4E79] text-white rounded-lg hover:bg-[#1a3d66] transition-colors text-sm">
-                                        {editingCategory ? 'Update Category' : 'Add Category'}
+                                    <button type="submit" disabled={categorySaving} className="px-4 py-2 bg-[#1F4E79] text-white rounded-lg hover:bg-[#1a3d66] transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed">
+                                        {categorySaving ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : (editingCategory ? 'Update Category' : 'Add Category')}
                                     </button>
                                     {editingCategory && (
                                         <button type="button" onClick={() => { setEditingCategory(null); setCategoryForm({ name: '', description: '', is_active: true, display_order: 0 }); }} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm">

@@ -11,7 +11,7 @@ const defaultForm = {
     enabled_methods: ["sslcommerz"],
     settlement_account_name: "",
     settlement_account_number: "",
-    settlement_bank_name: "",
+    settlement_bank: "",
     instructions: "",
 };
 
@@ -145,7 +145,7 @@ export default function PaymentSettings() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <Field label="Account Name" value={form.settlement_account_name || ""} onChange={(value) => update("settlement_account_name", value)} />
                             <Field label="Account Number" value={form.settlement_account_number || ""} onChange={(value) => update("settlement_account_number", value)} />
-                            <Field label="Bank / MFS Name" value={form.settlement_bank_name || ""} onChange={(value) => update("settlement_bank_name", value)} />
+                            <Field label="Bank / MFS Name" value={form.settlement_bank || ""} onChange={(value) => update("settlement_bank", value)} />
                         </div>
                     </div>
 

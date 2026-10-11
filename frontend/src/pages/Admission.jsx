@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ArrowRight, Upload } from "lucide-react";
 import { motion } from "framer-motion";
 import api from "../services/api";
+import usePageMeta from "../hooks/usePageMeta";
 import PageBackground from "../components/common/PageBackground";
 
 const stagger = {
@@ -37,7 +38,13 @@ const sectionTitle =
   "text-[28px] font-bold text-[#174B87] pb-3 mb-7 border-b border-[rgba(37,99,235,0.15)]";
 
 export default function Admission() {
+  usePageMeta({
+    title: "Admission — Uttoron Coaching Centre",
+    description: "Apply for admission at Uttoron Coaching Centre. Fill the online admission form to join HSC, SSC or English courses.",
+    path: "/admission",
+  });
   const [courses, setCourses] = useState([]);
+  const [coursesError, setCoursesError] = useState("");
   const [formData, setFormData] = useState({
     full_name: "", email: "", phone: "", dob: "", course_id: "", photo: null,
     gender: "", religion: "Islam", blood_group: "", nationality: "Bangladeshi",
@@ -52,8 +59,16 @@ export default function Admission() {
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // N/§D: surface a course-load FAILURE (retryable) instead of silently
+  // leaving an empty course dropdown with no explanation.
+  const loadCourses = () => {
+    api.get("/public/courses")
+      .then((res) => { setCourses(Array.isArray(res.data) ? res.data : []); setCoursesError(""); })
+      .catch(() => setCoursesError("Couldn't load the course list. Please try again."));
+  };
+
   useEffect(() => {
-    api.get("/public/courses").then((res) => setCourses(res.data));
+    loadCourses();
     api.get("/public/faculty/subjects").then((res) => setSubjects(res.data)).catch(() => {});
   }, []);
 
@@ -64,6 +79,7 @@ export default function Admission() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const formEl = e.target;
     setLoading(true);
 
     if (formData.photo && formData.photo.size > 2 * 1024 * 1024) {
@@ -85,6 +101,18 @@ export default function Admission() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setMessage({ type: "success", text: res.data.message });
+      // Reset the form ONLY after a confirmed success. On failure (the catch
+      // below) the entered data is preserved so the user can simply retry.
+      setFormData({
+        full_name: "", email: "", phone: "", dob: "", course_id: "", photo: null,
+        gender: "", religion: "Islam", blood_group: "", nationality: "Bangladeshi",
+        father_name: "", father_phone: "", father_occupation: "",
+        mother_name: "", mother_phone: "", mother_occupation: "",
+        address: "", permanent_address: "",
+        emergency_name: "", emergency_phone: "", emergency_relation: "",
+        last_school: "", jsc_gpa: "", ssc_gpa: "", subject: "",
+      });
+      if (formEl && typeof formEl.reset === "function") formEl.reset();
       window.scrollTo(0, 0);
     } catch (err) {
       setMessage({
@@ -214,6 +242,12 @@ export default function Admission() {
                       </option>
                     ))}
                   </select>
+                  {coursesError && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {coursesError}{" "}
+                      <button type="button" onClick={loadCourses} className="underline font-semibold">Retry</button>
+                    </p>
+                  )}
                   <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
                     <svg
                       className="w-4 h-4 text-[#1F4E79]"
@@ -476,7 +510,7 @@ export default function Admission() {
                 <label className={sectionLabel}>Nationality</label>
                 <input
                   name="nationality"
-                  value="Bangladeshi"
+                  value={formData.nationality}
                   className={glassInput}
                   style={inputGlass}
                   onChange={handleChange}

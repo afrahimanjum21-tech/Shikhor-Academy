@@ -1,5 +1,6 @@
 import models from '../../models/index.js';
 import { Op } from 'sequelize';
+import { resolveSession } from '../../services/attendanceSession.js';
 
 export const index = async (req, res) => {
   try {
@@ -23,26 +24,33 @@ export const index = async (req, res) => {
 
     const queriedBatchIds = batches.map(b => b.id);
 
-    const students = queriedBatchIds.length > 0 ? await models.Student.findAll({
-      where: { current_batch_id: { [Op.in]: queriedBatchIds } },
-      include: [{
-        model: models.User,
-        attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'],
-        where: { role: 'student', is_active: true },
-        required: true,
-      }],
-    }) : [];
+    // Previously three sequential queries; students and attendance records now
+    // run in parallel (records matched by an include-filtered subselect, then
+    // the optional date/session filter applied in memory).
+    const [students, records] = queriedBatchIds.length > 0 ? await Promise.all([
+      models.Student.findAll({
+        where: { current_batch_id: { [Op.in]: queriedBatchIds } },
+        include: [{
+          model: models.User,
+          attributes: ['id', 'name', 'email', 'phone', 'profile_photo_path'],
+          where: { role: 'student', is_active: true },
+          required: true,
+        }],
+      }),
+      models.Attendance.findAll({
+        where: {
+          '$Student.current_batch_id$': { [Op.in]: queriedBatchIds },
+        },
+        include: [{ model: models.Student, attributes: [] }],
+      }),
+    ]) : [[], []];
 
-    const studentIds = students.map(s => s.id);
-
-    const attendanceWhere = { student_id: { [Op.in]: studentIds } };
-    if (date) attendanceWhere.date = date;
-    if (session) attendanceWhere.session = session;
-
-    const records = studentIds.length > 0 ? await models.Attendance.findAll({ where: attendanceWhere }) : [];
+    const filteredRecords = records.filter(r =>
+      (!date || r.date === date) && (!session || r.session === session)
+    );
 
     const recordMap = {};
-    records.forEach(r => { recordMap[r.student_id] = r; });
+    filteredRecords.forEach(r => { recordMap[r.student_id] = r; });
 
     const studentByBatch = {};
     students.forEach(s => {
@@ -136,29 +144,40 @@ export const markAttendance = async (req, res) => {
       return res.status(403).json({ message: 'You are not assigned to this batch' });
     }
 
+    // C2/I-2: derive course_id from the validated batch (never trust a
+    // client-supplied course id) so teacher-marked rows appear in the admin
+    // monthly sheet (which filters by course_id). C3: resolve a NON-NULL
+    // session with the SAME rule the admin path uses, so the unique index
+    // (student_id, batch_id, date, session) actually prevents duplicates.
+    const batch = await models.Batch.findByPk(batch_id, { attributes: ['id', 'course_id'] });
+    if (!batch) {
+      return res.status(404).json({ message: 'Batch not found' });
+    }
+    const resolvedSession = resolveSession(session);
+
     const attendanceData = records.map(record => ({
       student_id: record.student_id,
       batch_id,
-      course_id: null,
+      course_id: batch.course_id || null,
       date,
-      session: session || null,
+      session: resolvedSession,
       status: record.status || 'present',
     }));
 
     // Reject records that reference students outside the teacher's batch -
     // otherwise a teacher could mark attendance for (or impersonate marks of)
     // any student in the school.
-    const studentIds = attendanceData.map(r => r.student_id);
+    const studentIds = [...new Set(attendanceData.map(r => r.student_id))];
     const validStudents = await models.Student.findAll({
       where: { id: { [Op.in]: studentIds }, current_batch_id: batch_id },
       attributes: ['id'],
     });
-    if (validStudents.length !== attendanceData.length) {
+    if (validStudents.length !== studentIds.length) {
       return res.status(400).json({ message: 'Some students are not in your assigned batch' });
     }
 
     await models.Attendance.bulkCreate(attendanceData, {
-      updateOnDuplicate: ['status', 'session'],
+      updateOnDuplicate: ['status', 'session', 'course_id'],
     });
 
     res.json({ message: 'Attendance marked successfully', count: attendanceData.length });
@@ -192,7 +211,7 @@ export const updateAttendance = async (req, res) => {
 
     const updates = {};
     if (status !== undefined) updates.status = status;
-    if (session !== undefined) updates.session = session;
+    if (session !== undefined) updates.session = resolveSession(session);
 
     await attendance.update(updates);
 

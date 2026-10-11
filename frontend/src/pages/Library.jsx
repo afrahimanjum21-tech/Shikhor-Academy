@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../services/api";
 import { buildAssetUrl } from "../services/config";
 import { FileText, Download, Search, Link as LinkIcon, ExternalLink, LogIn, BookOpen, ArrowRight, Lock } from "lucide-react";
+import usePageMeta from "../hooks/usePageMeta";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -10,6 +11,11 @@ import PageBackground from "../components/common/PageBackground";
 
 
 export default function Library({ requireAuth = false }) {
+    usePageMeta({
+        title: "Library & Study Materials — Uttoron Coaching Centre",
+        description: "Access study materials, notes and resources from Uttoron Coaching Centre's library.",
+        path: "/library",
+    });
     const { user, token } = useAuth();
     const { markViewed } = useNotificationCounts();
     const [materials, setMaterials] = useState([]);
@@ -168,12 +174,9 @@ export default function Library({ requireAuth = false }) {
                                                 <p className="text-xs text-gray-500 uppercase font-semibold">
                                                     {item.type === 'link' ? 'Link' : `${item.file_type} File`}
                                                 </p>
-                                                {item.uploader && (
+                                                {item.Uploader && (
                                                     <p className="text-xs text-gray-400 mt-1">
-                                                        Uploaded by <strong>{item.uploader?.name}</strong>
-                                                        {item.uploader?.teacher_profile?.designation && (
-                                                            <> · {item.uploader.teacher_profile.designation}</>
-                                                        )}
+                                                        Uploaded by <strong>{item.Uploader?.name}</strong>
                                                     </p>
                                                 )}
 

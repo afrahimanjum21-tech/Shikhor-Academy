@@ -7,7 +7,7 @@ const PaymentSetting = sequelize.define('PaymentSetting', {
   is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
   mode: { type: DataTypes.STRING(10), defaultValue: 'sandbox' },
   store_id: { type: DataTypes.STRING },
-  store_password: { type: DataTypes.STRING },
+  store_password: { type: DataTypes.TEXT },
   enabled_methods: { type: DataTypes.JSON },
   settlement_account_name: { type: DataTypes.STRING },
   settlement_account_number: { type: DataTypes.STRING },

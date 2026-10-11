@@ -13,6 +13,8 @@ export default function GalleryManager() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newAlbumName, setNewAlbumName] = useState("");
     const [uploadProgress, setUploadProgress] = useState(null);
+    const [creating, setCreating] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const uploadTimerRef = useRef(null);
 
     const fetchAlbums = async () => {
@@ -32,6 +34,8 @@ export default function GalleryManager() {
 
     const createAlbum = async (e) => {
         e.preventDefault();
+        if (creating) return;
+        setCreating(true);
         try {
             const formData = new FormData();
             formData.append('name', newAlbumName);
@@ -45,49 +49,53 @@ export default function GalleryManager() {
             logger.error(err);
             const msg = err.response?.data?.message || err.message || "Failed to create album";
             notify.error("Error: " + msg); 
-        }
+        } finally { setCreating(false); }
     };
 
     const handleImageUpload = async (e, albumId) => {
-        const files = Array.from(e.target.files || []);
-        e.target.value = '';
-        if (!files.length) return;
+        if (uploading) return;
+        setUploading(true);
+        try {
+            const files = Array.from(e.target.files || []);
+            e.target.value = '';
+            if (!files.length) return;
 
-        // Vercel serverless functions reject request bodies above ~4.5MB, so
-        // multiple photos must go as separate requests (one file each) instead
-        // of one combined multipart payload.
-        if (uploadTimerRef.current) {
-            clearTimeout(uploadTimerRef.current);
-            uploadTimerRef.current = null;
-        }
-        setUploadProgress({ total: files.length, done: 0, failed: 0, finished: false });
-        let uploaded = 0;
-        let failed = 0;
-        let lastError = '';
-        for (const file of files) {
-            const formData = new FormData();
-            formData.append('images', file);
-            try {
-                await api.post(`/admin/gallery/${albumId}/upload`, formData);
-                uploaded++;
-            } catch (err) {
-                failed++;
-                const status = err.response?.status;
-                lastError = err.response?.data?.message
-                    || (status === 413 ? "file too large (max ~4.5MB per photo)" : err.message || "Upload failed");
-                logger.error(err);
+            // Vercel serverless functions reject request bodies above ~4.5MB, so
+            // multiple photos must go as separate requests (one file each) instead
+            // of one combined multipart payload.
+            if (uploadTimerRef.current) {
+                clearTimeout(uploadTimerRef.current);
+                uploadTimerRef.current = null;
             }
-            setUploadProgress({ total: files.length, done: uploaded + failed, failed, finished: false });
-        }
-        if (uploaded > 0) {
-            notify.success(`${uploaded} photo${uploaded > 1 ? 's' : ''} uploaded successfully${failed ? `, ${failed} failed` : ''}`);
-        }
-        if (failed > 0) {
-            notify.error(`${failed} photo${failed > 1 ? 's' : ''} failed: ${lastError}`);
-        }
-        setUploadProgress({ total: files.length, done: uploaded + failed, failed, finished: true });
-        uploadTimerRef.current = setTimeout(() => setUploadProgress(null), 3000);
-        fetchAlbums();
+            setUploadProgress({ total: files.length, done: 0, failed: 0, finished: false });
+            let uploaded = 0;
+            let failed = 0;
+            let lastError = '';
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('images', file);
+                try {
+                    await api.post(`/admin/gallery/${albumId}/upload`, formData);
+                    uploaded++;
+                } catch (err) {
+                    failed++;
+                    const status = err.response?.status;
+                    lastError = err.response?.data?.message
+                        || (status === 413 ? "file too large (max ~4.5MB per photo)" : err.message || "Upload failed");
+                    logger.error(err);
+                }
+                setUploadProgress({ total: files.length, done: uploaded + failed, failed, finished: false });
+            }
+            if (uploaded > 0) {
+                notify.success(`${uploaded} photo${uploaded > 1 ? 's' : ''} uploaded successfully${failed ? `, ${failed} failed` : ''}`);
+            }
+            if (failed > 0) {
+                notify.error(`${failed} photo${failed > 1 ? 's' : ''} failed: ${lastError}`);
+            }
+            setUploadProgress({ total: files.length, done: uploaded + failed, failed, finished: true });
+            uploadTimerRef.current = setTimeout(() => setUploadProgress(null), 3000);
+            fetchAlbums();
+        } finally { setUploading(false); }
     };
 
     const deleteAlbum = async (id) => {
@@ -134,10 +142,10 @@ export default function GalleryManager() {
                     </div>
 
                     {/* Upload area */}
-                    <label className="flex items-center justify-center gap-2 bg-[#E6EEF5] text-[#1F4F78] p-3 md:p-4 rounded-lg mb-4 cursor-pointer hover:bg-[#d6e4f0] transition font-bold text-xs md:text-sm">
-                        <Upload size={16} />
-                        <span>Upload Photo to this Album</span>
-                        <input type="file" multiple className="hidden" onChange={(e) => handleImageUpload(e, selectedAlbum.id)} />
+                    <label className="flex items-center justify-center gap-2 bg-[#E6EEF5] text-[#1F4F78] p-3 md:p-4 rounded-lg mb-4 cursor-pointer hover:bg-[#d6e4f0] transition font-bold text-xs md:text-sm disabled:opacity-60 disabled:cursor-not-allowed">
+                        {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                        <span>{uploading ? "Uploading..." : "Upload Photo to this Album"}</span>
+                        <input type="file" multiple className="hidden" disabled={uploading} onChange={(e) => handleImageUpload(e, selectedAlbum.id)} />
                     </label>
 
                     {/* Photos Grid */}
@@ -227,7 +235,7 @@ export default function GalleryManager() {
                             />
                             <div className="flex justify-end gap-2">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="text-gray-500 px-4 py-2 text-sm hover:bg-gray-100 rounded-lg">Cancel</button>
-                                <button type="submit" className="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-hover font-bold">Create</button>
+                                <button type="submit" disabled={creating} className="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-hover font-bold disabled:opacity-60 disabled:cursor-not-allowed">{creating ? <><Loader2 size={16} className="animate-spin" /> Creating...</> : "Create"}</button>
                             </div>
                         </form>
                     </div>

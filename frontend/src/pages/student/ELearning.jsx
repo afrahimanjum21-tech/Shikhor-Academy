@@ -53,7 +53,6 @@ export default function ELearning() {
     const openVideo = (vid) => {
         if (isBlocked(vid)) return;        // লক করা ভিডিও চালু হবে না
         setActiveVideo(vid);
-        document.body.style.overflow = 'hidden';
     };
 
     // Playable only when the admin hasn't locked it AND it's unlocked
@@ -69,8 +68,17 @@ export default function ELearning() {
 
     const closeVideo = () => {
         setActiveVideo(null);
-        document.body.style.overflow = '';
     };
+
+    // C22: lock body scroll ONLY while the lightbox is open, and restore the
+    // PREVIOUS overflow on close OR on unmount (e.g. navigating away with the
+    // player still open) so the scroll-lock can never leak to other pages.
+    useEffect(() => {
+        if (!activeVideo) return undefined;
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = prev; };
+    }, [activeVideo]);
 
     // ESC দিয়ে বন্ধ
     useEffect(() => {

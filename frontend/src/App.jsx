@@ -31,6 +31,8 @@ function App() {
         import('./pages/FacultyProfile'),
         import('./pages/Gallery'),
         import('./pages/Notices'),
+        import('./pages/SuccessStories'),
+        import('./pages/SuccessStoryDetail'),
         import('./pages/Courses'),
         import('./pages/CourseDetail'),
         import('./pages/Contact'),

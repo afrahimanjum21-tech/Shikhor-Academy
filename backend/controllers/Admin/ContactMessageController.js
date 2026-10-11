@@ -4,11 +4,14 @@ import { Op } from 'sequelize';
 export const index = async (req, res) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 20;
+    const limit = parseInt(req.query.limit, 10) || parseInt(req.query.per_page, 10) || 20;
     const offset = (page - 1) * limit;
     const search = req.query.search || '';
 
     const whereClause = {};
+    if (req.query.unread === 'true') {
+      whereClause.is_read = false;
+    }
     if (search) {
       whereClause[Op.or] = [
         { name: { [Op.like]: `%${search}%` } },
@@ -33,6 +36,7 @@ export const index = async (req, res) => {
       total: count,
     });
   } catch (error) {
+    console.error('ContactMessageController error:', error.message);
     res.status(500).json({ message: 'Failed to fetch messages' });
   }
 };
@@ -40,7 +44,7 @@ export const index = async (req, res) => {
 export const trashed = async (req, res) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 20;
+    const limit = parseInt(req.query.limit, 10) || parseInt(req.query.per_page, 10) || 20;
     const offset = (page - 1) * limit;
 
     const { rows, count } = await models.ContactMessage.findAndCountAll({
@@ -59,6 +63,7 @@ export const trashed = async (req, res) => {
       total: count,
     });
   } catch (error) {
+    console.error('ContactMessageController error:', error.message);
     res.status(500).json({ message: 'Failed to fetch trashed messages' });
   }
 };
@@ -73,6 +78,7 @@ export const show = async (req, res) => {
 
     res.json({ data: message });
   } catch (error) {
+    console.error('ContactMessageController error:', error.message);
     res.status(500).json({ message: 'Failed to fetch message' });
   }
 };
@@ -88,6 +94,7 @@ export const markAsRead = async (req, res) => {
 
     res.json({ message: 'Message marked as read', data: message });
   } catch (error) {
+    console.error('ContactMessageController error:', error.message);
     res.status(500).json({ message: 'Failed to mark message as read' });
   }
 };
@@ -101,6 +108,7 @@ export const markAllAsRead = async (req, res) => {
 
     res.json({ message: `Marked ${count[0] || 0} messages as read` });
   } catch (error) {
+    console.error('ContactMessageController error:', error.message);
     res.status(500).json({ message: 'Failed to mark messages as read' });
   }
 };
@@ -116,6 +124,7 @@ export const destroy = async (req, res) => {
 
     res.json({ message: 'Message deleted successfully' });
   } catch (error) {
+    console.error('ContactMessageController error:', error.message);
     res.status(500).json({ message: 'Failed to delete message' });
   }
 };
@@ -135,6 +144,7 @@ export const restore = async (req, res) => {
 
     res.json({ message: 'Message restored successfully', data: message });
   } catch (error) {
+    console.error('ContactMessageController error:', error.message);
     res.status(500).json({ message: 'Failed to restore message' });
   }
 };
@@ -150,6 +160,7 @@ export const forceDelete = async (req, res) => {
 
     res.json({ message: 'Message permanently deleted' });
   } catch (error) {
+    console.error('ContactMessageController error:', error.message);
     res.status(500).json({ message: 'Failed to permanently delete message' });
   }
 };

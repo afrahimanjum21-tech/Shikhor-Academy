@@ -36,18 +36,29 @@ const createStorage = (subDir) => {
   });
 };
 
+// H-low4: ANCHORED allowlists. The old `/jpeg|jpg|png.../` was unanchored, so
+// a crafted name/mime like `.notpng` or `image/png-evil` matched the substring
+// and slipped through. These require the extension to be the ACTUAL final
+// extension and the MIME to be an exact allowed value. Pure + exported for
+// unit tests. NOTE: txt/csv are accepted by extension only (no magic-byte
+// sniffing); they are inert text and are served with `nosniff` + a locked-down
+// file CSP (see app.js), so they cannot execute as markup/script.
+const IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp)$/i;
+const IMAGE_MIME_RE = /^image\/(jpe?g|png|gif|webp)$/i;
+const FILE_EXT_RE = /\.(jpe?g|png|gif|webp|pdf|docx?|xlsx?|pptx?|txt|zip|rar|csv)$/i;
+
+export const isAllowedImage = (originalname, mimetype) =>
+  IMAGE_EXT_RE.test(String(originalname || '')) && IMAGE_MIME_RE.test(String(mimetype || ''));
+
+export const isAllowedFile = (originalname) => FILE_EXT_RE.test(String(originalname || ''));
+
 const imageFilter = (req, file, cb) => {
-  const allowed = /jpeg|jpg|png|gif|webp/;
-  const extOk = allowed.test(path.extname(file.originalname).toLowerCase());
-  const mimeOk = allowed.test(file.mimetype.split('/')[1]);
-  if (extOk && mimeOk) cb(null, true);
+  if (isAllowedImage(file.originalname, file.mimetype)) cb(null, true);
   else cb(new Error('Only image files (jpeg, jpg, png, gif, webp) are allowed'), false);
 };
 
 const fileFilter = (req, file, cb) => {
-  const allowed = /jpeg|jpg|png|gif|webp|pdf|doc|docx|xls|xlsx|ppt|pptx|txt|zip|rar|csv/;
-  const extOk = allowed.test(path.extname(file.originalname).toLowerCase());
-  if (extOk) cb(null, true);
+  if (isAllowedFile(file.originalname)) cb(null, true);
   else cb(new Error('File type not allowed'), false);
 };
 

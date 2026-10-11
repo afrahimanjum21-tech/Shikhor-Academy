@@ -17,6 +17,7 @@ export const index = async (req, res) => {
     });
     res.json({ data: categories });
   } catch (error) {
+    console.error('CourseCategoryController error:', error.message);
     res.status(500).json({ message: 'Failed to fetch categories' });
   }
 };
@@ -47,6 +48,7 @@ export const store = async (req, res) => {
 
     res.status(201).json({ message: 'Category created successfully', data: category });
   } catch (error) {
+    console.error('CourseCategoryController error:', error.message);
     res.status(500).json({ message: 'Failed to create category' });
   }
 };
@@ -63,6 +65,7 @@ export const show = async (req, res) => {
 
     res.json({ data: category });
   } catch (error) {
+    console.error('CourseCategoryController error:', error.message);
     res.status(500).json({ message: 'Failed to fetch category' });
   }
 };
@@ -96,6 +99,7 @@ export const update = async (req, res) => {
 
     res.json({ message: 'Category updated successfully', data: category });
   } catch (error) {
+    console.error('CourseCategoryController error:', error.message);
     res.status(500).json({ message: 'Failed to update category' });
   }
 };
@@ -116,19 +120,21 @@ export const destroy = async (req, res) => {
 
     res.json({ message: 'Category deleted successfully' });
   } catch (error) {
+    console.error('CourseCategoryController error:', error.message);
     res.status(500).json({ message: 'Failed to delete category' });
   }
 };
 
 export const reorder = async (req, res) => {
   try {
-    const { orders } = req.body;
+    const { orders, categories } = req.body;
+    const list = Array.isArray(orders) ? orders : categories;
 
-    if (!Array.isArray(orders)) {
+    if (!Array.isArray(list)) {
       return res.status(400).json({ message: 'orders array is required' });
     }
 
-    for (const item of orders) {
+    for (const item of list) {
       if (item.id && item.display_order !== undefined) {
         await models.CourseCategory.update(
           { display_order: item.display_order },
@@ -137,12 +143,13 @@ export const reorder = async (req, res) => {
       }
     }
 
-    const categories = await models.CourseCategory.findAll({
+    const updatedCategories = await models.CourseCategory.findAll({
       order: [['display_order', 'ASC'], ['name', 'ASC']],
     });
 
-    res.json({ message: 'Order updated successfully', data: categories });
+    res.json({ message: 'Order updated successfully', data: updatedCategories });
   } catch (error) {
+    console.error('CourseCategoryController error:', error.message);
     res.status(500).json({ message: 'Failed to reorder categories' });
   }
 };
@@ -158,6 +165,7 @@ export const toggleActive = async (req, res) => {
 
     res.json({ message: `Category ${category.is_active ? 'activated' : 'deactivated'}`, data: category });
   } catch (error) {
+    console.error('CourseCategoryController error:', error.message);
     res.status(500).json({ message: 'Failed to toggle active status' });
   }
 };
@@ -173,6 +181,7 @@ export const toggleVisible = async (req, res) => {
 
     res.json({ message: `Category ${category.is_visible ? 'visible' : 'hidden'}`, data: category });
   } catch (error) {
+    console.error('CourseCategoryController error:', error.message);
     res.status(500).json({ message: 'Failed to toggle visibility' });
   }
 };

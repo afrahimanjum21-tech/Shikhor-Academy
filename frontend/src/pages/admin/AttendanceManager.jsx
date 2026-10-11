@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import api from "../../services/api";
-import { Calendar, Check, ChevronLeft, ChevronRight, Clock, Loader2, Save, X } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Clock, Loader2, Save } from "lucide-react";
 import notify from "../../services/notification";
 
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const sessionLabel = { morning: "M", evening: "E" };
+const SESSIONS = ["morning", "evening"];
 const statusOptions = ["present", "absent", "late"];
 
 export default function AttendanceManager() {
@@ -12,27 +13,43 @@ export default function AttendanceManager() {
     const [courseId, setCourseId] = useState("");
     const [monthDate, setMonthDate] = useState(new Date());
     const [data, setData] = useState(null);
+    const [leaveRequests, setLeaveRequests] = useState([]);
     const [loading, setLoading] = useState(false);
     const [editing, setEditing] = useState(null);
 
     useEffect(() => {
-        api.get("/public/courses").then((res) => setCourses(res.data));
+        api.get("/admin/courses").then((res) => setCourses(res.data));
     }, []);
 
-    const monthStr = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, "0")}`;
+    const fetchLeaveRequests = useCallback(async () => {
+        try {
+            const res = await api.get("/admin/attendance/leave-requests");
+            setLeaveRequests(res.data || []);
+        } catch (err) {
+            console.error("Failed to load leave requests", err);
+        }
+    }, []);
+
+    useEffect(() => { fetchLeaveRequests(); }, [fetchLeaveRequests]);
 
     const fetchSheet = useCallback(async () => {
         if (!courseId) return;
         setLoading(true);
         try {
-            const res = await api.get("/admin/attendance/monthly", { params: { course_id: courseId, month: monthStr } });
+            const res = await api.get("/admin/attendance/monthly", {
+                params: {
+                    course_id: courseId,
+                    month: monthDate.getMonth() + 1,
+                    year: monthDate.getFullYear(),
+                },
+            });
             setData(res.data);
         } catch (err) {
             notify.error(err.response?.data?.message || "Failed to load attendance sheet");
         } finally {
             setLoading(false);
         }
-    }, [courseId, monthStr]);
+    }, [courseId, monthDate]);
 
     useEffect(() => { fetchSheet(); }, [fetchSheet]);
 
@@ -42,16 +59,16 @@ export default function AttendanceManager() {
         setMonthDate(next);
     };
 
-    const saveCell = async (cell) => {
+    const saveCell = async (form) => {
         try {
             await api.post("/admin/attendance/cell", {
-                student_id: editing.student.student_id,
+                student_id: editing.student.id,
                 course_id: courseId,
                 date: editing.date,
                 session: editing.session,
-                status: cell.status,
-                punch_in_at: cell.punch_in_at || null,
-                punch_out_at: cell.punch_out_at || null,
+                status: form.status,
+                punch_in_at: form.punch_in_at || null,
+                punch_out_at: form.punch_out_at || null,
             });
             setEditing(null);
             fetchSheet();
@@ -63,16 +80,31 @@ export default function AttendanceManager() {
     const approveLeave = async (id, action) => {
         try {
             await api.post(`/admin/attendance/leave-requests/${id}/${action}`);
+            notify.success(action === "approve" ? "Leave approved" : "Leave rejected");
+            setLeaveRequests((prev) => prev.filter((request) => request.id !== id));
             fetchSheet();
         } catch (err) {
             notify.error(err.response?.data?.message || "Failed to update leave request");
         }
     };
 
-    const daysInMonth = data?.days_in_month || new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
-    const sessions = data?.sessions || ["morning", "evening"];
-    const weekends = data?.weekends || [];
-    const days = Array.from({ length: daysInMonth }, (_, index) => index + 1);
+    const dayEntries = data?.dates || [];
+    const pendingLeaves = leaveRequests.filter((request) => request.leave_status === "pending");
+
+    const dailySummary = {};
+    (data?.sheet || []).forEach((row) =>
+        row.days.forEach((entry) => {
+            SESSIONS.forEach((session) => {
+                const cell = entry[session];
+                if (!cell) return;
+                if (!dailySummary[entry.date]) dailySummary[entry.date] = { present: 0, absent: 0, late: 0, leave: 0 };
+                if (cell.status === "present") dailySummary[entry.date].present += 1;
+                else if (cell.status === "absent") dailySummary[entry.date].absent += 1;
+                else if (cell.status === "late") dailySummary[entry.date].late += 1;
+                if (cell.leave_status === "approved") dailySummary[entry.date].leave += 1;
+            });
+        })
+    );
 
     return (
         <div className="space-y-5">
@@ -98,14 +130,14 @@ export default function AttendanceManager() {
                 </div>
             </div>
 
-            {data?.leave_requests?.length > 0 && (
+            {pendingLeaves.length > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                     <h2 className="font-bold text-amber-800 mb-3">Pending Leave Requests</h2>
                     <div className="grid gap-2">
-                        {data.leave_requests.map((request) => (
+                        {pendingLeaves.map((request) => (
                             <div key={request.id} className="bg-white rounded border border-amber-100 p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
                                 <div className="text-sm">
-                                    <p className="font-bold text-gray-800">{request.student?.user?.name} - {request.date} ({request.session})</p>
+                                    <p className="font-bold text-gray-800">{request.Student?.User?.name} - {request.date} ({request.session})</p>
                                     <p className="text-gray-500">Punch out: {request.punch_out_at || "-"} | {request.leave_reason}</p>
                                 </div>
                                 <div className="flex gap-2">
@@ -131,60 +163,83 @@ export default function AttendanceManager() {
                             <thead className="sticky top-0 z-20">
                                 <tr>
                                     <th rowSpan="2" className="sticky left-0 z-30 bg-gray-100 border-b border-r border-gray-300 px-3 py-2 text-left min-w-48">Student</th>
-                                    {days.map((day) => (
-                                        <th key={day} colSpan={sessions.length} className={`border-b border-r border-gray-300 px-2 py-1 text-center ${weekends.includes(day) ? "bg-gray-100" : "bg-blue-50"}`}>
-                                            {day}
+                                    {dayEntries.map((date) => (
+                                        <th key={date} colSpan={SESSIONS.length} className="border-b border-r border-gray-300 px-2 py-1 text-center bg-blue-50">
+                                            {parseInt(date.slice(8), 10)}
                                         </th>
                                     ))}
                                     <th rowSpan="2" className="sticky right-24 z-30 bg-green-50 border-b border-l border-gray-300 px-3 py-2">P/L</th>
                                     <th rowSpan="2" className="sticky right-0 z-30 bg-blue-50 border-b border-l border-gray-300 px-3 py-2">%</th>
                                 </tr>
                                 <tr>
-                                    {days.map((day) => sessions.map((session) => (
-                                        <th key={`${day}-${session}`} className="border-b border-r border-gray-200 bg-white px-2 py-1 text-center text-[10px] uppercase text-gray-500">
+                                    {dayEntries.map((date) => SESSIONS.map((session) => (
+                                        <th key={`${date}-${session}`} className="border-b border-r border-gray-200 bg-white px-2 py-1 text-center text-[10px] uppercase text-gray-500">
                                             {sessionLabel[session]}
                                         </th>
                                     )))}
                                 </tr>
                             </thead>
                             <tbody>
-                                {data.sheet.map((student) => (
-                                    <tr key={student.student_id} className="hover:bg-blue-50/30">
-                                        <td className="sticky left-0 z-10 bg-white border-b border-r border-gray-200 px-3 py-2">
-                                            <p className="font-bold text-gray-800 whitespace-nowrap">{student.name}</p>
-                                            <p className="font-mono text-[10px] text-gray-400">{student.card_no}</p>
-                                        </td>
-                                        {days.map((day) => sessions.map((session) => {
-                                            const cell = student.days?.[day]?.[session] || {};
-                                            const date = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                                            return (
-                                                <td key={`${student.student_id}-${day}-${session}`} className="border-b border-r border-gray-100 p-1 text-center">
-                                                    <button
-                                                        onClick={() => setEditing({ student, day, session, date, cell })}
-                                                        className="w-16 min-h-12 rounded border border-gray-200 hover:border-[#1F4E79] bg-white px-1 py-1"
-                                                    >
-                                                        <StatusPill cell={cell} />
-                                                    </button>
-                                                </td>
-                                            );
-                                        }))}
-                                        <td className="sticky right-24 z-10 bg-green-50 border-b border-l border-gray-200 px-3 py-2 text-center font-bold text-gray-700">
-                                            {student.present}+{student.leave}/{student.marked}
-                                        </td>
-                                        <td className="sticky right-0 z-10 bg-blue-50 border-b border-l border-gray-200 px-3 py-2 text-center font-bold text-[#1F4E79]">
-                                            {student.percentage}%
-                                        </td>
-                                    </tr>
-                                ))}
+                                {data.sheet.map((row) => {
+                                    const counts = row.days.reduce(
+                                        (acc, entry) => {
+                                            SESSIONS.forEach((session) => {
+                                                const cell = entry[session];
+                                                if (!cell) return;
+                                                // I-19: pending/rejected leave are NOT eligible days —
+                                                // exclude them from the denominator so they don't
+                                                // deflate the percentage.
+                                                if (cell.leave_status === "pending" || cell.leave_status === "rejected") return;
+                                                const approvedLeave = cell.leave_status === "approved" || cell.status === "leave";
+                                                if (cell.status === "present") { acc.present += 1; acc.marked += 1; }
+                                                else if (cell.status === "absent" || cell.status === "late") { acc.marked += 1; }
+                                                else if (approvedLeave) { acc.leave += 1; acc.marked += 1; }
+                                            });
+                                            return acc;
+                                        },
+                                        { present: 0, leave: 0, marked: 0 }
+                                    );
+                                    const percentage = counts.marked ? Math.round((counts.present / counts.marked) * 100) : 0;
+                                    return (
+                                        <tr key={row.student.id} className="hover:bg-blue-50/30">
+                                            <td className="sticky left-0 z-10 bg-white border-b border-r border-gray-200 px-3 py-2">
+                                                <p className="font-bold text-gray-800 whitespace-nowrap">{row.student.name}</p>
+                                                <p className="font-mono text-[10px] text-gray-400">{row.student.card_no}</p>
+                                            </td>
+                                            {row.days.map((entry) => SESSIONS.map((session) => {
+                                                const cell = entry[session] || {};
+                                                return (
+                                                    <td key={`${entry.date}-${session}`} className="border-b border-r border-gray-100 p-1 text-center">
+                                                        <button
+                                                            onClick={() => setEditing({ student: row.student, date: entry.date, session, cell })}
+                                                            className="w-16 min-h-12 rounded border border-gray-200 hover:border-[#1F4E79] bg-white px-1 py-1"
+                                                        >
+                                                            <StatusPill cell={cell} />
+                                                        </button>
+                                                    </td>
+                                                );
+                                            }))}
+                                            <td className="sticky right-24 z-10 bg-green-50 border-b border-l border-gray-200 px-3 py-2 text-center font-bold text-gray-700">
+                                                {counts.present}+{counts.leave}/{counts.marked}
+                                            </td>
+                                            <td className="sticky right-0 z-10 bg-blue-50 border-b border-l border-gray-200 px-3 py-2 text-center font-bold text-[#1F4E79]">
+                                                {percentage}%
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                             <tfoot className="sticky bottom-0 z-20">
                                 <tr>
                                     <td className="sticky left-0 z-30 bg-gray-100 border-t border-r border-gray-300 px-3 py-2 font-bold">Daily P/A/L/Leave</td>
-                                    {days.map((day) => (
-                                        <td key={day} colSpan={sessions.length} className="bg-gray-50 border-t border-r border-gray-200 px-2 py-2 text-center font-bold text-[10px]">
-                                            {data.daily_summary?.[day]?.present || 0}/{data.daily_summary?.[day]?.absent || 0}/{data.daily_summary?.[day]?.late || 0}/{data.daily_summary?.[day]?.leave || 0}
-                                        </td>
-                                    ))}
+                                    {dayEntries.map((date) => {
+                                        const summary = dailySummary[date] || {};
+                                        return (
+                                            <td key={date} colSpan={SESSIONS.length} className="bg-gray-50 border-t border-r border-gray-200 px-2 py-2 text-center font-bold text-[10px]">
+                                                {summary.present || 0}/{summary.absent || 0}/{summary.late || 0}/{summary.leave || 0}
+                                            </td>
+                                        );
+                                    })}
                                     <td className="sticky right-24 z-30 bg-gray-100 border-t border-l border-gray-300"></td>
                                     <td className="sticky right-0 z-30 bg-gray-100 border-t border-l border-gray-300"></td>
                                 </tr>
@@ -214,9 +269,13 @@ function StatusPill({ cell }) {
     if (cell.leave_status === "pending") {
         return <CellBadge label="REQ" className="bg-amber-100 text-amber-700 border-amber-200" sub={cell.punch_out_at} />;
     }
+    if (cell.leave_status === "rejected") {
+        return <CellBadge label="RJ" className="bg-rose-100 text-rose-700 border-rose-200" sub="Rejected" />;
+    }
     if (cell.status === "present") return <CellBadge label="P" className="bg-green-100 text-green-700 border-green-200" sub={`${cell.punch_in_at || "--"}-${cell.punch_out_at || "--"}`} />;
     if (cell.status === "absent") return <CellBadge label="A" className="bg-red-100 text-red-700 border-red-200" sub="Absent" />;
     if (cell.status === "late") return <CellBadge label="L" className="bg-yellow-100 text-yellow-700 border-yellow-200" sub={cell.punch_in_at} />;
+    if (cell.status === "leave") return <CellBadge label="LV" className="bg-purple-100 text-purple-700 border-purple-200" sub="Leave" />;
     return <CellBadge label="-" className="bg-gray-50 text-gray-400 border-gray-200" sub="Set" />;
 }
 
@@ -231,7 +290,7 @@ function CellBadge({ label, className, sub }) {
 
 function AttendanceModal({ editing, onClose, onSave }) {
     const [form, setForm] = useState({
-        status: editing.cell.status || "present",
+        status: statusOptions.includes(editing.cell.status) ? editing.cell.status : "present",
         punch_in_at: editing.cell.punch_in_at || (editing.session === "morning" ? "08:00" : "15:00"),
         punch_out_at: editing.cell.punch_out_at || (editing.session === "morning" ? "10:00" : "17:00"),
     });

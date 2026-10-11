@@ -8,6 +8,7 @@ const Batch = sequelize.define('Batch', {
   start_time: { type: DataTypes.STRING },
   end_time: { type: DataTypes.STRING },
   capacity: { type: DataTypes.INTEGER, defaultValue: 30 },
+  class_link: { type: DataTypes.STRING },
 });
 
 Batch.associate = (models) => {

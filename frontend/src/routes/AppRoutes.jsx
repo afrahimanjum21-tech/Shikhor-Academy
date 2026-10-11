@@ -10,6 +10,7 @@ import PublicLayout from '../layouts/PublicLayout';
 const Home = lazy(() => import('../pages/Home'));
 const About = lazy(() => import('../pages/About'));
 const Login = lazy(() => import('../pages/Login'));
+const SetPassword = lazy(() => import('../pages/SetPassword'));
 const Admission = lazy(() => import('../pages/Admission'));
 const Faculty = lazy(() => import('../pages/Faculty'));
 const FacultyProfile = lazy(() => import('../pages/FacultyProfile'));
@@ -19,6 +20,8 @@ const Courses = lazy(() => import('../pages/Courses'));
 const CourseDetail = lazy(() => import('../pages/CourseDetail'));
 const Contact = lazy(() => import('../pages/Contact'));
 const Library = lazy(() => import('../pages/Library'));
+const SuccessStories = lazy(() => import('../pages/SuccessStories'));
+const SuccessStoryDetail = lazy(() => import('../pages/SuccessStoryDetail'));
 const CheckResult = lazy(() => import('../pages/CheckResult'));
 const VerifyCredentialChange = lazy(() => import('../pages/VerifyCredentialChange'));
 
@@ -51,6 +54,7 @@ const SiteSettings = lazy(() => import('../pages/admin/SiteSettings'));
 const SecuritySettings = lazy(() => import('../pages/admin/SecuritySettings'));
 const PaymentResult = lazy(() => import('../pages/payment/PaymentResult'));
 const ContactMessages = lazy(() => import('../pages/admin/ContactMessages'));
+const SuccessStoryManager = lazy(() => import('../pages/admin/SuccessStoryManager'));
 
 // Student Pages (lazy)
 const StudentDashboard = lazy(() => import('../pages/student/StudentDashboard'));
@@ -112,9 +116,12 @@ export default function AppRoutes() {
                 <Route path="/faculty/:slug" element={<FacultyProfile />} />
                 <Route path="/gallery" element={<Gallery />} />
                 <Route path="/notices" element={<Notices />} />
+                <Route path="/success-stories" element={<SuccessStories />} />
+                <Route path="/success-stories/:slug" element={<SuccessStoryDetail />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/admission" element={<Admission />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/set-password" element={<SetPassword />} />
                 <Route path="/library" element={<PublicLibraryRoute />} />
             </Route>
 
@@ -136,6 +143,7 @@ export default function AppRoutes() {
                     <Route path="/admin/gallery" element={<GalleryManager />} />
                     <Route path="/admin/e-learning" element={<ElearningManager />} />
                     <Route path="/admin/notices" element={<NoticeManager />} />
+                    <Route path="/admin/success-stories" element={<SuccessStoryManager />} />
                     <Route path="/admin/exams" element={<ExamManager />} />
                     <Route path="/admin/attendance" element={<AttendanceManager />} />
                     <Route path="/admin/leave-requests" element={<LeaveManager />} />

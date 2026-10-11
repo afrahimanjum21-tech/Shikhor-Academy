@@ -39,6 +39,7 @@ export default function Footer() {
                             <li><Link to="/" className="hover:text-white transition">Home</Link></li>
                             <li><Link to="/about" className="hover:text-white transition">About Us</Link></li>
                             <li><Link to="/courses" className="hover:text-white transition">Our Courses</Link></li>
+                            <li><Link to="/success-stories" className="hover:text-white transition">Success Stories</Link></li>
                             <li><Link to="/notices" className="hover:text-white transition">Notices</Link></li>
                             <li><Link to="/contact" className="hover:text-white transition">Contact</Link></li>
                         </ul>

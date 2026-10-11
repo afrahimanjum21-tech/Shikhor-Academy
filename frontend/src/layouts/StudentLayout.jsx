@@ -109,7 +109,7 @@ export default function StudentLayout() {
                 <main className="flex-1 overflow-auto p-3 md:p-8 bg-[#F8FAFC]">
                     <div className="max-w-6xl mx-auto space-y-3 md:space-y-4">
                         <NoticeTicker notices={notices} />
-                            <ErrorBoundary>
+                            <ErrorBoundary key={location.pathname}>
                                 <Outlet />
                             </ErrorBoundary>
                     </div>

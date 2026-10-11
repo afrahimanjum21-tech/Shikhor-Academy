@@ -10,7 +10,7 @@ export const resolveStudentAccess = async (req) => {
     // Bearer header first (backward compatible); HttpOnly cookie fallback.
     const token = getTokenFromReq(req);
     if (!token) return null;
-    const decoded = jwt.verify(token, authConfig.jwtSecret);
+    const decoded = jwt.verify(token, authConfig.jwtSecret, { algorithms: [authConfig.jwtAlgorithm] });
     const student = await models.Student.findOne({
       where: { user_id: decoded.id },
       include: [{ model: models.Batch, attributes: ['id', 'course_id'] }],

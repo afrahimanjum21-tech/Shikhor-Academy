@@ -2,7 +2,10 @@
  * Offline app-shell caching. API/media traffic is always network-only so
  * existing functionality (live data) is never affected.
  */
-const STATIC_CACHE = 'uttoron-static-v1';
+// H-low7: bump this version on every release that changes the shell assets so
+// `activate` purges the previous cache (see the cleanup below). Private/API
+// responses are never cached (see `isApiOrMedia`).
+const STATIC_CACHE = 'uttoron-static-v2';
 const SHELL_URLS = [
   '/',
   '/index.html',
@@ -20,8 +23,14 @@ const SHELL_URLS = [
 ];
 
 self.addEventListener('install', (event) => {
+  // H-low7: add each shell URL individually with allSettled so ONE missing
+  // optional asset (e.g. a favicon that isn't deployed) can't reject the whole
+  // install and leave the app with no service worker at all. `cache.addAll`
+  // was all-or-nothing.
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => cache.addAll(SHELL_URLS)).then(() => self.skipWaiting())
+    caches.open(STATIC_CACHE)
+      .then((cache) => Promise.allSettled(SHELL_URLS.map((url) => cache.add(url))))
+      .then(() => self.skipWaiting())
   );
 });
 

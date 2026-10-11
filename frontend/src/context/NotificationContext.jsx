@@ -36,6 +36,7 @@ const pageToNotifType = {
     payments: 'payment',
     messages: 'contact',
     leaves: 'leave',
+    notices: 'notice',
     assignments: 'assignment',
     routine: 'routine',
     attendance: 'leave',
@@ -48,6 +49,17 @@ const pageToNotifType = {
     results: 'assignment',
     extra_curricular: 'event',
     attitude: 'event',
+};
+
+// Reverse lookup: notification type -> page key, so acknowledging a single
+// notification (e.g. from the bell dropdown) also acknowledges the page-level
+// business count that feeds the same bubble.
+const notifTypeToPageKey = {
+    admission: 'admissions',
+    payment: 'payments',
+    contact: 'messages',
+    leave: 'leaves',
+    assignment: 'reviews',
 };
 
 // Page keys whose counts are included in the bell bubble (`counts.notifications`)
@@ -122,11 +134,54 @@ export function NotificationProvider({ children }) {
             });
     }, [token]);
 
+    const markViewed = useCallback((pageKey) => {
+        markPageViewed(pageKey);
+        const countKey = countKeyMap[pageKey];
+        if (countKey) {
+            setCounts(prev => {
+                const drop = prev[countKey] || 0;
+                const next = { ...prev, [countKey]: 0 };
+                if (bellPageKeys.includes(pageKey)) {
+                    next.notifications = Math.max(0, (prev.notifications || 0) - drop);
+                }
+                if (pageKey === 'admissions') {
+                    const hold = prev.hold_admissions || 0;
+                    next.hold_admissions = 0;
+                    if (bellPageKeys.includes(pageKey)) {
+                        next.notifications = Math.max(0, (next.notifications || 0) - hold);
+                    }
+                }
+                return next;
+            });
+        }
+        const notifType = pageToNotifType[pageKey];
+        if (notifType) {
+            api.post('/notifications/read-by-type', { type: notifType })
+                .catch(() => {})
+                .finally(() => {
+                    // Row-only types (no business count key, e.g. notices) have
+                    // no optimistic value to drop, so re-sync counts now
+                    // instead of waiting for the next 60s poll.
+                    if (!countKey) fetchCounts();
+                });
+        }
+    }, [bellPageKeys, fetchCounts]);
+
     // Marks one notification row as read (optimistic; backend confirms).
-    const markNotificationRead = useCallback((id) => {
-        setCounts(prev => ({ ...prev, notifications: Math.max(0, (prev.notifications || 0) - 1) }));
+    // For staff, the bell bubble also counts business-table items (contact
+    // messages, pending admissions/payments/leaves), so reading a business
+    // notification must ALSO acknowledge the underlying count — otherwise the
+    // bubble never drops below the business count.
+    const markNotificationRead = useCallback((id, type) => {
+        const pageKey = type ? notifTypeToPageKey[type] : null;
+        const isStaff = role === 'admin' || role === 'super_admin' || role === 'teacher';
+        if (pageKey && isStaff) {
+            markViewed(pageKey);
+        } else {
+            setCounts(prev => ({ ...prev, notifications: Math.max(0, (prev.notifications || 0) - 1) }));
+        }
         api.post(`/notifications/${id}/read`).catch(() => {});
-    }, []);
+    }, [role, markViewed]);
 
     // Marks every notification row as read. For admins/teachers the bell also
     // includes business-table counts, which are acknowledged by advancing the
@@ -153,32 +208,6 @@ export function NotificationProvider({ children }) {
         }
         api.post('/notifications/read-all').catch(() => {});
     }, [role]);
-
-    const markViewed = useCallback((pageKey) => {
-        markPageViewed(pageKey);
-        const countKey = countKeyMap[pageKey];
-        if (countKey) {
-            setCounts(prev => {
-                const drop = prev[countKey] || 0;
-                const next = { ...prev, [countKey]: 0 };
-                if (bellPageKeys.includes(pageKey)) {
-                    next.notifications = Math.max(0, (prev.notifications || 0) - drop);
-                }
-                if (pageKey === 'admissions') {
-                    const hold = prev.hold_admissions || 0;
-                    next.hold_admissions = 0;
-                    if (bellPageKeys.includes(pageKey)) {
-                        next.notifications = Math.max(0, (next.notifications || 0) - hold);
-                    }
-                }
-                return next;
-            });
-        }
-        const notifType = pageToNotifType[pageKey];
-        if (notifType) {
-            api.post('/notifications/read-by-type', { type: notifType }).catch(() => {});
-        }
-    }, [bellPageKeys]);
 
     useEffect(() => {
         if (!token) {

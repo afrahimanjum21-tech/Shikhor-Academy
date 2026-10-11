@@ -27,9 +27,11 @@ export default function LeaveManager() {
     useEffect(() => {
         fetchRequests();
         markViewed('leaves');
-        document.addEventListener("click", (e) => {
+        const onDocClick = (e) => {
             if (!e.target.closest(".action-menu-btn")) setOpenMenuId(null);
-        });
+        };
+        document.addEventListener("click", onDocClick);
+        return () => document.removeEventListener("click", onDocClick);
     }, []);
 
     const handleSelectAll = (e) => {

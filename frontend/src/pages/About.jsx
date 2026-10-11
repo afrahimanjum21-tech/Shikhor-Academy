@@ -3,7 +3,14 @@ import { Award, TrendingUp, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import api from "../services/api";
 import PageBackground from "../components/common/PageBackground";
+import usePageMeta from "../hooks/usePageMeta";
+
 export default function About() {
+    usePageMeta({
+        title: "About Us — Uttoron Coaching Centre",
+        description: "Learn about Uttoron Coaching Centre: our mission, experienced teachers, modern facilities, and years of helping students succeed in HSC and SSC.",
+        path: "/about",
+    });
     const [settings, setSettings] = useState(null);
 
     useEffect(() => {

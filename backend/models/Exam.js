@@ -12,6 +12,11 @@ const Exam = sequelize.define('Exam', {
   type: { type: DataTypes.STRING(20) },
   is_published: { type: DataTypes.BOOLEAN, defaultValue: false },
   published_subjects: { type: DataTypes.JSON },
+}, {
+  indexes: [
+    { fields: ['course_id'] },
+    { fields: ['date'] },
+  ],
 });
 
 Exam.associate = (models) => {

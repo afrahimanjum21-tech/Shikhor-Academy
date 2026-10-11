@@ -25,9 +25,11 @@ const User = sequelize.define('User', {
   phone: { type: DataTypes.STRING(20) },
   is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
   profile_photo_path: { type: DataTypes.STRING },
-  deletedAt: { type: DataTypes.DATE },
+  // Incremented on logout and password/credential changes to revoke every
+  // previously issued JWT for this account (SEC-5). Tokens embed this value as
+  // `tv`; the auth middleware rejects a token whose `tv` no longer matches.
+  token_version: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
 }, {
-  paranoid: true,
   hooks: {
     beforeCreate: async (user) => {
       if (user.password && !user.password.startsWith('$2a$') && !user.password.startsWith('$2b$')) {

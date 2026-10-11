@@ -107,9 +107,20 @@ export const publicIndex = async (req, res) => {
     });
 
     videos.forEach(v => {
-      v.dataValues.is_unlocked = isUnlocked(v, student);
-      // Don't hand out the embed URL of locked videos.
-      if (!v.dataValues.is_unlocked) v.dataValues.video_url = null;
+      // C23: one visibility rule combining BOTH flags — a video is watchable
+      // only if it is not hard-locked (is_locked) AND the student is in scope
+      // (access_type). This makes the is_locked toggle actually do something and
+      // guarantees a locked video is never public even when access_type='all'.
+      const unlocked = !v.is_locked && isUnlocked(v, student);
+      v.dataValues.is_unlocked = unlocked;
+      // A locked video must not leak ANY means to reconstruct a watch URL.
+      // Nulling only video_url was insufficient: platform + video_id together
+      // rebuild the embed/watch link (e.g. youtube.com/watch?v=<video_id>).
+      if (!unlocked) {
+        v.dataValues.video_url = null;
+        v.dataValues.video_id = null;
+        v.dataValues.platform = null;
+      }
     });
     res.json({ data: videos });
   } catch (error) {
@@ -146,8 +157,8 @@ export const store = async (req, res) => {
       platform: platform || 'other',
       video_id,
       thumbnail_path,
-      is_locked: is_locked === true || is_locked === 'true',
-      is_active: is_active !== false && is_active !== 'false',
+      is_locked: is_locked === true || is_locked === 'true' || is_locked === '1' || is_locked === 1,
+      is_active: is_active === undefined || is_active === true || is_active === 'true' || is_active === '1' || is_active === 1,
       sort_order: sort_order || 0,
       ...access,
     });

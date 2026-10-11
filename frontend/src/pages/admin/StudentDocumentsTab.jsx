@@ -68,7 +68,7 @@ export default function StudentDocumentsTab() {
         return FileText;
     };
 
-    const getFileUrl = (path) => buildAuthenticatedAssetUrl(path);
+    const getFileUrl = (doc) => buildAuthenticatedAssetUrl(doc.file_path, doc.download_token);
 
     if (loading) return <div className="p-10 text-center text-gray-400">Loading documents...</div>;
 
@@ -180,7 +180,7 @@ export default function StudentDocumentsTab() {
                                     </div>
                                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200">
                                         <a
-                                            href={getFileUrl(doc.file_path)}
+                                            href={getFileUrl(doc)}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
@@ -189,7 +189,7 @@ export default function StudentDocumentsTab() {
                                             <Eye size={14} />
                                         </a>
                                         <a
-                                            href={getFileUrl(doc.file_path)}
+                                            href={getFileUrl(doc)}
                                             download
                                             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
                                             title="Download"

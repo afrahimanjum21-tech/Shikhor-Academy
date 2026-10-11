@@ -92,7 +92,7 @@ export default function TeacherLayout() {
                     </div>
                 </header>
                 <main className="flex-1 overflow-auto p-3 md:p-8 bg-[#F8FAFC]">
-                    <ErrorBoundary>
+                    <ErrorBoundary key={location.pathname}>
                         <div className="max-w-6xl mx-auto"><Outlet /></div>
                     </ErrorBoundary>
                 </main>

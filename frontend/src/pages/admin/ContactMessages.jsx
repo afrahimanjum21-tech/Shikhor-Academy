@@ -4,31 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNotificationCounts } from "../../context/NotificationContext";
 import { useConfirm } from "../../components/common/ConfirmDialog";
 
-function ExpiryCountdown({ targetDate }) {
-    const [text, setText] = useState("");
-    const idRef = useRef(null);
-
-    useEffect(() => {
-        if (!targetDate) { setText(""); return; }
-        const update = () => {
-            const diff = new Date(targetDate).getTime() - Date.now();
-            if (diff <= 0) { setText("Deleting..."); return; }
-            const d = Math.floor(diff / (24*60*60*1000));
-            const h = Math.floor((diff % (24*60*60*1000)) / (60*60*1000));
-            const m = Math.floor((diff % (60*60*1000)) / (60*1000));
-            if (d > 0) setText(`${d}d ${h}h`);
-            else if (h > 0) setText(`${h}h ${m}m`);
-            else setText(`${m}m`);
-        };
-        update();
-        idRef.current = setInterval(update, 10000);
-        return () => clearInterval(idRef.current);
-    }, [targetDate]);
-
-    if (!text) return null;
-    return <span className="text-[11px] text-orange-400 font-mono whitespace-nowrap flex-shrink-0 ml-2" title="Permanent deletion in">{text}</span>;
-}
-
 export default function ContactMessages() {
     const confirm = useConfirm();
     const { markViewed } = useNotificationCounts();
@@ -94,7 +69,7 @@ export default function ContactMessages() {
 
     const handleOpen = (msg) => {
         if (!msg.is_read) {
-            api.get(`/admin/contact-messages/${msg.id}`).then(({ data }) => {
+            api.post(`/admin/contact-messages/${msg.id}/read`).then(() => {
                 setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, is_read: true } : m));
                 setUnreadCount(prev => Math.max(0, prev - 1));
             }).catch(() => {});
@@ -113,6 +88,20 @@ export default function ContactMessages() {
                 setMessages(prev => prev.map(m => ids.includes(m.id) ? { ...m, is_read: true } : m));
                 setUnreadCount(prev => Math.max(0, prev - ids.length));
                 setSelected(new Set());
+            })
+            .catch(() => {});
+    };
+
+    const handleDeleteSelected = async () => {
+        const ids = [...selected];
+        if (ids.length === 0) return;
+        const ok = await confirm({ title: "Delete Selected Messages?", message: `Delete ${ids.length} selected message(s)? They will move to the trash.`, confirmText: "Delete", variant: "destructive" }); if (!ok) return;
+        await Promise.all(ids.map(id => api.delete(`/admin/contact-messages/${id}`)))
+            .then(() => {
+                setMessages(prev => prev.filter(m => !ids.includes(m.id)));
+                setTotal(prev => prev - ids.length);
+                setSelected(new Set());
+                if (detail && ids.includes(detail.id)) setDetail(null);
             })
             .catch(() => {});
     };
@@ -226,7 +215,7 @@ export default function ContactMessages() {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                     </button>
                     <div className="flex-1" />
-                    <button onClick={() => { api.post(`/admin/contact-messages/${msg.id}/read`).then(() => { setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, is_read: !m.is_read } : m)); }).catch(() => {}); }} className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors" title={msg.is_read ? "Mark as unread" : "Mark as read"}>
+                    <button onClick={() => { api.post(`/admin/contact-messages/${msg.id}/read`).then(() => { setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, is_read: true } : m)); }).catch(() => {}); }} className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors" title={msg.is_read ? "Mark as read" : "Mark as read"}>
                         {msg.is_read ? (
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 12 8 19 23 4"/><path d="M11 12l5 5 7-7"/></svg>
                         ) : (
@@ -257,8 +246,8 @@ export default function ContactMessages() {
                                 <span className="font-semibold text-sm text-gray-900">{msg.name}</span>
                                 <span className="text-sm text-gray-500 hidden sm:inline">&lt;{msg.email}&gt;</span>
                                 <span className="text-xs text-gray-400 ml-auto whitespace-nowrap">
-                                    {new Date(msg.created_at).toLocaleString("en-US", {
-                                        month: "short", day: "numeric", hour: "numeric", minute: "2-digit", year: msg.created_at?.includes(new Date().getFullYear().toString()) ? undefined : "numeric"
+                                    {new Date(msg.createdAt).toLocaleString("en-US", {
+                                        month: "short", day: "numeric", hour: "numeric", minute: "2-digit", year: msg.createdAt?.includes(new Date().getFullYear().toString()) ? undefined : "numeric"
                                     })}
                                 </span>
                             </div>
@@ -278,7 +267,7 @@ export default function ContactMessages() {
                                 <div className="mt-2 text-xs text-gray-500 space-y-0.5 bg-gray-50 rounded-lg p-3">
                                     <div><span className="text-gray-400 w-20 inline-block">From:</span> {msg.name} &lt;{msg.email}&gt;</div>
                                     {msg.phone && <div><span className="text-gray-400 w-20 inline-block">Phone:</span> {msg.phone}</div>}
-                                    <div><span className="text-gray-400 w-20 inline-block">Date:</span> {new Date(msg.created_at).toLocaleString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+                                    <div><span className="text-gray-400 w-20 inline-block">Date:</span> {new Date(msg.createdAt).toLocaleString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
                                     <div><span className="text-gray-400 w-20 inline-block">Subject:</span> {msg.subject}</div>
                                 </div>
                             )}
@@ -334,47 +323,58 @@ export default function ContactMessages() {
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             {/* Toolbar */}
-            <div className="flex items-center gap-1 px-2 md:px-3 py-2 border-b border-gray-200 bg-white sticky top-0 z-10 overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-1.5 px-2 md:px-3 py-2 border-b border-gray-200 bg-white sticky top-0 z-10 overflow-x-auto scrollbar-hide">
                 <label className="flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-full hover:bg-gray-100 cursor-pointer transition-colors shrink-0">
                     <input type="checkbox" checked={messages.length > 0 && selected.size === messages.length} onChange={handleSelectAll} className="w-3.5 h-3.5 md:w-4 md:h-4 rounded border-gray-300 text-[#1F4E79] focus:ring-[#1F4E79]" />
                 </label>
                 <div className="w-px h-6 bg-gray-200 mx-1" />
-                <button onClick={handleMarkRead} disabled={selected.size === 0} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Mark as read">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 12 8 19 23 4"/><path d="M1 12l7 7L23 4"/></svg>
+                <button onClick={handleMarkRead} disabled={selected.size === 0} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 whitespace-nowrap shrink-0" title="Mark selected messages as read">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 12 8 19 23 4"/><path d="M1 12l7 7L23 4"/></svg>
+                    <span className="hidden sm:inline">Mark as read</span>
                 </button>
-                <button onClick={handleMarkAllRead} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors" title="Mark all as read">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 12 8 19 23 4"/><path d="M9 12l5 5 9-9"/></svg>
+                <button onClick={handleMarkAllRead} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95 whitespace-nowrap shrink-0" title="Mark all as read">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 12 8 19 23 4"/><path d="M9 12l5 5 9-9"/></svg>
+                    <span className="hidden sm:inline">Mark all read</span>
                 </button>
                 {view === "trash" ? (
                     <>
-                        <button onClick={handleEmptyTrash} disabled={messages.length === 0} className="p-1.5 rounded-full hover:bg-red-50 text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed hover:text-red-500 transition-colors" title="Empty trash">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                        <button onClick={handleEmptyTrash} disabled={messages.length === 0} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 whitespace-nowrap shrink-0" title="Empty trash">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                            <span className="hidden sm:inline">Empty trash</span>
                         </button>
-                        <button onClick={() => toggleFilter("all")} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors" title="Back to inbox">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                        <button onClick={() => toggleFilter("all")} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95 whitespace-nowrap shrink-0" title="Back to inbox">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                            <span className="hidden sm:inline">Back to inbox</span>
                         </button>
                     </>
                 ) : (
                     <>
-                        <button onClick={() => toggleFilter("trash")} className={`p-1.5 rounded-full hover:bg-red-50 transition-colors ${view === "trash" ? "text-red-500 bg-red-50" : "text-gray-500 hover:text-red-500"}`} title="Trash">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        <button onClick={() => toggleFilter("trash")} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95 whitespace-nowrap shrink-0" title="Trash">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                            <span className="hidden sm:inline">Trash</span>
                         </button>
-                        <button onClick={handleDeleteAll} disabled={messages.length === 0} className="p-1.5 rounded-full hover:bg-red-50 text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed hover:text-red-500 transition-colors text-xs font-medium" title="Delete all messages">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                        <button onClick={handleDeleteSelected} disabled={selected.size === 0} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 whitespace-nowrap shrink-0" title="Delete selected messages">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                            <span className="hidden sm:inline">Delete selected</span>
+                        </button>
+                        <button onClick={handleDeleteAll} disabled={messages.length === 0} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 whitespace-nowrap shrink-0" title="Delete all messages">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                            <span className="hidden sm:inline">Delete all</span>
                         </button>
                     </>
                 )}
                 <div className="w-px h-6 bg-gray-200 mx-1" />
-                <button onClick={() => { setPage(1); fetch(1); }} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors" title="Refresh">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+                <button onClick={() => { setPage(1); fetch(1); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95 whitespace-nowrap shrink-0" title="Refresh">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+                    <span className="hidden sm:inline">Refresh</span>
                 </button>
 
                 <div className="flex-1" />
 
                 <div className="flex items-center bg-gray-50 rounded-lg p-0.5 border border-gray-100">
-                    <button onClick={() => toggleFilter("all")} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${view === "all" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>All</button>
-                    <button onClick={() => toggleFilter("unread")} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${view === "unread" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>Unread</button>
-                    <button onClick={() => toggleFilter("trash")} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${view === "trash" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>Trash</button>
+                    <button onClick={() => toggleFilter("all")} className={`px-3 py-1 text-xs font-medium rounded-md transition-all active:scale-95 ${view === "all" ? "bg-[#1F4E79] text-white shadow-md" : "text-gray-500 hover:text-gray-700"}`}>All</button>
+                    <button onClick={() => toggleFilter("unread")} className={`px-3 py-1 text-xs font-medium rounded-md transition-all active:scale-95 ${view === "unread" ? "bg-[#1F4E79] text-white shadow-md" : "text-gray-500 hover:text-gray-700"}`}>Unread</button>
+                    <button onClick={() => toggleFilter("trash")} className={`px-3 py-1 text-xs font-medium rounded-md transition-all active:scale-95 ${view === "trash" ? "bg-[#1F4E79] text-white shadow-md" : "text-gray-500 hover:text-gray-700"}`}>Trash</button>
                 </div>
 
                 <span className="text-xs text-gray-400 ml-2 whitespace-nowrap">
@@ -413,7 +413,13 @@ export default function ContactMessages() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: idx * 0.01 }}
-                            className={`flex items-center gap-0 px-3 py-0 border-b border-gray-100 group cursor-pointer transition-colors ${msg.is_read ? "bg-white hover:bg-gray-50" : "bg-white hover:bg-gray-50"}`}
+                            className={`flex items-center gap-0 px-3 py-0 border-b border-gray-100 group cursor-pointer transition-colors ${
+                                selected.has(msg.id)
+                                    ? "bg-[#C2DBFF] hover:bg-[#C2DBFF]"
+                                    : msg.is_read
+                                        ? "bg-white hover:bg-gray-50"
+                                        : "bg-[#F2F6FC] hover:bg-[#E9F1FB]"
+                            }`}
                             style={{ borderBottomColor: "#F3F4F6" }}
                         >
                             <label className="flex items-center justify-center w-9 h-11 rounded-full hover:bg-gray-100 cursor-pointer flex-shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -430,8 +436,7 @@ export default function ContactMessages() {
                                     {msg.subject}
                                     <span className={`ml-2 font-normal hidden sm:inline ${msg.is_read ? "text-gray-400" : "text-gray-500"}`}>— {snippet(msg.message, 80)}</span>
                                 </span>
-                                <span className="text-[11px] text-gray-400 whitespace-nowrap flex-shrink-0 ml-auto">{formatDate(view === "trash" ? msg.deleted_at : msg.created_at)}</span>
-                                {view === "trash" && <ExpiryCountdown targetDate={msg.permanent_delete_at} />}
+                                <span className="text-[11px] text-gray-400 whitespace-nowrap flex-shrink-0 ml-auto">{formatDate(view === "trash" ? msg.deletedAt : msg.createdAt)}</span>
                             </div>
                             {view === "trash" ? (
                                 <div className="flex items-center gap-0.5 flex-shrink-0">
@@ -459,7 +464,13 @@ export default function ContactMessages() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: idx * 0.01 }}
-                            className={`bg-white rounded-lg border border-gray-200 p-3 shadow-sm ${msg.is_read ? "" : "border-l-4 border-l-[#1F4E79]"}`}
+                            className={`rounded-lg border border-gray-200 p-3 shadow-sm ${
+                                selected.has(msg.id)
+                                    ? "bg-[#C2DBFF] border-l-4 border-l-[#1F4E79]"
+                                    : msg.is_read
+                                        ? "bg-white"
+                                        : "bg-[#F2F6FC] border-l-4 border-l-[#1F4E79]"
+                            }`}
                         >
                             <div className="flex items-start gap-2">
                                 <label className="flex items-center justify-center w-7 h-7 shrink-0 mt-0.5 rounded hover:bg-gray-100 cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -471,11 +482,10 @@ export default function ContactMessages() {
                                             {!msg.is_read && <span className="w-2 h-2 rounded-full bg-[#1F4E79] inline-block mr-1.5" />}
                                             {msg.name}
                                         </span>
-                                        <span className="text-[10px] text-gray-400 whitespace-nowrap">{formatDate(view === "trash" ? msg.deleted_at : msg.created_at)}</span>
+                                        <span className="text-[10px] text-gray-400 whitespace-nowrap">{formatDate(view === "trash" ? msg.deletedAt : msg.createdAt)}</span>
                                     </div>
                                     <p className={`text-xs mt-0.5 truncate ${msg.is_read ? "text-gray-500" : "text-gray-800 font-semibold"}`}>{msg.subject}</p>
                                     <p className="text-[11px] text-gray-400 truncate mt-0.5">{snippet(msg.message, 60)}</p>
-                                    {view === "trash" && <ExpiryCountdown targetDate={msg.permanent_delete_at} />}
                                 </div>
                                 <div className="flex gap-1 shrink-0 mt-0.5">
                                     {view === "trash" ? (
