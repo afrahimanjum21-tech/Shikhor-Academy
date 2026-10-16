@@ -11,10 +11,10 @@ import { Toaster } from 'react-hot-toast'
 
 // Capture the PWA install prompt as early as possible so the Install App
 // button can use it even if the event fires before React mounts.
-window.__uttoronDeferredPrompt = null;
+window.__shikhorDeferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
-  window.__uttoronDeferredPrompt = e;
+  window.__shikhorDeferredPrompt = e;
 });
 
 // Register the service worker immediately (not on window load) so the

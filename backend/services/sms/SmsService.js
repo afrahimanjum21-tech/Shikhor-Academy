@@ -20,7 +20,7 @@ function getSmsConfig() {
     apiUser: process.env.SMS_API_USER,
     apiPass: process.env.SMS_API_PASS,
     apiToken: process.env.SMS_API_TOKEN,
-    senderId: process.env.SMS_SENDER_ID || 'UTTORON',
+    senderId: process.env.SMS_SENDER_ID || 'SHIKHOR',
     isSmsPlus: /smsplus/i.test(apiUrl),
   };
 }
@@ -52,7 +52,7 @@ async function sendOne(msisdn, message) {
   // D8: encoding-aware, grapheme-safe truncation (never splits a Bangla cluster
   // or a surrogate pair; UCS-2 = 70 chars, GSM-7 = 160).
   const sms = truncateSms(stripEmojis(message));
-  const csmsId = `uttoron-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const csmsId = `shikhor-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -102,7 +102,7 @@ async function sendOne(msisdn, message) {
 // Composes the SMS text from the in-app notification payload (title + body,
 // emoji-free, encoding-aware grapheme-safe truncation).
 export function composeMessage(title, body) {
-  const raw = `Uttoron Coaching Centre: ${title}: ${body}`;
+  const raw = `Shikhor Academy: ${title}: ${body}`;
   return truncateSms(stripEmojis(raw));
 }
 

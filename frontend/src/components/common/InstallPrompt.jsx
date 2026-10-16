@@ -54,7 +54,7 @@ const HELP_STEPS = {
             "Scroll down and tap \u201CAdd to Home Screen\u201D.",
             "Tap \u201CAdd\u201D in the top-right corner.",
         ],
-        note: "Uttoron will appear on your Home Screen like a normal app and open full-screen when launched.",
+        note: "Shikhor Academy will appear on your Home Screen like a normal app and open full-screen when launched.",
     },
     android: {
         icon: Menu,
@@ -65,7 +65,7 @@ const HELP_STEPS = {
             "Tap \u201CInstall app\u201D (or \u201CAdd to Home screen\u201D on some devices).",
             "Confirm by tapping \u201CInstall\u201D.",
         ],
-        note: "Uttoron will be added to your home screen and app drawer like a normal app.",
+        note: "Shikhor Academy will be added to your home screen and app drawer like a normal app.",
     },
     desktop: {
         icon: Monitor,
@@ -79,10 +79,10 @@ const HELP_STEPS = {
                   ]
                 : [
                       "Click the install icon (monitor with a down-arrow) in the address bar.",
-                      "Alternatively, open the browser menu (\u2630) and choose \u201CInstall Uttoron Coaching Centre\u201D (or \u201CCast, save, and share \u2192 Install page as app\u201D in Edge).",
+                      "Alternatively, open the browser menu (\u2630) and choose \u201CInstall Shikhor Academy\u201D (or \u201CCast, save, and share \u2192 Install page as app\u201D in Edge).",
                       "Confirm by clicking \u201CInstall\u201D.",
                   ],
-        note: "Uttoron will open in its own window with an icon on your desktop and taskbar (or dock).",
+        note: "Shikhor Academy will open in its own window with an icon on your desktop and taskbar (or dock).",
     },
 };
 
@@ -102,13 +102,13 @@ export default function InstallPrompt() {
     }, []);
 
     useEffect(() => {
-        if (window.__uttoronDeferredPrompt) {
-            setDeferredPrompt(window.__uttoronDeferredPrompt);
+        if (window.__shikhorDeferredPrompt) {
+            setDeferredPrompt(window.__shikhorDeferredPrompt);
         }
 
         const onBeforeInstallPrompt = (e) => {
             e.preventDefault();
-            window.__uttoronDeferredPrompt = e;
+            window.__shikhorDeferredPrompt = e;
             setDeferredPrompt(e);
         };
         const onAppInstalled = () => {
@@ -143,7 +143,7 @@ export default function InstallPrompt() {
     }, [shouldShow]);
 
     const handleInstall = async () => {
-        let prompt = deferredPrompt || window.__uttoronDeferredPrompt;
+        let prompt = deferredPrompt || window.__shikhorDeferredPrompt;
 
         // The browser may still be running its installability check when the
         // user clicks. Wait a short grace period for `beforeinstallprompt`
@@ -153,13 +153,13 @@ export default function InstallPrompt() {
             const deadline = Date.now() + 4000;
             while (Date.now() < deadline) {
                 await new Promise((resolve) => setTimeout(resolve, 250));
-                prompt = deferredPrompt || window.__uttoronDeferredPrompt;
+                prompt = deferredPrompt || window.__shikhorDeferredPrompt;
                 if (prompt) break;
             }
         }
 
         if (prompt) {
-            window.__uttoronDeferredPrompt = null;
+            window.__shikhorDeferredPrompt = null;
             setDeferredPrompt(null);
             try {
                 prompt.prompt();
@@ -198,7 +198,7 @@ export default function InstallPrompt() {
                         exit={{ opacity: 0, y: 40 }}
                         transition={{ duration: 0.3, ease: "easeOut" }}
                         role="dialog"
-                        aria-label="Install Uttoron as an app"
+                        aria-label="Install Shikhor Academy as an app"
                         className="fixed bottom-4 left-4 right-4 z-[90] sm:left-auto sm:right-4 sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
                     >
                         <div className="flex items-start gap-3 p-4">
@@ -208,7 +208,7 @@ export default function InstallPrompt() {
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-bold text-gray-900">Download as an App</p>
                                 <p className="mt-0.5 text-xs text-gray-500 leading-relaxed">
-                                    Install Uttoron Coaching Center on your device for a faster and more convenient experience.
+                                    Install Shikhor Academy on your device for a faster and more convenient experience.
                                 </p>
                                 <div className="mt-3 flex items-center gap-3">
                                     <button
@@ -271,7 +271,7 @@ export default function InstallPrompt() {
                                         {help.title}
                                     </h2>
                                     <p className="mt-1 text-sm text-gray-500">
-                                        Your browser doesn't offer a one-tap install, so here's how to add Uttoron to your device.
+                                        Your browser doesn't offer a one-tap install, so here's how to add Shikhor Academy to your device.
                                     </p>
                                 </div>
                                 <button

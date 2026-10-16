@@ -78,9 +78,7 @@ const deleteStudentData = async (user) => {
 
     await models.Notification.destroy({ where: { user_id: user.id }, transaction });
 
-    // force:true hard-deletes the row instead of the paranoid soft delete
-    // (deletedAt), so no ghost account remains in the database.
-    await user.destroy({ force: true, transaction });
+    await user.destroy({ transaction });
 
     await transaction.commit();
 
@@ -102,7 +100,7 @@ export const index = async (req, res) => {
     const offset = (page - 1) * limit;
     const search = req.query.search || '';
 
-    const whereClause = { role: 'student', deletedAt: null };
+    const whereClause = { role: 'student' };
     if (search) {
       whereClause[Op.or] = [
         { name: { [Op.like]: `%${search}%` } },
@@ -144,6 +142,7 @@ export const index = async (req, res) => {
       total: count,
     });
   } catch (error) {
+    console.error('AdminUserController.index error:', error);
     res.status(500).json({ message: 'Failed to fetch students' });
   }
 };
@@ -228,7 +227,7 @@ export const show = async (req, res) => {
     const { id } = req.params;
 
     const user = await models.User.findOne({
-      where: { id, role: 'student', deletedAt: null },
+      where: { id, role: 'student' },
       attributes: { exclude: ['password'] },
       include: [
         {
@@ -261,7 +260,7 @@ export const update = async (req, res) => {
     const { id } = req.params;
 
     const user = await models.User.findOne({
-      where: { id, role: 'student', deletedAt: null },
+      where: { id, role: 'student' },
       include: [{ model: models.Student }],
     });
 
@@ -353,7 +352,7 @@ export const update = async (req, res) => {
     }
 
     const updatedUser = await models.User.findOne({
-      where: { id, role: 'student', deletedAt: null },
+      where: { id, role: 'student' },
       attributes: { exclude: ['password'] },
       include: [
         {
@@ -383,7 +382,7 @@ export const action = async (req, res) => {
     const { action: action_type, id } = req.params;
 
     const user = await models.User.findOne({
-      where: { id, role: 'student', deletedAt: null },
+      where: { id, role: 'student' },
     });
 
     if (!user) {

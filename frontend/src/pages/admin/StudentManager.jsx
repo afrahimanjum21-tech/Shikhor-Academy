@@ -91,8 +91,16 @@ export default function StudentManager() {
 
     const handleAction = async (id, action) => {
         const ok = await confirm({ title: "Confirm Action", message: `Confirm ${action}?`, confirmText: "Confirm", variant: "destructive" }); if (!ok) return;
-        try { await api.post(`/admin/student/${action}/${id}`); notify.success("Success"); fetchData(); } 
-        catch (err) { notify.error("Failed"); }
+        try {
+            await api.post(`/admin/student/${action}/${id}`);
+            notify.success("Success");
+            if (action === 'delete') {
+                setStudents((current) => current.filter((student) => student.id !== id));
+                setTotal((current) => Math.max(0, current - 1));
+            }
+            await fetchData();
+        }
+        catch (err) { notify.error(err.response?.data?.message || "Failed"); }
     };
 
     // এডিট মডাল ওপেন

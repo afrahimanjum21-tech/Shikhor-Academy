@@ -13,4 +13,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping database keep-alive endpoint
-        run: curl -fsS --max-time 60 "https://uttoron-coaching.vercel.app/api/keep-alive" || true
+        run: curl -fsS --max-time 60 "https://shikhoracademy.vercel.app/api/keep-alive" || true

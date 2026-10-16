@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Users, Star, ArrowRight } from "lucide-react";
+import { Users, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import api from "../services/api";
 import { buildAssetUrl } from "../services/config";
@@ -13,15 +13,13 @@ import usePageMeta from "../hooks/usePageMeta";
 
 export default function Home() {
   usePageMeta({
-    title: "Uttoron Coaching Centre — HSC, SSC & English Coaching in Bangladesh",
-    description: "Uttoron Coaching Centre offers quality HSC, SSC and English coaching with experienced teachers and proven academic results. Enroll today.",
+    title: "Shikhor Academy — HSC, SSC & English Coaching in Bangladesh",
+    description: "Shikhor Academy offers quality HSC, SSC and English coaching with experienced teachers and proven academic results. Enroll today.",
     path: "/",
   });
   const [featuredFaculty, setFeaturedFaculty] = useState([]);
 
-  useEffect(() => {
-    fetchFeaturedFaculty();
-  }, []);
+  useEffect(() => { fetchFeaturedFaculty(); }, []);
 
   const fetchFeaturedFaculty = async () => {
     try {
@@ -40,62 +38,69 @@ export default function Home() {
       <SuccessStories />
 
       {featuredFaculty.length > 0 && (
-        <section className="bg-white pt-4 pb-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between mb-10">
-              <div>
-                <h2 className="text-3xl font-bold text-[#1F4E79] mb-2">Featured Faculty</h2>
-                <p className="text-gray-600">Meet our distinguished educators</p>
+        <section className="bg-paper py-9 sm:py-20 lg:py-24">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-6 flex flex-col gap-3 sm:mb-12 sm:flex-row sm:items-end sm:justify-between">
+              <div className="max-w-2xl">
+                <h2 className="font-display text-xl font-semibold text-ink sm:text-3xl lg:text-4xl">Our faculty</h2>
+                <p className="mt-1.5 text-xs text-slate-500 sm:mt-3 sm:text-base">The experienced educators behind every result.</p>
               </div>
-              <Link to="/faculty" className="hidden sm:flex items-center gap-2 text-[#1F4E79] hover:text-[#163859] font-medium transition-colors">
-                View All <ArrowRight size={20} />
+              <Link to="/faculty" className="inline-flex items-center gap-2 whitespace-nowrap font-semibold text-primary transition-colors hover:text-brass-600">
+                View all faculty <ArrowRight size={16} aria-hidden="true" />
               </Link>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
               {featuredFaculty.map((fac, idx) => (
                 <Link key={fac.id} to={`/faculty/${fac.slug}`}>
                   <motion.div
-                    initial={{ opacity: 0, y: 30 }}
+                    initial={{ opacity: 0, y: 24 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: idx * 0.1 }}
-                    whileHover={{ y: -8 }}
-                    className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden group cursor-pointer"
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ delay: idx * 0.08, duration: 0.5 }}
+                    className="group h-full overflow-hidden rounded-2xl border border-slate-100 bg-paper shadow-card transition-shadow hover:shadow-card-lg"
                   >
-                    <div className="h-40 bg-[#E6EEF5] flex items-center justify-center group-hover:bg-[#1F4E79] transition-colors duration-300 relative">
+                    <div className="relative aspect-[4/3] overflow-hidden bg-ink/5">
                       {fac.profile_photo_path ? (
-                        <img
-                          src={buildAssetUrl(fac.profile_photo_path)}
-                          alt={fac.full_name}
-                          loading="lazy"
-                          className="w-full h-full object-cover"
-                        />
+                        <img src={buildAssetUrl(fac.profile_photo_path)} alt={fac.full_name} loading="lazy"
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       ) : (
-                        <Users size={64} className="text-[#1F4E79] group-hover:text-white transition-colors duration-300" />
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Users size={56} className="text-ink/30" aria-hidden="true" />
+                        </div>
                       )}
-                      <div className="absolute top-2 right-2">
-                        <Star size={18} className="text-yellow-500 fill-yellow-500" />
-                      </div>
                     </div>
-                    <div className="p-5">
-                      <h3 className="font-bold text-gray-800">{fac.full_name}</h3>
-                      <p className="text-[#1F4E79] text-sm font-medium">{fac.designation}</p>
-                      {fac.department && (
-                        <p className="text-xs text-gray-500 mt-1">{fac.department.name}</p>
-                      )}
+                    <div className="p-4 sm:p-5">
+                      <h3 className="font-semibold text-ink">{fac.full_name}</h3>
+                      <p className="text-sm font-medium text-brass-600">{fac.designation}</p>
+                      {fac.department && <p className="mt-1 text-xs text-slate-400">{fac.department.name}</p>}
                     </div>
                   </motion.div>
                 </Link>
               ))}
             </div>
-            <div className="mt-6 text-center sm:hidden">
-              <Link to="/faculty" className="inline-flex items-center gap-2 text-[#1F4E79] font-medium">
-                View All Faculty <ArrowRight size={18} />
-              </Link>
-            </div>
           </div>
         </section>
       )}
+
+      {/* Closing admission CTA */}
+      <section className="bg-ink">
+        <div className="mx-auto max-w-5xl px-4 py-12 text-center sm:px-6 sm:py-16 lg:py-20">
+          <h2 className="font-display text-2xl font-semibold text-white sm:text-3xl lg:text-[2.6rem]">Ready to begin your preparation?</h2>
+          <p className="mx-auto mt-3 max-w-xl text-base text-slate-300 sm:mt-4 sm:text-lg">
+            Admission is open. Join Shikhor Academy and study with a team that measures its work by your results.
+          </p>
+          <div className="mt-7 flex flex-col justify-center gap-3 sm:mt-9 sm:flex-row sm:gap-4">
+            <Link to="/admission" className="group inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-brass px-6 text-sm font-semibold text-ink shadow-lg transition hover:bg-brass-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink sm:h-[56px] sm:px-8 sm:text-base">
+              Apply for admission
+              <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" aria-hidden="true" />
+            </Link>
+            <Link to="/contact" className="inline-flex h-12 items-center justify-center rounded-xl border border-white/25 px-6 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass focus-visible:ring-offset-2 focus-visible:ring-offset-ink sm:h-[56px] sm:px-8 sm:text-base">
+              Talk to us
+            </Link>
+          </div>
+        </div>
+      </section>
     </>
   );
 }

@@ -14,7 +14,7 @@ const SMS_TYPES = new Set(
 // Same concept for email (see EmailService). SMS and email are independent —
 // either can be on/off without affecting the other or the in-app notification.
 const EMAIL_TYPES = new Set(
-  (process.env.EMAIL_ENABLED_TYPES || 'exam,payment,notice,material,assignment')
+  (process.env.EMAIL_ENABLED_TYPES || 'attendance,leave,late,exam,result,payment,notice,material,assignment')
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
 );
 
@@ -91,6 +91,7 @@ class NotificationService {
     }));
 
     await models.Notification.bulkCreate(notifications);
+    await dispatchEmail({ type, userIds: admins.map(admin => admin.id), title, body, actionUrl, actionLabel });
   }
 
   static async createForBatch({ batchId, type, icon, title, body, actionUrl, actionLabel, level = 'info' }) {

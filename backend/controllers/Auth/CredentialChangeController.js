@@ -86,7 +86,7 @@ export async function requestChange(req, res) {
 
     const mailResult = await sendEmail({
       to: user.email,
-      subject: 'Confirm your account change - Uttoron Coaching Centre',
+      subject: 'Confirm your account change - Shikhor Academy',
       html: `
         <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto">
           <h2 style="color:#1F4F78">Confirm Account Change</h2>

@@ -1,25 +1,16 @@
-/* Uttoron Coaching Centre — Service Worker
+/* Shikhor Academy — Service Worker
  * Offline app-shell caching. API/media traffic is always network-only so
  * existing functionality (live data) is never affected.
  */
 // H-low7: bump this version on every release that changes the shell assets so
 // `activate` purges the previous cache (see the cleanup below). Private/API
 // responses are never cached (see `isApiOrMedia`).
-const STATIC_CACHE = 'uttoron-static-v2';
+const STATIC_CACHE = 'shikhor-static-v4';
 const SHELL_URLS = [
   '/',
   '/index.html',
   '/site.webmanifest',
-  '/favicon.ico',
-  '/favicon.svg',
-  '/favicon-16x16.png',
-  '/favicon-32x32.png',
-  '/favicon-192x192.png',
-  '/favicon-512x512.png',
-  '/android-chrome-192x192.png',
-  '/android-chrome-512x512.png',
-  '/apple-touch-icon.png',
-  '/safari-pinned-tab.svg',
+  '/uttoron-logo.png',
 ];
 
 self.addEventListener('install', (event) => {

@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /admin
+Disallow: /student
+Disallow: /teacher
+
+Sitemap: https://shikhoracademy.vercel.app/sitemap.xml

@@ -2,13 +2,13 @@
 <browserconfig>
   <msapplication>
     <tile>
-      <square150x150logo src="favicon-192x192.png"/>
-      <square310x310logo src="favicon-512x512.png"/>
+      <square150x150logo src="uttoron-logo.png"/>
+      <square310x310logo src="uttoron-logo.png"/>
       <TileColor>#1F4E79</TileColor>
     </tile>
     <task name="home">
       <browser>
-        <favorite name="Uttoron Coaching Centre" />
+        <favorite name="Shikhor Academy" />
       </browser>
     </task>
   </msapplication>

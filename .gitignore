@@ -47,6 +47,13 @@ frontend/certs/
 YUsHNLF!uY165.txt
 test_db.js
 *.txt
+# robots.txt is a real deployable asset for the SPA — keep it tracked
+!frontend/public/robots.txt
+
+# -------------------------
+# Local UI redesign backups (kept outside Git tracking)
+# -------------------------
+.ui-backups/
 
 # -------------------------
 # Local env files

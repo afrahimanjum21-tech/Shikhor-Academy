@@ -12,8 +12,8 @@ import PageBackground from "../components/common/PageBackground";
 
 export default function Library({ requireAuth = false }) {
     usePageMeta({
-        title: "Library & Study Materials — Uttoron Coaching Centre",
-        description: "Access study materials, notes and resources from Uttoron Coaching Centre's library.",
+        title: "Library & Study Materials — Shikhor Academy",
+        description: "Access study materials, notes and resources from Shikhor Academy's library.",
         path: "/library",
     });
     const { user, token } = useAuth();

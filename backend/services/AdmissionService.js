@@ -86,48 +86,48 @@ const sendStudentStatusEmail = async ({ admission, status, user, setupUrl, isNew
   let body;
 
   if (status === 'approved') {
-    subject = 'Admission Approved - Uttoron Coaching Centre';
+    subject = 'Admission Approved - Shikhor Academy';
     body = `
       <h2>Congratulations!</h2>
       <p>Dear ${name},</p>
-      <p>We are delighted to inform you that your admission to <strong>Uttoron Coaching Centre</strong> has been <strong>approved</strong>.</p>
+      <p>We are delighted to inform you that your admission to <strong>Shikhor Academy</strong> has been <strong>approved</strong>.</p>
       ${courseLine}
       ${isNewUser && setupUrl ? `
         <p>Your student account has been created. For your security we do not send passwords by email — please set your own password using the secure link below:</p>
         <p><a href="${setupUrl}" style="display:inline-block;padding:10px 18px;background:#1d4ed8;color:#ffffff;text-decoration:none;border-radius:6px">Set your password</a></p>
         <p>Or paste this link into your browser:<br/><a href="${setupUrl}">${setupUrl}</a></p>
-        <p>This link is valid for 48 hours and can be used once. If it expires, please contact Uttoron Coaching Centre for a new link.</p>
+        <p>This link is valid for 48 hours and can be used once. If it expires, please contact Shikhor Academy for a new link.</p>
         <p><strong>Username (Email):</strong> ${safe(user ? user.email : email)}</p>
       ` : `
         <p>You can log in to your student account at <a href="${loginUrl}">${loginUrl}</a>.</p>
       `}
       <p>Welcome aboard!</p>
       <br/>
-      <p>Best regards,<br/>Uttoron Coaching Centre</p>
+      <p>Best regards,<br/>Shikhor Academy</p>
     `;
   } else if (status === 'rejected') {
-    subject = 'Admission Application Status - Uttoron Coaching Centre';
+    subject = 'Admission Application Status - Shikhor Academy';
     body = `
       <h2>Admission Application Update</h2>
       <p>Dear ${name},</p>
-      <p>Thank you for applying to <strong>Uttoron Coaching Centre</strong>.</p>
+      <p>Thank you for applying to <strong>Shikhor Academy</strong>.</p>
       <p>We regret to inform you that your admission application has been <strong>rejected</strong> after careful review.</p>
       ${courseLine}
       <p>If you believe this is a mistake or would like to discuss other options, please contact us and we will be happy to help.</p>
       <br/>
-      <p>Best regards,<br/>Uttoron Coaching Centre</p>
+      <p>Best regards,<br/>Shikhor Academy</p>
     `;
   } else if (status === 'hold') {
-    subject = 'Admission Application Status - Uttoron Coaching Centre';
+    subject = 'Admission Application Status - Shikhor Academy';
     body = `
       <h2>Admission Application Update</h2>
       <p>Dear ${name},</p>
-      <p>Thank you for applying to <strong>Uttoron Coaching Centre</strong>.</p>
+      <p>Thank you for applying to <strong>Shikhor Academy</strong>.</p>
       <p>Your application is currently <strong>on hold</strong> while we review it. We will contact you soon with an update.</p>
       ${courseLine}
       <p>Please feel free to reach out to us if you have any questions.</p>
       <br/>
-      <p>Best regards,<br/>Uttoron Coaching Centre</p>
+      <p>Best regards,<br/>Shikhor Academy</p>
     `;
   } else {
     return;

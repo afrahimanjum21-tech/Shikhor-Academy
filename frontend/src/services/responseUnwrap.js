@@ -130,6 +130,10 @@ export function applyUnwrap(payload, path) {
 // Namespaces that must ALSO be cleared when the key namespace is mutated — e.g.
 // the public notices feed shares rows with the admin list.
 export const CROSS_INVALIDATE = {
+    // Student mutations use the singular `/admin/student/...` route while
+    // the list endpoint is plural, so explicitly clear the list cache after
+    // delete/ban/activate actions.
+    '/admin/student': ['/admin/students'],
     '/admin/notices': ['/public/notices'],
     '/admin/success-stories': ['/public/success-stories'],
     '/admin/materials': ['/public/materials'],
@@ -137,6 +141,7 @@ export const CROSS_INVALIDATE = {
     '/admin/course-categories': ['/public/course-categories'],
     '/admin/e-learning': ['/public/e-learning'],
     '/admin/gallery': ['/public/gallery'],
+    '/admin/site-settings': ['/public/site-settings'],
 };
 
 // The namespace a mutation to `url` invalidates: its first two path segments.

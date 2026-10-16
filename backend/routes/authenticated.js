@@ -196,7 +196,12 @@ admin.get('/payment-settings', PaymentSettingController.show);
 admin.post('/payment-settings', PaymentSettingController.update);
 
 admin.get('/site-settings', SiteSettingController.show);
-admin.post('/site-settings', uploadPhoto('site').single('hero_bg_image'), SiteSettingController.update);
+admin.post('/site-settings', uploadPhoto('site').fields([
+  { name: 'hero_bg_image', maxCount: 1 },
+  { name: 'about_photo_1', maxCount: 1 },
+  { name: 'about_photo_2', maxCount: 1 },
+  { name: 'about_photo_3', maxCount: 1 },
+]), SiteSettingController.update);
 admin.post('/site-settings/test-email', SiteSettingController.testEmail);
 
 admin.get('/student/:id/exam-results', PaymentController.studentExamResults);

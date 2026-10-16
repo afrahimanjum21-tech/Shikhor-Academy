@@ -2,7 +2,7 @@
 # CURRENT PowerShell session, so `npm start` and the check scripts talk to
 # STAGING without re-pasting secrets. Nothing secret is ever printed.
 #
-#   cd "C:\Users\afrah\Uttoron Coaching Center\uttoron-coaching\backend"
+#   cd "C:\Users\afrah\Shikhor Academy\uttoron-coaching\backend"
 #   . .\scripts\load-staging-env.ps1
 #
 # backend/.env.staging is git-ignored; this .ps1 contains no secrets.

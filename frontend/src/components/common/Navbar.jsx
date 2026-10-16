@@ -99,19 +99,19 @@ export default function Navbar() {
     return (
         <nav className="bg-white shadow-sm sticky top-0 z-50 font-sans border-b border-gray-100">
             <div className="max-w-7xl mx-auto px-4">
-                <div className="flex justify-between items-center h-14 sm:h-16">
+                <div className="flex justify-between items-center h-12 sm:h-14">
                     {/* Logo */}
                     <Link to="/" className="flex items-center gap-2 md:gap-3 group flex-shrink-0">
                         <img
                             src={LOGO_IMAGE}
-                            alt="Uttoron Logo"
-                            className="h-8 w-8 md:h-10 md:w-10 object-contain"
+                            alt="Shikhor Academy Logo"
+                            className="h-7 w-7 md:h-8 md:w-8 object-contain"
                         />
                         <span
                             className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold transition text-[#1F4F78] group-hover:opacity-80 whitespace-nowrap"
                             style={{ fontFamily: '"Tiro Bangla", serif' }}
                         >
-                            উত্তরণ কোচিং সেন্টার
+                            Shikhor Academy
                         </span>
                     </Link>
 
@@ -177,18 +177,18 @@ export default function Navbar() {
                     className={`absolute inset-y-0 right-0 w-[84vw] max-w-[380px] bg-white border-l border-gray-200 shadow-xl flex flex-col transition-transform duration-300 ease-out ${isOpen ? "translate-x-0" : "translate-x-full"}`}
                 >
                     {/* Drawer Header */}
-                    <div className="h-14 sm:h-16 flex items-center px-4 border-b border-gray-100 flex-shrink-0">
+                    <div className="h-12 sm:h-14 flex items-center px-4 border-b border-gray-100 flex-shrink-0">
                         <Link to="/" onClick={closeDrawer} className="flex items-center gap-2.5 min-w-0">
                             <img
                                 src={LOGO_IMAGE}
-                                alt="Uttoron Logo"
+                                alt="Shikhor Academy Logo"
                                 className="h-7 w-7 sm:h-8 sm:w-8 object-contain flex-shrink-0"
                             />
                             <span
                                 className="font-bold text-sm sm:text-base text-[#1F4E79] tracking-tight whitespace-nowrap overflow-hidden text-ellipsis"
                                 style={{ fontFamily: '"Tiro Bangla", serif' }}
                             >
-                                উত্তরণ কোচিং সেন্টার
+                                Shikhor Academy
                             </span>
                         </Link>
                         <button

@@ -3,10 +3,13 @@ import sequelize from '../config/database.js';
 
 const SiteSetting = sequelize.define('SiteSetting', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  site_name: { type: DataTypes.STRING, defaultValue: 'Uttoron Coaching Centre' },
+  site_name: { type: DataTypes.STRING, defaultValue: 'Shikhor Academy' },
   hero_title: { type: DataTypes.STRING },
   hero_subtitle: { type: DataTypes.TEXT },
   hero_bg_image: { type: DataTypes.STRING },
+  about_photo_1: { type: DataTypes.STRING },
+  about_photo_2: { type: DataTypes.STRING },
+  about_photo_3: { type: DataTypes.STRING },
   about_content: { type: DataTypes.TEXT },
   footer_description: { type: DataTypes.TEXT },
   address: { type: DataTypes.STRING },
@@ -42,7 +45,7 @@ const SiteSetting = sequelize.define('SiteSetting', {
 SiteSetting.instance = async function() {
   const [setting] = await this.findOrCreate({
     where: { id: 1 },
-    defaults: { site_name: 'Uttoron Coaching Centre' },
+    defaults: { site_name: 'Shikhor Academy' },
   });
   return setting;
 };

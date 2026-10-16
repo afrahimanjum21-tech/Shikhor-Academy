@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Uttoron Coaching Centre",
-  "short_name": "Uttoron",
-  "description": "Uttoron Coaching Centre - Empowering students through quality education",
+  "name": "Shikhor Academy",
+  "short_name": "Shikhor",
+  "description": "Shikhor Academy - Empowering students through quality education",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/",
@@ -14,26 +14,26 @@
   "categories": ["education", "productivity"],
   "icons": [
     {
-      "src": "favicon-192x192.png",
-      "sizes": "192x192",
+      "src": "uttoron-logo.png",
+      "sizes": "any",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "favicon-512x512.png",
-      "sizes": "512x512",
+      "src": "uttoron-logo.png",
+      "sizes": "any",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "android-chrome-192x192.png",
-      "sizes": "192x192",
+      "src": "uttoron-logo.png",
+      "sizes": "any",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "android-chrome-512x512.png",
-      "sizes": "512x512",
+      "src": "uttoron-logo.png",
+      "sizes": "any",
       "type": "image/png",
       "purpose": "maskable"
     }
@@ -42,7 +42,7 @@
     {
       "name": "Home",
       "url": "/",
-      "icons": [{ "src": "favicon-192x192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "uttoron-logo.png", "sizes": "any" }]
     },
     {
       "name": "Courses",

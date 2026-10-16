@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  ArrowLeft, User, Phone, Mail, MapPin, GraduationCap, Award, Briefcase,
+  BadgeCheck, Users, BookOpen, Layers, ExternalLink, Clock, Globe,
+} from "lucide-react";
 import api from "../services/api";
 import { buildAssetUrl } from "../services/config";
 import logger from '../services/logger';
@@ -29,7 +34,7 @@ export default function FacultyProfile() {
     if (faculty) {
       document.title =
         faculty.meta_title ||
-        `${faculty.full_name} - ${faculty.designation} | Uttoron Coaching Center`;
+        `${faculty.full_name} - ${faculty.designation} | Shikhor Academy`;
       let metaDesc = document.querySelector('meta[name="description"]');
       if (!metaDesc) {
         metaDesc = document.createElement("meta");
@@ -38,16 +43,16 @@ export default function FacultyProfile() {
       }
       metaDesc.content =
         faculty.meta_description ||
-        `Learn about ${faculty.full_name}, ${faculty.designation} at Uttoron Coaching Center.`;
+        `Learn about ${faculty.full_name}, ${faculty.designation} at Shikhor Academy.`;
     }
   }, [faculty]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center" role="status" aria-live="polite">
         <div className="text-center">
-          <div className="w-10 h-10 border-[3px] border-[#2563EB] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-sm text-gray-400">Loading profile...</p>
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-[3px] border-ink border-t-transparent" />
+          <p className="text-sm text-slate-400">Loading profile…</p>
         </div>
       </div>
     );
@@ -55,8 +60,13 @@ export default function FacultyProfile() {
 
   if (!faculty) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Faculty not found</p>
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-slate-500">Faculty member not found.</p>
+          <Link to="/faculty" className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-ink hover:text-brass-600">
+            <ArrowLeft size={16} aria-hidden="true" /> Back to faculty
+          </Link>
+        </div>
       </div>
     );
   }
@@ -71,237 +81,123 @@ export default function FacultyProfile() {
 
   const expertiseTags = [];
   if (faculty.specialization) {
-    faculty.specialization.split(",").forEach((s) => {
-      const t = s.trim();
-      if (t) expertiseTags.push(t);
-    });
+    faculty.specialization.split(",").forEach((s) => { const t = s.trim(); if (t) expertiseTags.push(t); });
   }
   if (faculty.research) {
-    faculty.research.split(",").forEach((s) => {
-      const t = s.trim();
-      if (t) expertiseTags.push(t);
-    });
+    faculty.research.split(",").forEach((s) => { const t = s.trim(); if (t) expertiseTags.push(t); });
   }
 
+  const hasGlance = faculty.teaching_experience > 0 || faculty.teaching_since || faculty.languages || faculty.employee_id || faculty.category?.name;
+
   return (
-    <div
-      className="min-h-screen"
-      style={{ fontFamily: "Inter, Poppins, sans-serif" }}
-    >
-      {/* ===== SECTION 1 — FACULTY PROFILE ===== */}
-      <div className="max-w-[1280px] mx-auto px-6 pt-12 pb-0">
-        <div
-          className="rounded-[16px] p-10 md:p-[60px]"
-          style={{ backgroundColor: "#F5F5F5" }}
+    <div className="min-h-screen font-sans">
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+        {/* Back */}
+        <Link to="/faculty"
+          className="mb-4 inline-flex items-center gap-1.5 rounded text-sm text-slate-500 transition-colors hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30">
+          <ArrowLeft size={16} aria-hidden="true" /> Back to faculty
+        </Link>
+
+        {/* Profile header */}
+        <motion.section
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: "easeOut" }}
+          className="overflow-hidden rounded-3xl border border-slate-200/80 bg-paper shadow-card"
         >
-          <div className="flex flex-col lg:flex-row gap-10 lg:gap-16 items-center">
-            {/* ----- LEFT COLUMN (65%) ----- */}
-            <div className="w-full lg:w-[65%]">
-              <h1
-                className="font-bold leading-[1.15] tracking-tight"
-                style={{ fontSize: "46px", color: "#222222" }}
-              >
-                {faculty.full_name}
-              </h1>
-
-              <p className="mt-2" style={{ fontSize: "18px", color: "#555555" }}>
-                {faculty.designation}
-              </p>
-              {faculty.department?.name && (
-                <p className="mt-0.5" style={{ fontSize: "18px", color: "#555555" }}>
-                  {faculty.department.name}
-                </p>
-              )}
-
-              <div
-                className="mt-[30px]"
-                style={{
-                  width: "120px",
-                  height: "2px",
-                  backgroundColor: "#CFCFCF",
-                }}
-              ></div>
-
-              <div className="mt-[30px] grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-0">
-                <div className="space-y-4">
-                  {faculty.official_phone && (
-                    <InfoLine label="Phone" value={faculty.official_phone} />
-                  )}
-                  {faculty.official_email && (
-                    <InfoLine label="Email" value={faculty.official_email} />
-                  )}
-                  {faculty.office_address && (
-                    <InfoLine label="Office" value={faculty.office_address} />
-                  )}
-                  {faculty.teaching_experience > 0 && (
-                    <InfoLine
-                      label="Experience"
-                      value={`${faculty.teaching_experience} Years`}
+          <div className="grid gap-6 p-6 sm:p-8 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)] md:gap-9 lg:p-10">
+            {/* Portrait */}
+            <div className="mx-auto w-full max-w-[220px] md:mx-0">
+              <div className="relative">
+                <div className="overflow-hidden rounded-2xl bg-paper ring-1 ring-slate-100">
+                  {faculty.profile_photo_path ? (
+                    <img
+                      src={buildAssetUrl(faculty.profile_photo_path)}
+                      alt={faculty.full_name}
+                      className="aspect-[4/5] w-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        const fb = e.target.parentElement.querySelector('.pfp-fallback');
+                        if (fb) fb.style.display = 'flex';
+                      }}
                     />
-                  )}
-                  {faculty.languages && (
-                    <InfoLine label="Languages" value={faculty.languages} />
-                  )}
-                  {faculty.teaching_since && (
-                    <InfoLine label="Teaching Since" value={faculty.teaching_since} />
-                  )}
-                  {faculty.employee_id && (
-                    <InfoLine label="Employee ID" value={faculty.employee_id} />
-                  )}
-                  {faculty.category?.name && (
-                    <InfoLine label="Category" value={faculty.category.name} />
-                  )}
-                </div>
-
-                {expertiseTags.length > 0 && (
-                  <div className="mt-6 sm:mt-0">
-                    <p
-                      className="font-bold"
-                      style={{ fontSize: "16px", color: "#222222" }}
-                    >
-                      Expertise
-                    </p>
-                    <p
-                      className="mt-2 leading-relaxed"
-                      style={{ fontSize: "16px", color: "#555555" }}
-                    >
-                      {expertiseTags.join(", ")}
-                    </p>
+                  ) : null}
+                  <div className={`pfp-fallback flex aspect-[4/5] w-full items-center justify-center bg-ink/5 ${faculty.profile_photo_path ? 'hidden' : ''}`}>
+                    <User size={56} className="text-ink/25" aria-hidden="true" />
                   </div>
+                </div>
+                <span className="pointer-events-none absolute -right-2 -top-2 h-12 w-12 rounded-tr-2xl border-r-2 border-t-2 border-brass/60" aria-hidden="true" />
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="text-center md:text-left">
+              <h1 className="font-display text-3xl font-semibold leading-tight text-ink sm:text-4xl">{faculty.full_name}</h1>
+              <p className="mt-1 text-base font-medium text-brass-600 sm:text-lg">{faculty.designation}</p>
+              {faculty.department?.name && <p className="mt-0.5 text-sm text-slate-500">{faculty.department.name}</p>}
+              <div className="mx-auto mt-4 h-px w-16 bg-brass md:mx-0" aria-hidden="true" />
+
+              <div className="mt-4 flex flex-col items-center gap-2 md:items-start">
+                {faculty.official_phone && (
+                  <a href={`tel:${faculty.official_phone}`} className="inline-flex items-center gap-2 py-0.5 text-sm text-slate-600 transition-colors hover:text-ink">
+                    <Phone size={15} className="text-brass-600" aria-hidden="true" /> {faculty.official_phone}
+                  </a>
+                )}
+                {faculty.official_email && (
+                  <a href={`mailto:${faculty.official_email}`} className="inline-flex items-center gap-2 py-0.5 text-sm text-slate-600 transition-colors hover:text-ink">
+                    <Mail size={15} className="text-brass-600" aria-hidden="true" /> <span className="break-all">{faculty.official_email}</span>
+                  </a>
+                )}
+                {faculty.office_address && (
+                  <span className="inline-flex items-start gap-2 py-0.5 text-sm text-slate-600">
+                    <MapPin size={15} className="mt-0.5 flex-shrink-0 text-brass-600" aria-hidden="true" /> {faculty.office_address}
+                  </span>
                 )}
               </div>
-            </div>
 
-            {/* ----- RIGHT COLUMN (35%) — Photo ----- */}
-            <div className="w-full lg:w-[35%] flex justify-center lg:justify-end">
-              <div
-                className="w-full max-w-[360px] overflow-hidden bg-white profile-photo"
-                style={{ borderRadius: "16px", boxShadow: "0 4px 20px rgba(0,0,0,0.06)" }}
-              >
-                {faculty.profile_photo_path ? (
-                  <img
-                    src={buildAssetUrl(faculty.profile_photo_path)}
-                    alt={faculty.full_name}
-                    className="w-full object-cover profile-photo-img"
-                    style={{ aspectRatio: "4 / 5" }}
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      const fallback = e.target.parentElement.querySelector('.pfp-fallback');
-                      if (fallback) fallback.style.display = 'flex';
-                    }}
-                  />
-                ) : null}
-                <div
-                  className={`w-full flex items-center justify-center bg-gray-100 pfp-fallback ${faculty.profile_photo_path ? 'hidden' : ''}`}
-                  style={{ aspectRatio: "4 / 5" }}
-                >
-                  <svg
-                    width="64"
-                    height="64"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#ccc"
-                    strokeWidth="1.5"
-                  >
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
+              {expertiseTags.length > 0 && (
+                <div className="mt-4 flex flex-wrap justify-center gap-2 md:justify-start">
+                  {expertiseTags.map((t, i) => (
+                    <span key={`${t}-${i}`} className="rounded-full bg-brass-100 px-3 py-1 text-xs font-semibold text-brass-600">{t}</span>
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
           </div>
-        </div>
-      </div>
+        </motion.section>
 
-      {/* ===== SECTION 2 — MAIN CONTENT + SIDEBAR ===== */}
-      <div className="max-w-[1280px] mx-auto px-6 pb-20" style={{ marginTop: "80px" }}>
-        <div className="flex flex-col lg:flex-row gap-12 lg:gap-16">
-          {/* ----- LEFT COLUMN (70%) ----- */}
-          <div className="w-full lg:w-[70%] space-y-14">
+        {/* Main */}
+        <div className="mt-8 grid gap-8 lg:grid-cols-3">
+          <div className="space-y-10 lg:col-span-2">
             {/* Biography */}
             {faculty.biography && (
               <section>
-                <h2
-                  className="font-bold"
-                  style={{ fontSize: "40px", color: "#222222" }}
-                >
-                  Biography
-                </h2>
-                <div
-                  className="mt-[30px] text-[17px] leading-[1.8] space-y-6 max-w-[780px]"
-                  style={{ color: "#555555" }}
-                >
-                  {faculty.biography.split("\n").map((para, i) => (
-                    <p key={i}>{para}</p>
-                  ))}
+                <h2 className="font-display text-xl font-semibold text-ink sm:text-2xl">Biography</h2>
+                <div className="mt-2 h-px w-12 bg-brass" aria-hidden="true" />
+                <div className="mt-4 space-y-4 text-[15px] leading-relaxed text-slate-600">
+                  {faculty.biography.split("\n").map((para, i) => (para.trim() ? <p key={i}>{para}</p> : null))}
                 </div>
               </section>
             )}
 
-            {/* Educational Qualifications */}
+            {/* Academic Background */}
             {hasQual && (
               <section>
-                <h2
-                  className="font-bold"
-                  style={{ fontSize: "28px", color: "#222222" }}
-                >
-                  Academic Background
-                </h2>
-                <div className="mt-[24px] space-y-4">
+                <h2 className="font-display text-xl font-semibold text-ink sm:text-2xl">Academic background</h2>
+                <div className="mt-2 h-px w-12 bg-brass" aria-hidden="true" />
+                <div className="mt-5 space-y-4">
                   {faculty.qualifications.map((qual, i) => (
-                    <div
-                      key={i}
-                      className="p-5 rounded-[12px]"
-                      style={{ backgroundColor: "#F2F2F2" }}
-                    >
+                    <div key={i} className="rounded-2xl border border-slate-200/80 bg-paper p-5 shadow-card">
                       <div className="flex gap-4">
-                        <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: "#2563EB10" }}
-                        >
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="#2563EB"
-                            strokeWidth="2"
-                          >
-                            <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-                            <path d="M6 12v5c3 3 9 3 12 0v-5" />
-                          </svg>
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-brass-100 text-brass-600">
+                          <GraduationCap size={20} aria-hidden="true" />
                         </div>
-                        <div>
-                          <h3
-                            className="font-semibold"
-                            style={{ fontSize: "16px", color: "#222222" }}
-                          >
-                            {qual.degree}
-                            {qual.field_of_study ? ` in ${qual.field_of_study}` : ""}
-                          </h3>
-                          <p
-                            className="mt-0.5"
-                            style={{ fontSize: "15px", color: "#555555" }}
-                          >
-                            {qual.institution}
-                          </p>
-                          <div
-                            className="flex gap-4 mt-1.5"
-                            style={{ fontSize: "14px", color: "#888888" }}
-                          >
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-ink">{qual.degree}{qual.field_of_study ? ` in ${qual.field_of_study}` : ""}</h3>
+                          <p className="mt-0.5 text-sm text-slate-500">{qual.institution}</p>
+                          <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400">
                             {qual.passing_year && <span>{qual.passing_year}</span>}
-                            {qual.grade && (
-                              <span style={{ color: "#2563EB" }}>{qual.grade}</span>
-                            )}
+                            {qual.grade && <span className="font-medium text-brass-600">{qual.grade}</span>}
                           </div>
-                          {qual.description && (
-                            <p
-                              className="mt-2 leading-relaxed"
-                              style={{ fontSize: "15px", color: "#555555" }}
-                            >
-                              {qual.description}
-                            </p>
-                          )}
+                          {qual.description && <p className="mt-2 text-sm leading-relaxed text-slate-600">{qual.description}</p>}
                         </div>
                       </div>
                     </div>
@@ -313,70 +209,20 @@ export default function FacultyProfile() {
             {/* Achievements */}
             {hasAch && (
               <section>
-                <h2
-                  className="font-bold"
-                  style={{ fontSize: "28px", color: "#222222" }}
-                >
-                  Achievements
-                </h2>
-                <div className="mt-[24px] grid grid-cols-1 md:grid-cols-2 gap-4">
+                <h2 className="font-display text-xl font-semibold text-ink sm:text-2xl">Achievements</h2>
+                <div className="mt-2 h-px w-12 bg-brass" aria-hidden="true" />
+                <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
                   {faculty.achievements.map((ach, i) => (
-                    <div
-                      key={i}
-                      className="p-5 rounded-[12px]"
-                      style={{ backgroundColor: "#F2F2F2" }}
-                    >
+                    <div key={i} className="rounded-2xl border border-slate-200/80 bg-paper p-5 shadow-card">
                       <div className="flex gap-3">
-                        <div
-                          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: "#F59E0B15" }}
-                        >
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="#D97706"
-                            strokeWidth="2"
-                          >
-                            <circle cx="12" cy="8" r="7" />
-                            <path d="M8.21 13.89L7 23l5-3 5 3-1.21-9.12" />
-                          </svg>
+                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brass-100 text-brass-600">
+                          <Award size={18} aria-hidden="true" />
                         </div>
-                        <div>
-                          <h3
-                            className="font-semibold"
-                            style={{ fontSize: "15px", color: "#222222" }}
-                          >
-                            {ach.title}
-                          </h3>
-                          {ach.date && (
-                            <p
-                              className="mt-0.5"
-                              style={{ fontSize: "13px", color: "#888888" }}
-                            >
-                              {ach.date}
-                            </p>
-                          )}
-                          {ach.description && (
-                            <p
-                              className="mt-1.5 leading-relaxed"
-                              style={{ fontSize: "14px", color: "#555555" }}
-                            >
-                              {ach.description}
-                            </p>
-                          )}
-                          {ach.category && (
-                            <span
-                              className="inline-block mt-2 px-2.5 py-0.5 rounded text-xs font-medium"
-                              style={{
-                                backgroundColor: "#2563EB10",
-                                color: "#2563EB",
-                              }}
-                            >
-                              {ach.category}
-                            </span>
-                          )}
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-semibold text-ink">{ach.title}</h3>
+                          {ach.date && <p className="mt-0.5 text-xs text-slate-400">{ach.date}</p>}
+                          {ach.description && <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{ach.description}</p>}
+                          {ach.category && <span className="mt-2 inline-block rounded bg-brass-100 px-2.5 py-0.5 text-xs font-medium text-brass-600">{ach.category}</span>}
                         </div>
                       </div>
                     </div>
@@ -388,61 +234,21 @@ export default function FacultyProfile() {
             {/* Certifications */}
             {hasCert && (
               <section>
-                <h2
-                  className="font-bold"
-                  style={{ fontSize: "28px", color: "#222222" }}
-                >
-                  Certifications
-                </h2>
-                <div className="mt-[24px] grid grid-cols-1 md:grid-cols-2 gap-4">
+                <h2 className="font-display text-xl font-semibold text-ink sm:text-2xl">Certifications</h2>
+                <div className="mt-2 h-px w-12 bg-brass" aria-hidden="true" />
+                <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
                   {faculty.certifications.map((cert, i) => (
-                    <div
-                      key={i}
-                      className="p-5 rounded-[12px]"
-                      style={{ backgroundColor: "#F2F2F2" }}
-                    >
-                      <h3
-                        className="font-semibold"
-                        style={{ fontSize: "15px", color: "#222222" }}
-                      >
-                        {cert.name}
-                      </h3>
-                      <p
-                        className="mt-0.5"
-                        style={{ fontSize: "14px", color: "#555555" }}
-                      >
-                        {cert.issuing_organization}
-                      </p>
-                      <div
-                        className="flex gap-4 mt-1.5"
-                        style={{ fontSize: "13px", color: "#888888" }}
-                      >
+                    <div key={i} className="rounded-2xl border border-slate-200/80 bg-paper p-5 shadow-card">
+                      <h3 className="text-sm font-semibold text-ink">{cert.name}</h3>
+                      <p className="mt-0.5 text-sm text-slate-500">{cert.issuing_organization}</p>
+                      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
                         {cert.issue_date && <span>Issued: {cert.issue_date}</span>}
-                        {cert.expiry_date && (
-                          <span>Expires: {cert.expiry_date}</span>
-                        )}
+                        {cert.expiry_date && <span>Expires: {cert.expiry_date}</span>}
                       </div>
                       {cert.certificate_url && (
-                        <a
-                          href={cert.certificate_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 mt-2 text-sm font-medium hover:underline"
-                          style={{ color: "#2563EB" }}
-                        >
-                          View Credential
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                            <polyline points="15 3 21 3 21 9" />
-                            <line x1="10" y1="14" x2="21" y2="3" />
-                          </svg>
+                        <a href={cert.certificate_url} target="_blank" rel="noopener noreferrer"
+                          className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brass-600 hover:underline">
+                          View credential <ExternalLink size={12} aria-hidden="true" />
                         </a>
                       )}
                     </div>
@@ -454,268 +260,100 @@ export default function FacultyProfile() {
             {/* Gallery */}
             {hasGallery && (
               <section>
-                <h2
-                  className="font-bold"
-                  style={{ fontSize: "28px", color: "#222222" }}
-                >
-                  Gallery
-                </h2>
-                <div className="mt-[24px] grid grid-cols-2 md:grid-cols-3 gap-3">
+                <h2 className="font-display text-xl font-semibold text-ink sm:text-2xl">Gallery</h2>
+                <div className="mt-2 h-px w-12 bg-brass" aria-hidden="true" />
+                <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3">
                   {faculty.galleries.map((img, i) => (
-                    <a
-                      key={i}
-                      href={buildAssetUrl(img.image_path)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block aspect-square rounded-[12px] overflow-hidden bg-gray-100"
-                    >
-                      <img
-                        src={buildAssetUrl(img.image_path)}
-                        alt={img.caption || "Gallery"}
-                        loading="lazy"
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                      />
+                    <a key={i} href={buildAssetUrl(img.image_path)} target="_blank" rel="noopener noreferrer"
+                      className="block aspect-square overflow-hidden rounded-xl bg-paper">
+                      <img src={buildAssetUrl(img.image_path)} alt={img.caption || "Gallery image"} loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-500 hover:scale-105" />
                     </a>
                   ))}
                 </div>
               </section>
             )}
+
+            {!faculty.biography && !hasQual && !hasAch && !hasCert && !hasGallery && (
+              <p className="rounded-2xl border border-slate-200/80 bg-paper p-6 text-sm text-slate-500 shadow-card">
+                More details about this faculty member will be added soon.
+              </p>
+            )}
           </div>
-
-          {/* ----- RIGHT COLUMN (30%) — Sidebar Card ----- */}
-          <div className="w-full lg:w-[30%] lg:min-w-[300px]">
-            <div
-              className="rounded-[12px] p-[30px] space-y-8"
-              style={{ backgroundColor: "#F2F2F2" }}
-            >
-              {/* At a Glance */}
-              {(faculty.teaching_experience > 0 ||
-                faculty.employee_id ||
-                faculty.category?.name) && (
-                <div>
-                  <h3
-                    className="font-bold mb-4"
-                    style={{ fontSize: "18px", color: "#222222" }}
-                  >
-                    At a Glance
-                  </h3>
-                  <div className="space-y-3">
-                    {faculty.teaching_experience > 0 && (
-                      <div
-                        className="flex items-center gap-3 p-3 rounded-lg"
-                        style={{ backgroundColor: "#FFFFFF" }}
-                      >
-                        <div
-                          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: "#2563EB10" }}
-                        >
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="#2563EB"
-                            strokeWidth="2"
-                          >
-                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                          </svg>
-                        </div>
-                        <div>
-                          <p
-                            className="text-xs font-medium"
-                            style={{ color: "#888888" }}
-                          >
-                            Experience
-                          </p>
-                          <p
-                            className="font-semibold text-sm"
-                            style={{ color: "#222222" }}
-                          >
-                            {faculty.teaching_experience}+ Years
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    {faculty.employee_id && (
-                      <div
-                        className="flex items-center gap-3 p-3 rounded-lg"
-                        style={{ backgroundColor: "#FFFFFF" }}
-                      >
-                        <div
-                          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: "#2563EB10" }}
-                        >
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="#2563EB"
-                            strokeWidth="2"
-                          >
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                            <polyline points="22 4 12 14.01 9 11.01" />
-                          </svg>
-                        </div>
-                        <div>
-                          <p
-                            className="text-xs font-medium"
-                            style={{ color: "#888888" }}
-                          >
-                            Employee ID
-                          </p>
-                          <p
-                            className="font-semibold text-sm"
-                            style={{ color: "#222222" }}
-                          >
-                            {faculty.employee_id}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    {faculty.category?.name && (
-                      <div
-                        className="flex items-center gap-3 p-3 rounded-lg"
-                        style={{ backgroundColor: "#FFFFFF" }}
-                      >
-                        <div
-                          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: "#2563EB10" }}
-                        >
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="#2563EB"
-                            strokeWidth="2"
-                          >
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                            <circle cx="9" cy="7" r="4" />
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                          </svg>
-                        </div>
-                        <div>
-                          <p
-                            className="text-xs font-medium"
-                            style={{ color: "#888888" }}
-                          >
-                            Category
-                          </p>
-                          <p
-                            className="font-semibold text-sm"
-                            style={{ color: "#222222" }}
-                          >
-                            {faculty.category.name}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+          <aside className="space-y-6 lg:col-span-1">
+            {/* At a glance */}
+            {hasGlance && (
+              <div className="rounded-2xl border border-slate-200/80 bg-paper p-5 shadow-card sm:p-6">
+                <h3 className="font-display text-base font-semibold text-ink">At a glance</h3>
+                <div className="mt-4 space-y-3">
+                  {faculty.teaching_experience > 0 && <Glance icon={<Briefcase size={18} aria-hidden="true" />} label="Experience" value={`${faculty.teaching_experience}+ years`} />}
+                  {faculty.teaching_since && <Glance icon={<Clock size={18} aria-hidden="true" />} label="Teaching since" value={faculty.teaching_since} />}
+                  {faculty.languages && <Glance icon={<Globe size={18} aria-hidden="true" />} label="Languages" value={faculty.languages} />}
+                  {faculty.employee_id && <Glance icon={<BadgeCheck size={18} aria-hidden="true" />} label="Employee ID" value={faculty.employee_id} />}
+                  {faculty.category?.name && <Glance icon={<Users size={18} aria-hidden="true" />} label="Category" value={faculty.category.name} />}
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Subjects Taught */}
-              {hasSubjects && (
-                <div>
-                  <h3
-                    className="font-bold mb-4"
-                    style={{ fontSize: "18px", color: "#222222" }}
-                  >
-                    Subjects Taught
-                  </h3>
-                  <div className="space-y-2.5">
-                    {faculty.subjects.map((sub) => (
-                      <p key={sub.id} style={{ fontSize: "16px", color: "#555555" }}>
-                        {sub.name}
-                      </p>
-                    ))}
-                  </div>
+            {/* Subjects */}
+            {hasSubjects && (
+              <div className="rounded-2xl border border-slate-200/80 bg-paper p-5 shadow-card sm:p-6">
+                <h3 className="flex items-center gap-2 font-display text-base font-semibold text-ink">
+                  <BookOpen size={16} className="text-brass-600" aria-hidden="true" /> Subjects taught
+                </h3>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {faculty.subjects.map((sub) => (
+                    <span key={sub.id} className="rounded-full bg-paper px-3 py-1 text-sm text-slate-600">{sub.name}</span>
+                  ))}
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Current Batches */}
-              {hasBatches && (
-                <div>
-                  <h3
-                    className="font-bold mb-4"
-                    style={{ fontSize: "18px", color: "#222222" }}
-                  >
-                    Current Batches
-                  </h3>
-                  <div className="space-y-2.5">
-                    {faculty.batches.map((batch, i) => (
-                      <p
-                        key={i}
-                        style={{ fontSize: "16px", color: "#555555" }}
-                      >
-                        {batch.batch?.name || batch.name || "Batch"}
-                      </p>
-                    ))}
-                  </div>
+            {/* Current batches */}
+            {hasBatches && (
+              <div className="rounded-2xl border border-slate-200/80 bg-paper p-5 shadow-card sm:p-6">
+                <h3 className="flex items-center gap-2 font-display text-base font-semibold text-ink">
+                  <Layers size={16} className="text-brass-600" aria-hidden="true" /> Current batches
+                </h3>
+                <div className="mt-4 space-y-2">
+                  {faculty.batches.map((batch, i) => (
+                    <p key={i} className="text-sm text-slate-600">{batch.batch?.name || batch.name || "Batch"}</p>
+                  ))}
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Social Links */}
-              {hasSocials && (
-                <div>
-                  <h3
-                    className="font-bold mb-4"
-                    style={{ fontSize: "18px", color: "#222222" }}
-                  >
-                    Connect
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {faculty.social_links.map((link, i) => (
-                      <a
-                        key={i}
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={link.platform}
-                        className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
-                        style={{
-                          backgroundColor: "#FFFFFF",
-                          color: "#555555",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = "#2563EB";
-                          e.currentTarget.style.color = "#FFFFFF";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = "#FFFFFF";
-                          e.currentTarget.style.color = "#555555";
-                        }}
-                      >
-                        <SocialIcon platform={link.platform} />
-                      </a>
-                    ))}
-                  </div>
+            {/* Connect */}
+            {hasSocials && (
+              <div className="rounded-2xl border border-slate-200/80 bg-paper p-5 shadow-card sm:p-6">
+                <h3 className="font-display text-base font-semibold text-ink">Connect</h3>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {faculty.social_links.map((link, i) => (
+                    <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" aria-label={link.platform}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-paper text-slate-600 transition-colors hover:bg-ink hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30">
+                      <SocialIcon platform={link.platform} />
+                    </a>
+                  ))}
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
+            )}
+          </aside>
         </div>
       </div>
-
-      <style>{`
-        .profile-photo-img:hover {
-          transform: scale(1.02);
-        }
-      `}</style>
     </div>
   );
 }
 
-function InfoLine({ label, value }) {
+function Glance({ icon, label, value }) {
   return (
-    <div className="flex gap-2" style={{ fontSize: "16px" }}>
-      <span className="font-bold whitespace-nowrap" style={{ color: "#222222" }}>
-        {label}:
-      </span>
-      <span style={{ color: "#555555" }}>{value}</span>
+    <div className="flex items-center gap-3 rounded-xl bg-paper p-3">
+      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brass-100 text-brass-600">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-slate-400">{label}</p>
+        <p className="truncate text-sm font-semibold text-ink">{value}</p>
+      </div>
     </div>
   );
 }

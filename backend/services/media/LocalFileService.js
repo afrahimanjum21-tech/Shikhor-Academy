@@ -3,6 +3,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import MediaAsset from '../../models/MediaAsset.js';
+import sequelize from '../../config/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,6 +15,47 @@ const UPLOADS_DIR = process.env.VERCEL === '1'
 
 const USE_DATABASE_STORAGE = process.env.VERCEL === '1' || process.env.MEDIA_DRIVER === 'database';
 
+let mediaAssetSchemaPromise;
+
+async function ensureMediaAssetSchema() {
+  if (!USE_DATABASE_STORAGE) return;
+  if (!mediaAssetSchemaPromise) {
+    mediaAssetSchemaPromise = (async () => {
+      const queryInterface = sequelize.getQueryInterface();
+      const tableName = MediaAsset.getTableName();
+      const attributes = MediaAsset.rawAttributes;
+      const existingTables = await queryInterface.showAllTables();
+      const tableExists = existingTables.some(
+        (table) => String(table) === String(tableName)
+          || String(table).toLowerCase() === String(tableName).toLowerCase()
+      );
+
+      if (!tableExists) {
+        await queryInterface.createTable(tableName, attributes);
+        for (const index of MediaAsset.options.indexes || []) {
+          await queryInterface.addIndex(
+            tableName,
+            index.fields || index.attributes,
+            index
+          );
+        }
+        return;
+      }
+
+      const columns = await queryInterface.describeTable(tableName);
+      for (const [name, definition] of Object.entries(attributes)) {
+        if (!columns[name]) {
+          await queryInterface.addColumn(tableName, name, definition);
+        }
+      }
+    })().catch((error) => {
+      mediaAssetSchemaPromise = undefined;
+      throw error;
+    });
+  }
+  await mediaAssetSchemaPromise;
+}
+
 class LocalFileService {
   async upload(file, options = {}) {
     const folder = options.folder || 'general';
@@ -21,6 +63,7 @@ class LocalFileService {
     const filename = `${folder}_${Date.now()}_${uuidv4().slice(0, 8)}${ext}`;
 
     if (USE_DATABASE_STORAGE) {
+      await ensureMediaAssetSchema();
       const data = file.buffer || (file.path ? fs.readFileSync(file.path) : null);
       if (!data) {
         throw new Error('No file data available');
@@ -71,6 +114,7 @@ class LocalFileService {
     const filename = `${folder}_${Date.now()}_${uuidv4().slice(0, 8)}${ext}`;
 
     if (USE_DATABASE_STORAGE) {
+      await ensureMediaAssetSchema();
       await MediaAsset.create({
         folder,
         filename,

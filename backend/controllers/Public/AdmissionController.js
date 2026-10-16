@@ -126,7 +126,7 @@ export async function submit(req, res) {
     if (normalizedEmail) {
       await sendEmail({
         to: normalizedEmail,
-        subject: 'Admission Application Received - Uttoron Coaching Centre',
+        subject: 'Admission Application Received - Shikhor Academy',
         html: `
           <h2>Thank You for Your Application!</h2>
           <p>Dear ${escapeHtml(full_name)},</p>
@@ -134,7 +134,7 @@ export async function submit(req, res) {
           ${course ? `<p><strong>Course Applied:</strong> ${escapeHtml(course.title)}</p>` : ''}
           <p>If you have any questions, please contact us.</p>
           <br/>
-          <p>Best Regards,<br/>Uttoron Coaching Centre</p>
+          <p>Best Regards,<br/>Shikhor Academy</p>
         `,
       });
     }

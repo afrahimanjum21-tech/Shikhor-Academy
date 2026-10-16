@@ -42,12 +42,12 @@ export async function submit(req, res) {
 
     await sendEmail({
       to: email,
-      subject: 'We Received Your Message - Uttoron Coaching Centre',
+      subject: 'We Received Your Message - Shikhor Academy',
       html: `
         <h2>Thank You for Contacting Us!</h2>
         <p>Dear ${escapeHtml(name)},</p>
         <p>We have received your message and will get back to you as soon as possible.</p>
-        <p>Best Regards,<br/>Uttoron Coaching Centre</p>
+        <p>Best Regards,<br/>Shikhor Academy</p>
       `,
     });
 

@@ -192,6 +192,33 @@ export const store = async (req, res) => {
       updateOnDuplicate: ['status', 'session'],
     });
 
+    try {
+      const grouped = attendanceData.reduce((groups, record) => {
+        const key = record.status === 'late' ? 'late' : record.status === 'absent' ? 'absent' : 'present';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(record.student_id);
+        return groups;
+      }, {});
+      const messages = {
+        present: ['Attendance Marked Present', 'Your attendance was marked present'],
+        absent: ['Attendance Marked Absent', 'Your attendance was marked absent'],
+        late: ['Attendance Marked Late', 'Your attendance was marked late'],
+      };
+      await Promise.all(Object.entries(grouped).map(([status, studentIds]) => {
+        const [title, body] = messages[status];
+        return NotificationService.createForStudents({
+          userIds: studentIds,
+          type: status === 'late' ? 'late' : 'attendance',
+          title,
+          body: `${body} for ${date}.`,
+          actionUrl: '/student/attendance-report',
+          actionLabel: 'View Attendance',
+        });
+      }));
+    } catch (notifErr) {
+      console.error('Failed to notify students about attendance:', notifErr);
+    }
+
     return res.json({ message: 'Attendance saved successfully', count: attendanceData.length });
   } catch (error) {
     console.error('AttendanceController.store error:', error);
@@ -216,7 +243,11 @@ export const saveCell = async (req, res) => {
       return res.status(400).json({ message: 'This student does not belong to the selected course' });
     }
 
-    const [attendance, created] = await models.Attendance.upsert({
+    const previousStatus = (await models.Attendance.findOne({
+      where: { student_id, date, session: resolveSession(session) },
+      attributes: ['status'],
+    }))?.status;
+    const [attendance] = await models.Attendance.upsert({
       student_id,
       course_id,
       batch_id: studentBatchId,
@@ -226,6 +257,22 @@ export const saveCell = async (req, res) => {
       punch_in_at: punch_in_at || null,
       punch_out_at: punch_out_at || null,
     });
+
+    if (previousStatus !== status) {
+      try {
+        const student = await models.Student.findByPk(student_id, { attributes: ['user_id'] });
+        await NotificationService.create({
+          userId: student?.user_id,
+          type: status === 'late' ? 'late' : 'attendance',
+          title: `Attendance Marked ${status.charAt(0).toUpperCase()}${status.slice(1)}`,
+          body: `Your attendance was marked ${status} for ${date}.`,
+          actionUrl: '/student/attendance-report',
+          actionLabel: 'View Attendance',
+        });
+      } catch (notifErr) {
+        console.error('Failed to notify student about attendance:', notifErr);
+      }
+    }
 
     return res.json({ message: 'Cell updated successfully', data: attendance });
   } catch (error) {
@@ -482,6 +529,14 @@ export const requestLeave = async (req, res) => {
         body: `Leave request for ${date}: ${reason}`,
         actionUrl: '/admin/attendance/leave-requests',
         actionLabel: 'Review Leave',
+      });
+      await NotificationService.create({
+        userId: req.user.id,
+        type: 'leave',
+        title: 'Leave Request Submitted',
+        body: `Your leave request for ${date} has been submitted for review.`,
+        actionUrl: '/student/attendance-report',
+        actionLabel: 'View Attendance',
       });
     } catch (notifErr) {
       console.error('Failed to notify admins of leave request:', notifErr);

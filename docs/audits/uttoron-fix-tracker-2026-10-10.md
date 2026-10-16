@@ -382,6 +382,53 @@ Tests / commands + outcomes: `node --check` clean on all edited backend files. B
 
 Remaining risks / notes: (1) the admin monthly sheet + leave UI are verified by backend tests + eslint, not a running React harness — ON-DEVICE CHECK: leave requests now show real names + are searchable; a teacher-marked class refuses a student leave with a clear message; morning punch-in → afternoon punch-out works; the monthly % no longer drops for pending leave. (2) `requestLeave`'s 409 relies on finding the existing row by (student, date, resolvedSession) — if a legacy row has a NULL session it won't match, but migration 002 backfilled those. (3) `batch_id`/`course_id` stay non-FK by existing design. New findings this phase: none.
 
+### Home mobile compact pass 2 — verified
+
+The second compact responsive pass was verified on the Home page at 360×800, 390×844, 768×1024, and 1440×900. Mobile sections were intentionally recomposed with smaller spacing and type while preserving readable hierarchy, 48px primary tap targets, the navy/brass/paper visual system, and the existing API-driven content. No page-level horizontal overflow was detected at any checked width.
+
+Validation:
+
+- `npm run lint` — exit 0; only pre-existing warnings.
+- `npm run build` — passed (`vite build`).
+
+### Site Settings About photo chooser interaction — verified
+
+Replaced the nested label/file-input chooser with an explicit `type="button"` trigger and hidden file input. This prevents the upload control from participating in the settings form's submit/reset behavior while preserving keyboard and mouse activation.
+
+Authenticated browser verification:
+
+- Opened `/admin/site-settings`.
+- Selected a Mission photo and a Vision photo through the real file chooser.
+- The page remained rendered at `/admin/site-settings`.
+- Selected previews appeared correctly; no blank page or runtime error occurred.
+- Problems check — no errors in `Home.jsx`, `HeroSection.jsx`, `StatsSection.jsx`, `FeatureCards.jsx`, or the Home `SuccessStories.jsx`.
+- Browser checks — no horizontal overflow at all four widths; CTA links measured 48px on mobile and 56px at tablet/desktop.
+- Visual check — mobile screenshot reviewed at 390×844; hero, trust points, CTA buttons, logo proof card, and success-rate badge remain composed and readable.efuses a student leave with a clear message; morning punch-in → afternoon punch-out works; the monthly % no longer drops for pending leave. (2) `requestLeave`'s 409 relies on finding the existing row by (student, date, resolvedSession) — if a legacy row has a NULL session it won't match, but migration 002 backfilled those. (3) `batch_id`/`course_id` stay non-FK by existing design. New findings this phase: none.
+
+### Dynamic About page photos — verified
+
+Added three context-specific Site Settings image fields for the public About page: Mission, Vision, and Approach. The admin form previews selected images and submits them through the existing authenticated settings save flow. The backend stores the resulting media URLs, replaces old files safely, and exposes the fields through the existing public settings endpoint. The About page renders each configured image with a contextual accessible alt label and keeps the existing icon treatment as a fallback when no image is configured.
+
+Validation:
+
+- Problems check — no errors in the edited About, Site Settings, backend model/controller/routes, or migration files.
+- Backend syntax checks — passed for all edited backend files.
+- Site Settings regression tests — 6/6 passed.
+- `npm run lint` — exit 0; only pre-existing warnings.
+- `npm run build` — passed (`vite build`).
+- Browser check — About page rendered configured test image URLs in all three section slots with no horizontal overflow.
+- Database migration added: `019-site-setting-about-photos.mjs`; it is additive and idempotent. It must be applied in the deployment environment before saving the new fields.efuses a student leave with a clear message; morning punch-in → afternoon punch-out works; the monthly % no longer drops for pending leave. (2) `requestLeave`'s 409 relies on finding the existing row by (student, date, resolvedSession) — if a legacy row has a NULL session it won't match, but migration 002 backfilled those. (3) `batch_id`/`course_id` stay non-FK by existing design. New findings this phase: none.
+
+### Site Settings About photo upload blank-page fix — verified
+
+Separated newly selected About image `File` objects from the persisted settings URL state in the admin Site Settings form. The form now previews and submits only validated image files while keeping existing setting values as strings, preventing a runtime crash and white blank page after choosing an upload.
+
+Validation:
+
+- Problems check — no errors in `SiteSettings.jsx`.
+- `npm run lint` — exit 0; only pre-existing warnings.
+- `npm run build` — passed (`vite build`).efuses a student leave with a clear message; morning punch-in → afternoon punch-out works; the monthly % no longer drops for pending leave. (2) `requestLeave`'s 409 relies on finding the existing row by (student, date, resolvedSession) — if a legacy row has a NULL session it won't match, but migration 002 backfilled those. (3) `batch_id`/`course_id` stay non-FK by existing design. New findings this phase: none.
+
 Next recommended phase: **Phase 5 — admin/UI correctness + hygiene** (C13, C17–C22, D3–D6, D9, D11–D21, H-low5/7/9, I-7–I-10, I-16, I-dead) or the remaining results-correctness items (D1, D2, I-3, I-4, I-12–I-15, I-18). Do not start it (or Phase 2b / the C24·H-cfg1·J decisions) until prompted.
 
 ---
@@ -403,6 +450,43 @@ Scope (§D, I-3, I-4, I-12, I-13, I-14, I-15, I-18, E4, J, K, L/E3). Verified ag
 
 Plan: route ALL three mark-write paths through `ExamResultService` (compute + `recomputeExam`) so persisted grade/gpa/position are canonical (§D, I-3, I-4, I-12, I-13, I-15); add a shared `marksValidation` helper and REJECT (4xx) out-of-range/non-numeric on both teacher paths + assignment grading (I-14, J) — documenting that this replaces the silent clamp; wrap `storeMarks` in a transaction + course-batch scope (B); clear `published_subjects` on unpublish (E4) and filter `myResults`/dashboard to published subjects for both marks AND summary (I-18); record+surface assignment lateness without inventing a grace period (K); keep legacy routes and document the E3 retire plan (L). Unit-test the pure helpers + model-stubbed controller paths. No migration/commit/deploy.
 
+## Success Story Detail UI — verified
+
+- Updated `frontend/src/pages/SuccessStoryDetail.jsx` for the approved Shikhor Academy visual system: compact navy editorial hero, white page canvas, brass achievement treatment, paper reading surfaces, responsive related-story cards, accessible focus states, and touch-friendly CTAs.
+- Preserved the existing detail API, SEO metadata, real story content, photo handling, related-story links, and admission/contact actions. No records or claims were added.
+- Verification: `problems` reported no errors; `npm run lint` exited 0 with the repository's pre-existing warnings; `npm run build` completed successfully.
+- Browser verification used real story route `/success-stories/rahim-uddin` at 360×800, 390×844, 768×1024, and 1440×900. The page rendered with a white canvas, distinct navy hero, stacked mobile content, loaded images, and no unintended horizontal overflow.
+
+## Success Stories CTA width — verified
+
+- Expanded the closing CTA navy band on both `frontend/src/pages/SuccessStories.jsx` and `frontend/src/pages/SuccessStoryDetail.jsx` to the full viewport width, matching the public navbar edge-to-edge treatment while keeping inner copy constrained for readability.
+- Verification: `problems` reported no errors; `npm run lint` exited 0 with pre-existing warnings; `npm run build` completed successfully.
+- Browser verification confirmed the CTA spans the viewport at desktop and mobile widths on `/success-stories` and `/success-stories/rahim-uddin`, with no horizontal overflow.
+
+## Success Stories footer spacing — verified
+
+- Normalized the CTA-to-footer spacing on both Success Stories routes to a consistent 32px closing gap. The listing page's excessive bottom padding was reduced, and the detail page now uses a dedicated bottom-padding wrapper to avoid margin collapse.
+- Browser measurement confirmed a 32px gap between the navy CTA and footer on both `/success-stories` and `/success-stories/rahim-uddin` at desktop width, with no page-level overflow.
+
+## Success Stories CTA/footer direct connection — verified
+
+- Removed the optional bottom spacing from both Success Stories pages so the full-width navy CTA connects directly to the footer, as requested.
+- Detail-page top breathing room remains intact via wrapper padding rather than a collapsing section margin.
+- Verification: `problems` reported no errors; `npm run lint` exited 0 with pre-existing warnings; `npm run build` completed successfully. Browser verification confirmed zero CTA-to-footer gap on both routes after the entrance animation settled.
+
+## Mobile footer refinement — verified
+
+- Refined the shared `frontend/src/components/common/Footer.jsx` for premium mobile composition: compact brand block, two-column quick-links/contact arrangement, tighter typography and icon rhythm, balanced section spacing, and a smaller copyright row. Desktop spacing and three-column layout remain preserved from the `sm` breakpoint upward.
+- Browser verification on `/success-stories/rahim-uddin`: footer reduced from approximately 543px to 430px at 390px width, email wrapping remained controlled, and no horizontal overflow occurred. Desktop footer remained approximately 377px.
+- Verification: `problems` reported no errors; `npm run lint` exited 0 with pre-existing warnings; `npm run build` completed successfully.
+
+## Home mobile premium refinement — verified
+
+- Refined the Home page's mobile composition across `HeroSection`, `StatsSection`, `FeatureCards`, Home `SuccessStories`, featured faculty, and the closing CTA. Mobile now uses intentional compact spacing, readable type scale, balanced card padding, full-width 48px actions, a smaller logo proof card, and two-column trust/stat arrangements instead of a squeezed desktop layout. Desktop styling remains available from the `sm` breakpoint upward.
+- Added the project-level premium responsive UI rule in `.github/copilot-instructions.md`: use premium editorial/product patterns, recompose mobile layouts rather than merely shrinking desktop, preserve touch targets, and verify 360px/390px/tablet/desktop widths.
+- Browser verification at 360×800, 390×844, 768×1024, and 1440×900 confirmed no horizontal overflow. At 390px, primary Home buttons render at 48px height and full content width; the hero and section rhythm are substantially more compact and composed.
+- Verification: edited-file `problems` reported no errors; `npm run lint` exited 0 with pre-existing warnings; `npm run build` completed successfully.
+
 ### Phase 5 — results (complete; tests pass)
 
 All items **Fixed—tests pass**: §D (D1), D2/B, D3/J, D4/K, I-3, I-4, I-12, I-13, I-14, I-15, I-18, E4. L/E3: grade source-of-truth unified, legacy routes KEPT + tested, retire plan documented below.
@@ -418,6 +502,10 @@ Root causes + fixes:
 - **D2/B** — `storeMarks` now (1) verifies every posted student belongs to a batch of the exam's course (400 otherwise) and (2) validates all marks, then writes the batch inside `sequelize.transaction` so a mid-batch failure rolls back every row (no partial save).
 - **I-14/J** — new `services/marksValidation.js` (`validateMark`, `validateMarksDetails`, `fullMarksForSubject`); both teacher mark paths and `gradeSubmission` reject non-numeric/negative/above-full with 4xx and never persist invalid values.
 - **I-18/E4** — `togglePublish` clears `published_subjects` on unpublish (revokes visibility; marks untouched). `ExamResultService` gained `visibleSubjectSet` + a `restrictToPublished` mode: `myResults` and the student dashboard now filter marks_details AND compute the summary/rank only over the subjects a student may see (fully-published = all; partial = published_subjects only).
+
+### Success Stories page redesign — 2026-10-15
+
+Verified complete: redesigned the public `/success-stories` listing in `frontend/src/pages/SuccessStories.jsx`. The page now uses the existing navy/brass/paper design tokens, preserves the existing `PageBackground` pattern, keeps the real success-stories API/search/sort/load-more/detail-link behavior, and provides responsive story cards, empty/loading states, and accessible focus/tap targets. Verified at 360px and 1440px widths with no page-level horizontal overflow.
 - **K** — `StudentAssignmentController.submit` compares the submission date (Asia/Dhaka) to `due_date`, stores `status:'late'` when past due, and both `submit` and `results` expose a derived `is_late`.
 
 Files changed — backend: `services/ExamResultService.js` (visible-subject filtering + transaction option), `services/marksValidation.js` (new), `controllers/Admin/ExamController.js` (storeMarks transaction+scope+validation; unpublish clears published_subjects; myResults restrictToPublished), `controllers/Admin/PaymentController.js` (studentExamResults enriched + percentage Pass/Fail), `controllers/Teacher/TeacherResultController.js` + `controllers/Teacher/TeacherMarksController.js` (validate + canonical compute + recompute), `controllers/Teacher/TeacherAssignmentController.js` (gradeSubmission validation), `controllers/Student/StudentAssignmentController.js` (lateness), `controllers/Student/DashboardController.js` (recent results restrictToPublished). New tests: `tests/{grade-service,marks-validation,exam-result-service,exam-store-marks,assignment-grade-submit}.test.mjs`; `tests/teacher-marks-authorization.test.mjs` updated for the recompute step.
@@ -736,18 +824,6 @@ User-requested forward-looking feature (machine not purchased yet; built device-
 - **Files:** `middleware/deviceAuth.js`, `services/attendanceIngest.js` (pure classify), `controllers/Integration/AttendanceDeviceController.js`, `routes/integrations.js` (mounted in app.js), `models/AttendancePunch.js` + `Student.device_user_id` + index.js, `.env.example` keys. Sample agent `tools/attendance-agent/` + doc `docs/integrations/attendance-device.md`.
 - **Tests:** `attendance-ingest-pure` (7: classifyPunch present/late/evening/date-rollover/invalid + deviceAuth disabled/wrong/right) + `attendance-device` (5: mapped-create, duplicate, unmapped, 400, enroll 200/404/409/400). Backend total now **180 pass / 42 files**. Backend boots (`import app.js` OK). CSRF middleware auto-exempts the device POST (no session cookie). Nothing committed/deployed.
 - **Follow-ups:** wire a `device_user_id` field into the admin student-edit UI (currently settable via the enroll endpoint); fine-tune session/late rules when the real machine + schedule are known.
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

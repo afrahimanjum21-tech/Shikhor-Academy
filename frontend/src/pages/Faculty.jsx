@@ -4,10 +4,15 @@ import { buildAssetUrl } from "../services/config";
 import { User, Search, Star, BookOpen, Award, Briefcase, GraduationCap, ArrowRight, Users2, SlidersHorizontal, X, Mail, Phone, BadgeCheck, ExternalLink, FlaskConical } from "lucide-react";
 import usePageMeta from "../hooks/usePageMeta";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 import logger from '../services/logger';
-import PageBackground from "../components/common/PageBackground";
+
+// Boxed-select chevron (slate) reused by all three filter dropdowns.
+const SELECT_CHEVRON =
+    "bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px] bg-[right_12px_center] bg-no-repeat";
+const selectCls =
+    `h-11 min-w-[140px] flex-1 appearance-none rounded-xl border border-slate-200 bg-paper px-3.5 pr-9 text-sm text-slate-600 outline-none transition focus:border-ink focus:ring-2 focus:ring-ink/15 sm:w-44 sm:flex-none ${SELECT_CHEVRON}`;
 
 // Brand-colored social SVG icons
 const SocialIcons = {
@@ -34,8 +39,8 @@ const SocialColors = {
 
 export default function Faculty() {
     usePageMeta({
-        title: "Our Faculty — Uttoron Coaching Centre",
-        description: "Meet the experienced teachers of Uttoron Coaching Centre who guide students toward academic excellence in HSC and SSC.",
+        title: "Our Faculty — Shikhor Academy",
+        description: "Meet the experienced teachers of Shikhor Academy who guide students toward academic excellence in HSC and SSC.",
         path: "/faculty",
     });
     const [faculty, setFaculty] = useState([]);
@@ -132,49 +137,55 @@ export default function Faculty() {
     };
 
     return (
-        <div className="min-h-screen relative overflow-hidden">
-            <PageBackground />
-            {/* Page Header */}
-            <div className="max-w-6xl mx-auto px-4 pt-12 pb-6 text-center">
-                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-                    <h1 className="text-4xl md:text-5xl font-bold text-[#1F4E79] mb-4">Meet Our Expert Faculty</h1>
-                    <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-                        Dedicated mentors with proven expertise, committed to guiding you toward academic excellence
-                    </p>
-                </motion.div>
-            </div>
+        <div className="min-h-screen font-sans">
+            {/* Page Header — navy band (segment colour) */}
+            <section className="relative overflow-hidden bg-ink text-white">
+                <div className="pointer-events-none absolute inset-0 opacity-50" style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)", backgroundSize: "22px 22px" }} aria-hidden="true" />
+                <div className="relative mx-auto max-w-6xl px-4 py-10 text-center sm:px-6 lg:py-12">
+                    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: "easeOut" }}>
+                        <p className="mb-1 font-bangla text-sm text-brass-100">আমাদের শিক্ষকমণ্ডলী</p>
+                        <h1 className="font-display text-[1.7rem] font-semibold leading-tight sm:text-[2rem]">Meet our expert faculty</h1>
+                        <div className="mx-auto mt-3 h-px w-12 bg-brass" aria-hidden="true" />
+                        <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-300 sm:text-base">
+                            Dedicated mentors with proven expertise, committed to guiding you toward academic excellence.
+                        </p>
+                    </motion.div>
+                </div>
+            </section>
 
-            <div className="max-w-6xl mx-auto px-4 pb-16">
+            <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
                 {/* Search & Filters */}
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-                    <div className="flex flex-wrap items-end justify-between gap-y-3">
-                        {/* Search Bar */}
-                        <div className="relative w-full sm:w-64 md:w-72">
-                            <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                    className="mb-8 rounded-2xl border border-slate-200/80 bg-paper p-4 shadow-card sm:p-5">
+                    <div className="flex flex-col gap-3">
+                        {/* Search Bar — full width */}
+                        <div className="relative w-full">
+                            <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} aria-hidden="true" />
                             <input type="text" placeholder="Search faculty..." value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-6 pr-0 h-9 bg-transparent border-b border-gray-200 focus:border-[#1F4E79] transition-all text-sm outline-none" />
+                                aria-label="Search faculty"
+                                className="h-11 w-full rounded-xl border border-slate-200 bg-paper pl-10 pr-4 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-ink focus:ring-2 focus:ring-ink/15" />
                         </div>
                         {/* Filters */}
-                        <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+                        <div className="flex flex-wrap items-center gap-2.5">
                             <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
-                                className="h-9 px-2 bg-transparent border-b border-gray-200 focus:border-[#1F4E79] transition-all text-sm outline-none text-gray-500 appearance-none w-[30%] min-w-[100px] sm:w-32 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23d1d5db%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px] bg-[right_8px_center] bg-no-repeat">
+                                aria-label="Filter by category" className={selectCls}>
                                     <option value="">All Categories</option>
                                     {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                                 </select>
                             <select value={filterDepartment} onChange={(e) => setFilterDepartment(e.target.value)}
-                                className="h-9 px-2 bg-transparent border-b border-gray-200 focus:border-[#1F4E79] transition-all text-sm outline-none text-gray-500 appearance-none w-[30%] min-w-[110px] sm:w-36 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23d1d5db%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px] bg-[right_8px_center] bg-no-repeat">
+                                aria-label="Filter by department" className={selectCls}>
                                     <option value="">All Departments</option>
                                     {departments.map((dept) => <option key={dept.id} value={dept.id}>{dept.name}</option>)}
                                 </select>
-                             <select value={filterSubject} onChange={(e) => setFilterSubject(e.target.value)}
-                                className="h-9 px-2 bg-transparent border-b border-gray-200 focus:border-[#1F4E79] transition-all text-sm outline-none text-gray-500 appearance-none w-[30%] min-w-[110px] sm:w-40 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23d1d5db%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px] bg-[right_8px_center] bg-no-repeat">
+                            <select value={filterSubject} onChange={(e) => setFilterSubject(e.target.value)}
+                                aria-label="Filter by subject" className={selectCls}>
                                     <option value="">All Subjects</option>
                                     {subjects.map((sub) => <option key={sub.id} value={sub.id}>{sub.name}</option>)}
                                 </select>
                             <button onClick={() => { setSearchTerm(''); setFilterCategory(''); setFilterDepartment(''); setFilterSubject(''); }}
-                                className="h-9 text-xs font-semibold text-gray-400 hover:text-[#1F4E79] transition-colors whitespace-nowrap">
-                                Reset Filters
+                                className="h-11 whitespace-nowrap rounded-xl px-4 text-xs font-semibold text-slate-500 transition-colors hover:text-ink">
+                                Reset filters
                             </button>
                         </div>
                     </div>
@@ -182,98 +193,81 @@ export default function Faculty() {
 
                 {/* Results header */}
                 {!loading && faculty.length > 0 && (
-                    <div className="flex items-center justify-between mb-6">
-                        <p className="text-sm text-gray-500">
-                            Found <span className="font-semibold text-gray-800">{total}</span> faculty member{total !== 1 ? 's' : ''}
+                    <div className="mb-6 flex items-center justify-between">
+                        <p className="text-sm text-slate-500">
+                            Showing <span className="font-semibold text-ink">{total}</span> faculty member{total !== 1 ? 's' : ''}
                         </p>
                     </div>
                 )}
 
                 {/* Faculty Grid */}
                 {loading ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 md:gap-x-6 gap-y-6 md:gap-y-10">
+                    <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
                         {[...Array(8)].map((_, i) => (
-                            <div key={i} className="flex flex-col items-center animate-pulse">
-                                <div className="w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 lg:w-44 lg:h-44 rounded-full bg-gray-200 mb-3 md:mb-5"></div>
-                                <div className="space-y-2 md:space-y-3 text-center w-full px-2">
-                                    <div className="flex justify-center"><div className="h-2.5 md:h-3 w-12 md:w-16 bg-gray-200 rounded"></div></div>
-                                    <div className="h-3 md:h-4 bg-gray-200 rounded w-28 md:w-40 mx-auto"></div>
-                                    <div className="h-2.5 md:h-3 bg-gray-200 rounded w-20 md:w-28 mx-auto"></div>
-                                </div>
+                            <div key={i} className="flex animate-pulse flex-col items-center rounded-2xl border border-slate-200/80 bg-paper p-4 shadow-card sm:p-5">
+                                <div className="mb-4 h-20 w-20 rounded-full bg-slate-200 sm:h-24 sm:w-24 md:h-28 md:w-28" />
+                                <div className="h-4 w-24 rounded bg-slate-200" />
+                                <div className="mt-2 h-3 w-20 rounded bg-slate-200" />
+                                <div className="mt-3 h-3 w-16 rounded bg-slate-200" />
                             </div>
                         ))}
                     </div>
                 ) : faculty.length === 0 ? (
-                    <div className="text-center py-20">
-                        <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-4">
-                            <User size={36} className="text-gray-300" />
+                    <div className="py-20 text-center">
+                        <div className="mx-auto mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-paper text-slate-400">
+                            <User size={32} aria-hidden="true" />
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-700">No faculty members found</h3>
-                        <p className="text-gray-400 text-sm mt-1">Try adjusting your filters</p>
+                        <h3 className="font-display text-xl font-semibold text-ink">No faculty members found</h3>
+                        <p className="mt-1 text-sm text-slate-500">Try adjusting your search or filters.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 md:gap-x-6 gap-y-6 md:gap-y-10">
-                        {faculty.map((fac, idx) => (
-                            <motion.div key={fac.id}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                initial={{ opacity: 0, y: 30 }}
-                                viewport={{ once: true, margin: "-40px" }}
-                                transition={{ duration: 0.45, delay: Math.min(idx * 0.06, 0.4) }}
-                                onClick={() => navigate(`/faculty/${fac.slug}`)}
-                                className="flex flex-col items-center text-center cursor-pointer group">
-                                {/* Circular Photo */}
-                                <div className="w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 lg:w-44 lg:h-44 rounded-full overflow-hidden bg-gray-100 mb-3 md:mb-5">
-                                    {fac.profile_photo_path ? (
-                                        <img src={buildAssetUrl(fac.profile_photo_path)} alt={fac.full_name}
-                                            loading="lazy"
-                                            onError={(e) => { e.target.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E`; e.target.classList.add('p-4'); }}
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                    ) : (
-                                        <div className="w-full h-full bg-[#E6EEF5] flex items-center justify-center">
-                                            <User size={24} className="text-gray-400" />
-                                        </div>
+                    <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
+                        {faculty.map((fac) => (
+                            <Link key={fac.id} to={`/faculty/${fac.slug}`}
+                                className="group flex flex-col items-center rounded-2xl border border-slate-200/80 bg-paper p-4 text-center shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-brass/40 hover:shadow-card-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30 sm:p-5">
+                                {/* Portrait */}
+                                <div className="relative mb-4">
+                                    <div className="h-20 w-20 overflow-hidden rounded-full bg-paper ring-2 ring-brass-100 sm:h-24 sm:w-24 md:h-28 md:w-28">
+                                        {fac.profile_photo_path ? (
+                                            <img src={buildAssetUrl(fac.profile_photo_path)} alt={fac.full_name} loading="lazy"
+                                                onError={(e) => { e.target.onerror = null; e.target.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23cbd5e1'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E`; e.target.classList.add('p-5'); }}
+                                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                                        ) : (
+                                            <div className="flex h-full w-full items-center justify-center bg-ink/5">
+                                                <User size={26} className="text-ink/30" aria-hidden="true" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    {fac.is_featured && (
+                                        <span className="absolute -bottom-1 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-brass px-2 py-0.5 text-[10px] font-semibold text-ink shadow-sm">
+                                            <Star size={9} fill="currentColor" aria-hidden="true" /> Featured
+                                        </span>
                                     )}
                                 </div>
                                 {/* Content */}
-                                <div>
-                                    {fac.is_featured && (
-                                        <div className="flex justify-center mb-1 md:mb-2">
-                                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded-full text-[9px] md:text-[10px] font-semibold border border-amber-200/60">
-                                                <Star size={9} fill="currentColor" /> Featured
-                                            </span>
-                                        </div>
-                                    )}
-                                    <h3 className="text-sm md:text-lg font-bold text-gray-900 leading-tight group-hover:text-[#1F4E79] transition-colors duration-300">
-                                        {fac.full_name}
-                                    </h3>
-                                    <p className="text-[11px] md:text-sm font-medium text-gray-500 mt-0.5 md:mt-1">{fac.designation}</p>
-                                    {fac.department?.name && (
-                                        <p className="text-[9px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em] mt-1 md:mt-2">
-                                            {fac.department.name}
-                                        </p>
-                                    )}
-                                    {fac.specialization && (
-                                        <p className="text-[11px] md:text-sm text-gray-600 mt-1 md:mt-3 leading-relaxed line-clamp-1 hidden md:block">{fac.specialization}</p>
-                                    )}
-                                    <div className="mt-2 md:mt-4">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); navigate(`/faculty/${fac.slug}`); }}
-                                            className="inline-flex items-center gap-1 md:gap-2 px-3 md:px-4 py-1 md:py-2 text-[11px] md:text-sm font-semibold text-gray-500 border border-gray-200 rounded-full hover:text-white hover:bg-[#1F4E79] hover:border-[#1F4E79] transition-all duration-300 group/btn"
-                                        >
-                                            Profile <ArrowRight size={12} className="transition-transform duration-300 group-hover/btn:translate-x-1" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </motion.div>
+                                <h3 className="font-display text-base font-semibold leading-tight text-ink transition-colors group-hover:text-primary sm:text-lg">
+                                    {fac.full_name}
+                                </h3>
+                                <p className="mt-1 text-xs font-medium text-slate-600 sm:text-sm">{fac.designation}</p>
+                                {fac.department?.name && (
+                                    <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400 sm:text-[11px]">{fac.department.name}</p>
+                                )}
+                                {fac.specialization && (
+                                    <p className="mt-2 hidden line-clamp-1 text-xs text-slate-500 sm:block">{fac.specialization}</p>
+                                )}
+                                <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brass-600 transition-all group-hover:gap-2">
+                                    View profile <ArrowRight size={13} aria-hidden="true" />
+                                </span>
+                            </Link>
                         ))}
                     </div>
                 )}
 
                 {!loading && faculty.length > 0 && faculty.length < total && (
-                    <div className="flex justify-center mt-10">
+                    <div className="mt-10 flex justify-center">
                         <button onClick={loadMore}
-                            className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-[#1F4E79] border border-[#1F4E79] rounded-full hover:bg-[#1F4E79] hover:text-white transition-all duration-300">
-                            Load More
+                            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-ink px-6 py-2.5 text-sm font-semibold text-ink transition-all duration-300 hover:bg-ink hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30">
+                            Load more
                         </button>
                     </div>
                 )}
@@ -285,10 +279,10 @@ export default function Faculty() {
                     <motion.div 
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+                        className="bg-paper rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
                     >
                         {/* Modal Header */}
-                        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between z-10">
+                        <div className="sticky top-0 bg-paper border-b border-gray-200 p-6 flex items-center justify-between z-10">
                             <h2 className="text-2xl font-bold text-gray-800">Faculty Details</h2>
                             <button 
                                 onClick={() => { setShowModal(false); setSelectedFaculty(null); }}
@@ -378,7 +372,7 @@ export default function Faculty() {
                                     <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><GraduationCap size={18} className="text-[#1F4E79]" /> Educational Qualifications</h4>
                                     <div className="space-y-2">
                                         {selectedFaculty.qualifications.map((qual, idx) => (
-                                            <div key={idx} className="flex gap-3 p-3 bg-white rounded-lg border border-gray-100">
+                                            <div key={idx} className="flex gap-3 p-3 bg-paper rounded-lg border border-gray-100">
                                                 <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-[#1F4E79]/10 flex items-center justify-center"><GraduationCap size={16} className="text-[#1F4E79]" /></div>
                                                 <div className="flex-1">
                                                     <p className="font-semibold text-gray-800 text-sm">{qual.degree}{qual.field_of_study ? ` in ${qual.field_of_study}` : ''}</p>
@@ -400,7 +394,7 @@ export default function Faculty() {
                                     <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Award size={18} className="text-[#1F4E79]" /> Achievements</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                         {selectedFaculty.achievements.map((ach, idx) => (
-                                            <div key={idx} className="p-3 bg-white rounded-lg border border-gray-100">
+                                            <div key={idx} className="p-3 bg-paper rounded-lg border border-gray-100">
                                                 <p className="font-semibold text-gray-800 text-sm">{ach.title}</p>
                                                 {ach.description && <p className="text-gray-600 text-xs mt-1">{ach.description}</p>}
                                                 <div className="flex items-center gap-2 mt-2">
@@ -419,7 +413,7 @@ export default function Faculty() {
                                     <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Award size={18} className="text-[#1F4E79]" /> Certifications</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                         {selectedFaculty.certifications.map((cert, idx) => (
-                                            <div key={idx} className="p-3 bg-white rounded-lg border border-gray-100">
+                                            <div key={idx} className="p-3 bg-paper rounded-lg border border-gray-100">
                                                 <p className="font-semibold text-gray-800 text-sm">{cert.name}</p>
                                                 <p className="text-gray-600 text-xs">{cert.issuing_organization}</p>
                                                 <div className="flex gap-3 mt-1 text-xs text-gray-500">
@@ -455,7 +449,7 @@ export default function Faculty() {
                                     <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Users2 size={18} className="text-[#1F4E79]" /> Assigned Batches</h4>
                                     <div className="space-y-2">
                                         {selectedFaculty.batches.map((batch, idx) => (
-                                            <div key={idx} className="p-3 bg-white rounded-lg border border-gray-100">
+                                            <div key={idx} className="p-3 bg-paper rounded-lg border border-gray-100">
                                                 <p className="font-medium text-gray-800 text-sm">{batch.batch?.name || batch.name || 'Batch'}</p>
                                                 {batch.subject && <p className="text-xs text-[#1F4E79]">Subject: {batch.subject}</p>}
                                             </div>

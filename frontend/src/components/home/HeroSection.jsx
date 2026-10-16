@@ -3,200 +3,104 @@ import { Check, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import api from "../../services/api";
-import { buildAssetUrl } from "../../services/config";
-import FALLBACK_HERO from "../../images/hero-background.jpg";
+import LOGO from "../../images/uttoron-logo.png";
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
-};
-
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.15, delayChildren: 0.1 },
-  },
-};
+// One orchestrated entrance for the hero (the single page-load moment).
+const container = { hidden: {}, visible: { transition: { staggerChildren: 0.12, delayChildren: 0.05 } } };
+const up = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
 
 export default function HeroSection() {
   const [settings, setSettings] = useState(null);
 
   useEffect(() => {
-    api.get('/public/site-settings')
-      .then(({ data }) => setSettings(data))
-      .catch(() => {});
+    api.get('/public/site-settings').then(({ data }) => setSettings(data)).catch(() => {});
   }, []);
 
   const currentYear = new Date().getFullYear();
   const establishedYear = settings?.established_year ||
     (settings?.years_experience ? currentYear - settings.years_experience : null);
+  const siteName = settings?.site_name || "Shikhor Academy";
+  const heading = settings?.hero_title || settings?.home_hero_title || "Where results speak louder than promises.";
+  const description = settings?.hero_subtitle || settings?.home_hero_subtitle ||
+    "Concept-based coaching, regular evaluation, and mentorship that turns effort into real results.";
+  const successRate = settings?.success_rate && Number(settings.success_rate) > 0 ? Number(settings.success_rate) : null;
 
-  const siteName = settings?.site_name || "উত্তরণ কোচিং সেন্টার";
-  const heading = settings?.hero_title || settings?.home_hero_title || "Learn with confidence. Succeed with Uttoron.";
-  const description = settings?.hero_subtitle || settings?.home_hero_subtitle || "Concept-based coaching, regular evaluation, and supportive guidance for every student.";
-
-  const trustPoints = [
-    "Expert Faculty",
-    "Weekly Exams",
-    "Digital Library",
-  ];
-
-  if (establishedYear) {
-    trustPoints.push(`Since ${establishedYear}`);
-  }
+  const trustPoints = ["Expert faculty", "Weekly exams", "Digital library"];
+  if (establishedYear) trustPoints.push(`Since ${establishedYear}`);
 
   return (
-    <section className="relative min-h-[720px] flex items-center overflow-hidden">
-      {/* LAYER 1: Light blue-white gradient (top-left to bottom-right) */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#F7FBFF] via-[#ecf3fe] to-[#D9ECFF]" />
-
-      {/* LAYER 2: Large radial glow behind hero */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div
-          className="w-[800px] h-[800px] rounded-full"
-          style={{
-            background: "radial-gradient(circle, rgba(61,132,255,0.15) 0%, rgba(61,132,255,0.05) 40%, transparent 70%)",
-            filter: "blur(180px)",
-          }}
-        />
+    <section className="relative overflow-hidden bg-ink text-white">
+      {/* Depth: diagonal navy gradient + top-left light sheen + fine dot-grid + bottom vignette (no brass glows) */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #21466A 0%, #14314C 40%, #0E2338 70%, #091A2B 100%)" }} />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(1100px 560px at 12% -5%, rgba(255,255,255,0.10), transparent 60%)" }} />
+        <div className="absolute inset-0 opacity-80"
+          style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
+        <div className="absolute inset-x-0 bottom-0 h-48" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.38), transparent)" }} />
       </div>
 
-      {/* LAYER 3: Large translucent curved wave shapes */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {/* Wave 1 - top right */}
-        <svg className="absolute -top-20 -right-20 w-[600px] h-[600px] opacity-[0.15]" viewBox="0 0 600 600" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M600 0C500 50 400 150 350 250C300 350 250 400 200 500C150 600 100 650 50 700L0 700L0 0H600Z" fill="#3D84FF" />
-        </svg>
-        {/* Wave 2 - bottom left */}
-        <svg className="absolute -bottom-40 -left-20 w-[700px] h-[700px] opacity-[0.12]" viewBox="0 0 700 700" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M0 700C100 650 200 550 300 450C400 350 450 300 500 200C550 100 600 50 650 0L700 0L700 700H0Z" fill="#3D84FF" />
-        </svg>
-        {/* Wave 3 - center right */}
-        <svg className="absolute top-1/3 -right-32 w-[400px] h-[500px] opacity-[0.10]" viewBox="0 0 400 500" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M400 0C350 80 300 180 250 250C200 320 150 380 100 450C50 520 25 560 0 600V0H400Z" fill="#3D84FF" />
-        </svg>
-      </div>
-
-      {/* LAYER 4: Multiple blurred circular gradients - very low opacity */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[10%] right-[15%] w-[300px] h-[300px] rounded-full bg-gradient-to-br from-[#3D84FF]/[0.08] to-transparent blur-[100px]" />
-        <div className="absolute bottom-[20%] left-[10%] w-[250px] h-[250px] rounded-full bg-gradient-to-tr from-[#3D84FF]/[0.06] to-transparent blur-[80px]" />
-        <div className="absolute top-[40%] left-[50%] w-[200px] h-[200px] rounded-full bg-gradient-to-r from-[#3D84FF]/[0.05] to-transparent blur-[60px]" />
-        <div className="absolute top-[5%] left-[30%] w-[180px] h-[180px] rounded-full bg-gradient-to-bl from-[#3D84FF]/[0.07] to-transparent blur-[70px]" />
-        <div className="absolute bottom-[10%] right-[25%] w-[220px] h-[220px] rounded-full bg-gradient-to-tl from-[#3D84FF]/[0.04] to-transparent blur-[90px]" />
-      </div>
-
-      {/* LAYER 5: Subtle white highlight from top center */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1200px] h-[300px] pointer-events-none">
-        <div className="w-full h-full" style={{
-          background: "radial-gradient(ellipse at center top, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 40%, transparent 70%)",
-        }} />
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full relative z-10 py-20">
-        <div className="flex flex-col lg:flex-row gap-12 lg:gap-20 items-center">
-          {/* LEFT COLUMN ~55% */}
-          <motion.div
-            className="w-full lg:flex-[7]"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-          >
-            {/* Badge */}
-            <motion.div
-              variants={fadeUp}
-              className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-[#1F4E79]/10 text-[#1F4E79] text-xs sm:text-sm font-semibold mb-6 tracking-wider uppercase"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#1F4E79]" aria-hidden="true" />
-              WELCOME TO {siteName.toUpperCase()}
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-20 lg:px-8 lg:py-28">
+        <div className="grid items-center gap-7 sm:gap-14 lg:grid-cols-12">
+          {/* LEFT — message + proof */}
+          <motion.div className="lg:col-span-7" variants={container} initial="hidden" animate="visible">
+            <motion.div variants={up}
+              className="mb-4 inline-flex items-center gap-2 rounded-full border border-brass/30 bg-white/5 py-1 pl-2 pr-3 text-[11px] text-brass-100 sm:mb-7 sm:gap-2.5 sm:py-1.5 sm:pl-2.5 sm:pr-4 sm:text-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-brass" aria-hidden="true" />
+              ভর্তি চলছে · Admission open{establishedYear ? ` · since ${establishedYear}` : ""}
             </motion.div>
 
-            {/* Heading */}
-            <motion.h1
-              variants={fadeUp}
-              className="text-[40px] sm:text-5xl lg:text-6xl xl:text-[64px] font-extrabold text-[#174B87] leading-[1.05] mb-6 tracking-[-2px]"
-            >
+            <motion.p variants={up} className="mb-1 font-bangla text-base text-slate-300 sm:mb-3 sm:text-xl">{siteName}</motion.p>
+            <motion.h1 variants={up}
+              className="font-display text-[1.95rem] font-semibold leading-[1.08] tracking-[-0.01em] text-white sm:text-5xl lg:text-[3.9rem]">
               {heading}
             </motion.h1>
 
-            {/* Description */}
-            <motion.p
-              variants={fadeUp}
-              className="text-lg sm:text-xl lg:text-[22px] text-gray-600 leading-[1.7] max-w-[620px] mb-10"
-            >
+            <motion.p variants={up} className="mt-3 max-w-xl text-sm leading-relaxed text-slate-300 sm:mt-6 sm:text-lg">
               {description}
             </motion.p>
 
-            {/* Trust Points - vertical list */}
-            <motion.div
-              variants={fadeUp}
-              className="space-y-4 mb-12"
-            >
-              {trustPoints.map((point, idx) => (
-                <div key={idx} className="flex items-center gap-3 text-gray-700">
-                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#1F4E79]/10 flex items-center justify-center">
-                    <Check size={16} className="text-[#1F4E79]" aria-hidden="true" />
-                  </div>
-                  <span className="text-sm sm:text-base lg:text-[22px] font-medium">{point}</span>
-                </div>
+            <motion.div variants={up} className="mt-5 grid grid-cols-2 gap-x-2 gap-y-2 sm:mt-7 sm:flex sm:flex-wrap sm:gap-x-6">
+              {trustPoints.map((p) => (
+                <span key={p} className="inline-flex items-center gap-1 text-[11px] text-slate-200 sm:gap-2 sm:text-sm">
+                  <Check size={13} className="text-brass" aria-hidden="true" /> {p}
+                </span>
               ))}
             </motion.div>
 
-            {/* Buttons */}
-            <motion.div
-              variants={fadeUp}
-              className="flex flex-col sm:flex-row gap-4"
-            >
-              <Link to="/admission" aria-label="Go to admission page">
-                <motion.button
-                  whileHover={{ scale: 1.03, boxShadow: "0 12px 35px rgba(31,78,121,0.3)" }}
-                  whileTap={{ scale: 0.97 }}
-                  className="w-full sm:w-auto bg-[#1F4E79] text-white px-10 h-[60px] rounded-[18px] font-bold text-lg shadow-lg hover:bg-[#163859] transition-colors inline-flex items-center justify-center gap-2 group cursor-pointer"
-                >
-                  Admission Open
-                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" aria-hidden="true" />
-                </motion.button>
+            <motion.div variants={up} className="mt-6 flex flex-col gap-2.5 sm:mt-10 sm:flex-row sm:gap-4">
+              <Link to="/admission"
+                className="group inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-brass px-6 text-sm font-semibold text-ink shadow-sm transition hover:bg-brass-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink sm:h-[56px] sm:px-8 sm:text-base">
+                Admission open
+                <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" aria-hidden="true" />
               </Link>
-              <Link to="/courses" aria-label="Browse our courses">
-                <motion.button
-                  whileHover={{ scale: 1.03, boxShadow: "0 8px 25px rgba(31,78,121,0.12)" }}
-                  whileTap={{ scale: 0.97 }}
-                  className="w-full sm:w-auto bg-white text-[#1F4E79] border-2 border-[#1F4E79]/30 px-10 h-[60px] rounded-[18px] font-bold text-lg hover:bg-[#F0F4F8] hover:border-[#1F4E79] transition-all inline-flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  Courses
-                </motion.button>
+              <Link to="/courses"
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-white/25 px-6 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass focus-visible:ring-offset-2 focus-visible:ring-offset-ink sm:h-[56px] sm:px-8 sm:text-base">
+                Explore courses
               </Link>
             </motion.div>
           </motion.div>
 
-          {/* RIGHT COLUMN ~45% - Hero Image Card */}
-          <motion.div
-            className="w-full lg:flex-[5] flex justify-center"
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
-          >
-            <motion.div
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-              className="relative w-full max-w-[600px] aspect-[1/1] rounded-[30px] overflow-hidden"
-              style={{
-                boxShadow: "0 25px 60px rgba(41,94,179,0.10)",
-              }}
-            >
-              <img
-                src={settings?.hero_bg_image ? buildAssetUrl(settings.hero_bg_image) : FALLBACK_HERO}
-                alt={siteName}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-              <div
-                className="absolute inset-0"
-                style={{
-                  background: "radial-gradient(circle at center, transparent 50%, rgba(247,251,255,0.55) 100%)",
-                }}
-              />
-            </motion.div>
+          {/* RIGHT — image + a floating result proof */}
+          <motion.div className="lg:col-span-5"
+            initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.25, ease: "easeOut" }}>
+            <div className="relative mx-auto max-w-[220px] sm:max-w-[440px]">
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                className="relative flex aspect-square items-center justify-center rounded-[22px] bg-paper p-5 shadow-card-lg sm:rounded-[28px] sm:p-12"
+              >
+                <img src={LOGO} alt={siteName} className="w-full max-w-[300px] object-contain" />
+              </motion.div>
+              {/* brass corner bracket */}
+              <div className="pointer-events-none absolute -right-3 -top-3 h-20 w-20 rounded-tr-[28px] border-r-2 border-t-2 border-brass" aria-hidden="true" />
+              {successRate && (
+                <div className="absolute -bottom-4 -left-4 flex items-center gap-2 rounded-xl bg-paper px-3.5 py-2.5 shadow-card-lg ring-1 ring-slate-100">
+                  <div className="font-display text-2xl font-bold text-ink">{successRate}%</div>
+                  <div className="text-xs font-medium leading-tight text-slate-500">Success<br />rate</div>
+                </div>
+              )}
+            </div>
           </motion.div>
         </div>
       </div>

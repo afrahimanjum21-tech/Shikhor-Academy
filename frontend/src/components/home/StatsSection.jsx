@@ -12,11 +12,7 @@ function AnimatedCounter({ value }) {
     const el = ref.current;
     if (!el) return;
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !hasAnimated) {
-          setHasAnimated(true);
-        }
-      },
+      ([entry]) => { if (entry.isIntersecting && !hasAnimated) setHasAnimated(true); },
       { threshold: 0.3 }
     );
     observer.observe(el);
@@ -27,48 +23,29 @@ function AnimatedCounter({ value }) {
     if (!hasAnimated) return;
     const numericValue = parseInt(value) || 0;
     if (numericValue === 0) { setCount(0); return; }
-    const duration = 2000;
+    const duration = 1800;
     const interval = 25;
     const steps = duration / interval;
     const increment = numericValue / steps;
     let current = 0;
     const timer = setInterval(() => {
       current += increment;
-      if (current >= numericValue) {
-        setCount(numericValue);
-        clearInterval(timer);
-      } else {
-        setCount(Math.round(current));
-      }
+      if (current >= numericValue) { setCount(numericValue); clearInterval(timer); }
+      else setCount(Math.round(current));
     }, interval);
     return () => clearInterval(timer);
   }, [hasAnimated, value]);
 
-  return (
-    <span ref={ref} className="text-4xl lg:text-5xl font-bold text-[#1F4E79] tabular-nums">
-      {count}
-    </span>
-  );
+  return <span ref={ref} className="font-display text-4xl font-bold tabular-nums text-ink lg:text-5xl">{count}</span>;
 }
 
 const statTemplates = {
-  students: { icon: Users, label: "Students", desc: "Trusted by thousands", suffix: "+" },
-  teachers: { icon: GraduationCap, label: "Teachers", desc: "Experienced & Dedicated", suffix: "+" },
+  students: { icon: Users, label: "Students", desc: "Trusted by families", suffix: "+" },
+  teachers: { icon: GraduationCap, label: "Teachers", desc: "Experienced & dedicated", suffix: "+" },
   courses: { icon: BookOpen, label: "Courses", desc: "Active programs", suffix: "+" },
-  successRate: { icon: TrendingUp, label: "Success Rate", desc: "Proven Results", suffix: "%" },
+  successRate: { icon: TrendingUp, label: "Success rate", desc: "Proven results", suffix: "%" },
   established: { icon: Calendar, label: "Established", suffix: "" },
 };
-
-function SkeletonCard() {
-  return (
-    <div className="text-center p-6 lg:p-8 rounded-2xl border border-gray-100 shadow-sm animate-pulse">
-      <div className="w-14 h-14 rounded-xl bg-gray-200 mx-auto mb-4" />
-      <div className="h-10 w-24 bg-gray-200 rounded mx-auto mb-2" />
-      <div className="h-5 w-20 bg-gray-200 rounded mx-auto mb-1" />
-      <div className="h-4 w-32 bg-gray-200 rounded mx-auto" />
-    </div>
-  );
-}
 
 export default function StatsSection() {
   const [settings, setSettings] = useState(null);
@@ -76,23 +53,20 @@ export default function StatsSection() {
 
   useEffect(() => {
     api.get('/public/site-settings')
-      .then(({ data }) => {
-        setSettings(data);
-        setLoading(false);
-      })
+      .then(({ data }) => { setSettings(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
   if (loading) {
     return (
-      <section className="bg-white py-16 lg:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-6 lg:gap-8" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
+      <section className="bg-paper py-9 sm:py-16 lg:py-20">
+        <div className="mx-auto grid max-w-7xl animate-pulse grid-cols-2 gap-y-10 px-4 sm:px-6 lg:grid-cols-4 lg:px-8">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="text-center">
+              <div className="mx-auto mb-3 h-10 w-24 rounded bg-slate-200" />
+              <div className="mx-auto h-4 w-20 rounded bg-slate-200" />
+            </div>
+          ))}
         </div>
       </section>
     );
@@ -103,89 +77,45 @@ export default function StatsSection() {
     (settings?.years_experience ? currentYear - settings.years_experience : null);
 
   const stats = [];
-
-  // I-8: honour the admin "Student Count" override (SiteSettings.student_count)
-  // and fall back to the real DB count — the SAME mapping the About page uses,
-  // so Home and About never disagree.
-  const studentCount = settings?.student_count > 0
-    ? settings.student_count
-    : (settings?.real_student_count ?? 0);
-
-  if (studentCount > 0) {
-    stats.push({
-      key: "students",
-      ...statTemplates.students,
-      value: studentCount,
-    });
-  }
-
-  if (settings?.real_teacher_count > 0) {
-    stats.push({
-      key: "teachers",
-      ...statTemplates.teachers,
-      value: settings.real_teacher_count,
-    });
-  }
-
-  if (settings?.real_course_count > 0) {
-    stats.push({
-      key: "courses",
-      ...statTemplates.courses,
-      value: settings.real_course_count,
-    });
-  }
-
-  if (settings?.success_rate && Number(settings.success_rate) > 0) {
-    stats.push({
-      key: "successRate",
-      ...statTemplates.successRate,
-      value: Number(settings.success_rate),
-    });
-  }
-
-  if (establishedYear) {
-    stats.push({
-      key: "established",
-      ...statTemplates.established,
-      value: establishedYear,
-      desc: `Quality Education Since ${establishedYear}`,
-    });
-  }
+  // I-8: honour the admin "Student Count" override, fall back to the real DB count.
+  const studentCount = settings?.student_count > 0 ? settings.student_count : (settings?.real_student_count ?? 0);
+  if (studentCount > 0) stats.push({ key: "students", ...statTemplates.students, value: studentCount });
+  if (settings?.real_teacher_count > 0) stats.push({ key: "teachers", ...statTemplates.teachers, value: settings.real_teacher_count });
+  if (settings?.real_course_count > 0) stats.push({ key: "courses", ...statTemplates.courses, value: settings.real_course_count });
+  if (settings?.success_rate && Number(settings.success_rate) > 0) stats.push({ key: "successRate", ...statTemplates.successRate, value: Number(settings.success_rate) });
+  if (establishedYear) stats.push({ key: "established", ...statTemplates.established, value: establishedYear, desc: `Quality education since ${establishedYear}` });
 
   if (stats.length === 0) return null;
 
   return (
-    <section className="bg-white py-16 lg:py-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-6 lg:gap-8" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+    <section className="bg-paper py-12 sm:py-16 lg:py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto mb-6 max-w-2xl text-center sm:mb-12">
+          <h2 className="font-display text-xl font-semibold text-ink sm:text-3xl lg:text-4xl">A track record families trust</h2>
+          <p className="mt-1.5 text-xs text-slate-500 sm:mt-3 sm:text-base">Numbers that reflect years of consistent, measurable results.</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-y-6 sm:gap-y-12 lg:flex lg:items-stretch lg:justify-between lg:gap-0">
           {stats.map((stat, idx) => (
             <motion.div
               key={stat.key}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
-              transition={{ delay: idx * 0.1, duration: 0.5, ease: "easeOut" }}
-              className="text-center p-6 lg:p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-shadow"
+              transition={{ delay: idx * 0.08, duration: 0.5 }}
+              className={`px-1 text-center sm:px-2 lg:flex-1 lg:px-8 ${idx > 0 ? "lg:border-l lg:border-slate-200" : ""}`}
             >
-              <div className="w-14 h-14 rounded-xl bg-[#1F4E79]/5 flex items-center justify-center mx-auto mb-4">
-                <stat.icon size={28} className="text-[#1F4E79]" aria-hidden="true" />
+              <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-brass-100 sm:mb-4 sm:h-11 sm:w-11">
+                <stat.icon size={18} className="text-brass-600" aria-hidden="true" />
               </div>
-
-              {stat.key === "established" ? (
-                <span className="text-4xl lg:text-5xl font-bold text-[#1F4E79] tabular-nums">
-                  {stat.value}
-                </span>
-              ) : (
-                <AnimatedCounter value={stat.value} />
-              )}
-              {stat.suffix && (
-                <span className="text-4xl lg:text-5xl font-bold text-[#1F4E79]">
-                  {stat.suffix}
-                </span>
-              )}
-
-              <h3 className="text-lg font-bold text-gray-800 mt-2">{stat.label}</h3>
-              <p className="text-sm text-gray-500 mt-1">{stat.desc}</p>
+              <div className="flex items-baseline justify-center">
+                {stat.key === "established"
+                  ? <span className="font-display text-3xl font-bold tabular-nums text-ink sm:text-4xl lg:text-5xl">{stat.value}</span>
+                  : <AnimatedCounter value={stat.value} />}
+                {stat.suffix && <span className="font-display text-xl font-bold text-brass sm:text-3xl lg:text-4xl">{stat.suffix}</span>}
+              </div>
+              <h3 className="mt-1 text-sm font-semibold text-ink sm:mt-2 sm:text-base">{stat.label}</h3>
+              <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">{stat.desc}</p>
             </motion.div>
           ))}
         </div>

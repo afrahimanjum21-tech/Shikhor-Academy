@@ -28,12 +28,16 @@ import { decryptSecret } from '../secretCrypto.js';
 
 const TIMEOUT_MS = 8000;
 const CONFIG_TTL_MS = 15_000;
-const DEFAULT_SENDER_NAME = 'Uttoron Coaching Centre';
+const DEFAULT_SENDER_NAME = 'Shikhor Academy';
 
 let configCache = null;
 let configCacheAt = 0;
 
 const log = (msg) => console.log(`[EmailService] ${msg}`);
+const configuredString = (value) => {
+  const normalized = String(value ?? '').trim();
+  return normalized && !['null', 'undefined'].includes(normalized.toLowerCase()) ? normalized : '';
+};
 
 // Clears the cached config (called by SiteSettingController after an update).
 export function resetEmailConfigCache() {
@@ -54,15 +58,15 @@ export async function getConfig() {
   }
   const s = row && row.toJSON ? row.toJSON() : {};
 
-  const provider = String(s.email_provider || process.env.EMAIL_PROVIDER || 'brevo').toLowerCase();
-  const dbKey = String(decryptSecret(s.email_api_key) || '').trim();
+  const provider = (configuredString(s.email_provider) || configuredString(process.env.EMAIL_PROVIDER) || 'brevo').toLowerCase();
+  const dbKey = configuredString(decryptSecret(s.email_api_key));
   const envKey = provider === 'resend' ? process.env.RESEND_API_KEY : process.env.BREVO_API_KEY;
 
   const cfg = {
     enabled: typeof s.email_enabled === 'boolean' ? s.email_enabled : process.env.EMAIL_ENABLED === 'true',
     provider,
     apiKey: dbKey || envKey || '',
-    from: String(s.email_from || '').trim() || process.env.EMAIL_FROM || '',
+    from: configuredString(s.email_from) || configuredString(process.env.EMAIL_FROM),
   };
 
   configCache = cfg;
@@ -105,10 +109,10 @@ export function safeActionUrl(url) {
 
 // Composes the subject + plain-text + HTML body from the in-app payload.
 export function composeEmail({ title, body, actionUrl, actionLabel }) {
-  const subject = `Uttoron Coaching Centre: ${title}`;
+  const subject = `Shikhor Academy: ${title}`;
   const url = safeActionUrl(actionUrl);
   const text = [
-    'Uttoron Coaching Centre',
+    'Shikhor Academy',
     '',
     body || '',
     '',
@@ -121,7 +125,7 @@ export function composeEmail({ title, body, actionUrl, actionLabel }) {
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
       <div style="background:#1F4E79;padding:16px 24px">
-        <span style="color:#ffffff;font-weight:bold;font-size:16px">Uttoron Coaching Centre</span>
+        <span style="color:#ffffff;font-weight:bold;font-size:16px">Shikhor Academy</span>
       </div>
       <div style="padding:24px">
         <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 20px">${escapeHtml(body)}</p>
@@ -269,9 +273,9 @@ export async function sendTest(toEmail) {
   const config = await getConfig();
   const email = composeEmail({
     title: 'Test email',
-    body: 'This is a test email from the Uttoron Coaching Centre website. If you received this, the email notification system is working correctly.',
+    body: 'This is a test email from the Shikhor Academy website. If you received this, the email notification system is working correctly.',
     actionLabel: 'Visit Website',
-    actionUrl: process.env.FRONTEND_URL || 'https://uttoron-coaching.vercel.app',
+    actionUrl: process.env.FRONTEND_URL || 'https://shikhoracademy.vercel.app',
   });
   return sendOne(config, String(toEmail || '').trim(), email);
 }

@@ -33,7 +33,7 @@ const renderPage = ({ type, title, message }) => {
     <div class="badge">${badge}</div>
     <h2>${title}</h2>
     <p>${message}</p>
-    <a class="button" href="${resolveSiteBaseUrl()}">Go to Uttoron Coaching Centre</a>
+    <a class="button" href="${resolveSiteBaseUrl()}">Go to Shikhor Academy</a>
   </div>
 </body>
 </html>`;
@@ -62,7 +62,7 @@ const renderConfirmPage = ({ action, token, admissionId }) => {
 <html lang="en"><head><meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
-<title>Confirm ${meta.label} - Uttoron Coaching Centre</title>
+<title>Confirm ${meta.label} - Shikhor Academy</title>
 <style>${PAGE_STYLES}
 .confirm-btn { margin-top:8px; padding:12px 28px; border:0; border-radius:8px; cursor:pointer; color:#fff; font-size:15px; font-weight:bold; background:${meta.color}; }
 .ctx { color:#111827; font-weight:bold; }</style></head>

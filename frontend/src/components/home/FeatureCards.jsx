@@ -3,91 +3,51 @@ import { GraduationCap, Award, BookOpen, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 
 const features = [
-  {
-    icon: GraduationCap,
-    title: "Expert Faculty",
-    description: "Learn from experienced and dedicated teachers committed to your academic success.",
-    to: "/faculty",
-    label: "Learn More",
-  },
-  {
-    icon: Award,
-    title: "Online Results",
-    description: "View examination results and track academic progress anytime, anywhere.",
-    to: "/check-result",
-    label: "View Results",
-  },
-  {
-    icon: BookOpen,
-    title: "Digital Library",
-    description: "Access notes, study materials, previous questions and learning resources online.",
-    to: "/library",
-    label: "Browse Library",
-  },
+  { icon: GraduationCap, title: "Expert faculty", description: "Learn from experienced, dedicated teachers committed to every student's academic success.", to: "/faculty", label: "Meet the faculty" },
+  { icon: Award, title: "Online results", description: "Check examination results and track academic progress anytime, from anywhere.", to: "/check-result", label: "View results" },
+  { icon: BookOpen, title: "Digital library", description: "Access notes, study materials, previous questions and learning resources online.", to: "/library", label: "Browse library" },
 ];
 
-const containerVariants = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.15, delayChildren: 0.1 },
-  },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
-};
+const container = { hidden: {}, visible: { transition: { staggerChildren: 0.12, delayChildren: 0.05 } } };
+const card = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } };
 
 export default function FeatureCards() {
   return (
-    <section className="bg-white py-20 lg:py-24">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-14">
-          <h2 className="text-3xl lg:text-4xl font-extrabold text-[#1F4E79] tracking-[-1px]">
-            Why Choose Uttoron?
-          </h2>
-          <p className="text-gray-500 text-base lg:text-lg mt-3 max-w-xl mx-auto">
-            Everything you need for a modern and successful learning experience.
-          </p>
+    <section className="bg-paper py-9 sm:py-20 lg:py-24">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-6 max-w-2xl sm:mb-14">
+          <h2 className="font-display text-xl font-semibold text-ink sm:text-3xl lg:text-4xl">Why families choose Shikhor Academy</h2>
+          <p className="mt-1.5 text-sm text-slate-500 sm:mt-3 sm:text-lg">Everything a student needs for a focused, modern learning experience — in one place.</p>
         </div>
 
         <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
+          variants={container} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-60px" }}
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3"
         >
-          {features.map((feature) => (
+          {features.map((f) => (
             <motion.div
-              key={feature.title}
-              variants={cardVariants}
-              whileHover={{ y: -6 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="group rounded-[24px] bg-white border border-gray-100 p-9 flex flex-col"
-              style={{
-                boxShadow: "0 4px 20px rgba(41,94,179,0.06)",
-              }}
+              key={f.title} variants={card}
+              className="group relative flex flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-paper p-5 transition-all duration-300 hover:-translate-y-1.5 hover:border-brass/40 hover:shadow-card-lg sm:rounded-2xl sm:p-8"
             >
-              <div className="w-14 h-14 rounded-full bg-[#1F4E79]/5 flex items-center justify-center mb-6 group-hover:bg-[#1F4E79]/10 transition-colors">
-                <feature.icon size={28} className="text-[#1F4E79]" />
+              {/* brass accent bar grows on hover */}
+              <span className="absolute inset-x-0 top-0 h-[3px] w-0 bg-brass transition-all duration-300 group-hover:w-full" aria-hidden="true" />
+              {/* oversized ghost glyph for depth */}
+              <f.icon className="pointer-events-none absolute -bottom-6 -right-5 text-ink/[0.04]" size={160} aria-hidden="true" />
+
+              <div className="relative flex flex-1 flex-col">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-ink text-white shadow-sm transition-colors duration-300 group-hover:bg-brass group-hover:text-ink sm:mb-6 sm:h-14 sm:w-14">
+                  <f.icon size={22} aria-hidden="true" />
+                </div>
+                <h3 className="text-base font-semibold text-ink sm:text-xl">{f.title}</h3>
+                <p className="mt-1.5 flex-1 text-sm leading-relaxed text-slate-500 sm:mt-2 sm:text-base">{f.description}</p>
+                <Link
+                  to={f.to}
+                  className="mt-5 inline-flex min-h-11 w-fit items-center gap-2 font-semibold text-primary transition-all duration-300 group-hover:gap-3 group-hover:text-brass-600 sm:mt-6"
+                >
+                  {f.label}
+                  <ArrowRight size={16} aria-hidden="true" />
+                </Link>
               </div>
-
-              <h3 className="text-xl font-bold text-gray-800 mb-2">{feature.title}</h3>
-              <p className="text-gray-500 text-sm leading-relaxed flex-1 mb-6">{feature.description}</p>
-
-              <Link
-                to={feature.to}
-                className="inline-flex items-center gap-2 text-[#1F4E79] font-bold text-sm group/btn w-fit"
-              >
-                <span className="border-b-2 border-transparent group-hover/btn:border-[#1F4E79] transition-colors">
-                  {feature.label}
-                </span>
-                <ArrowRight
-                  size={16}
-                  className="group-hover/btn:translate-x-1 transition-transform"
-                />
-              </Link>
             </motion.div>
           ))}
         </motion.div>

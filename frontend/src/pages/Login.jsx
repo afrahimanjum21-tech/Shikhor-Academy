@@ -1,16 +1,15 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import PageBackground from "../components/common/PageBackground";
 import PasswordInput from "../components/common/PasswordInput";
 import usePageMeta from "../hooks/usePageMeta";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { LogIn } from "lucide-react";
+import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Login() {
     usePageMeta({
-        title: "Login — Uttoron Coaching Centre",
-        description: "Sign in to your Uttoron Coaching Centre account for students, teachers and staff.",
+        title: "Login — Shikhor Academy",
+        description: "Sign in to your Shikhor Academy account for students, teachers and staff.",
         path: "/login",
     });
     const [email, setEmail] = useState("");
@@ -46,66 +45,109 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-            <PageBackground />
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 md:p-10 max-w-md w-full"
-            >
-                <div className="text-center mb-8">
-                    <div className="w-16 h-16 rounded-full bg-[#E6EEF5] flex items-center justify-center mx-auto mb-4 text-[#1F4E79]">
-                        <LogIn size={28} />
-                    </div>
-                    <h2 className="text-3xl font-bold text-[#1F4E79]">Welcome Back</h2>
-                    <p className="text-gray-500 mt-1">Login to access your dashboard</p>
+        <div className="bg-white">
+            <section className="bg-ink text-white">
+                <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-brass">
+                        Student and staff portal
+                    </p>
+                    <h1 className="max-w-2xl font-display text-4xl leading-tight sm:text-5xl">
+                        Welcome back to Shikhor Academy.
+                    </h1>
+                    <div className="mt-5 h-px w-16 bg-brass" />
+                    <p className="mt-5 max-w-xl text-sm leading-7 text-slate-200 sm:text-base">
+                        Sign in to continue to your learning, teaching, or administration dashboard.
+                    </p>
                 </div>
+            </section>
 
-                {error && (
-                    <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-6 text-sm text-center border border-red-100">
-                        {error}
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase">Email Address</label>
-                        <input
-                            type="email"
-                            className="w-full border-b border-gray-200 focus:border-[#1F4E79] transition-all outline-none bg-transparent text-sm py-2.5"
-                            placeholder="example@uttoron.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase">Password</label>
-                        <PasswordInput
-                            className="w-full border-b border-gray-200 focus:border-[#1F4E79] transition-all outline-none bg-transparent text-sm py-2.5"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
+            <section className="bg-white px-5 py-10 sm:px-8 sm:py-16">
+                <div className="mx-auto grid max-w-5xl items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] lg:gap-20">
+                    <div className="hidden pt-4 lg:block">
+                        <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-brass-100 text-ink">
+                            <ShieldCheck size={25} aria-hidden="true" />
+                        </div>
+                        <h2 className="max-w-md font-display text-3xl leading-tight text-ink">
+                            One secure place for your academic journey.
+                        </h2>
+                        <p className="mt-4 max-w-md text-sm leading-7 text-slate-600">
+                            Use the account provided by your academy to access your personal dashboard and keep your learning moving forward.
+                        </p>
                     </div>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full rounded-full px-6 py-3 bg-[#1F4E79] text-white font-semibold hover:bg-[#1a3d66] transition-colors disabled:opacity-60"
+                    <motion.div
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.35 }}
+                        className="rounded-2xl border border-slate-200 bg-white p-6 shadow-card sm:p-9"
                     >
-                        {loading ? 'Logging in...' : 'Login'}
-                    </button>
-                </form>
+                        <div className="mb-7">
+                            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-[#E6EEF5] text-ink">
+                                <LockKeyhole size={21} aria-hidden="true" />
+                            </div>
+                            <h2 className="font-display text-3xl text-ink">Sign in</h2>
+                            <p className="mt-2 text-sm text-slate-500">Enter your credentials to continue.</p>
+                        </div>
 
-                <div className="mt-8 text-center text-sm text-gray-500">
-                    Don't have an account?{' '}
-                    <Link to="/admission" className="font-semibold text-[#1F4E79] hover:underline">
-                        Apply for Admission
-                    </Link>
+                        {error && (
+                            <div
+                                role="alert"
+                                className="mb-6 rounded-xl border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-700"
+                            >
+                                {error}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <div>
+                                <label htmlFor="login-email" className="mb-2 block text-sm font-semibold text-ink">
+                                    Email address
+                                </label>
+                                <input
+                                    id="login-email"
+                                    type="email"
+                                    autoComplete="email"
+                                    className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-ink outline-none transition focus:border-ink focus:ring-2 focus:ring-ink/15"
+                                    placeholder="you@example.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="login-password" className="mb-2 block text-sm font-semibold text-ink">
+                                    Password
+                                </label>
+                                <PasswordInput
+                                    id="login-password"
+                                    autoComplete="current-password"
+                                    className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-ink outline-none transition focus:border-ink focus:ring-2 focus:ring-ink/15"
+                                    placeholder="Enter your password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink px-6 text-sm font-semibold text-white transition hover:bg-ink-700 focus:outline-none focus:ring-2 focus:ring-brass focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {loading ? 'Signing in...' : 'Sign in'}
+                                {!loading && <ArrowRight size={17} aria-hidden="true" />}
+                            </button>
+                        </form>
+
+                        <div className="mt-7 border-t border-slate-100 pt-6 text-center text-sm text-slate-500">
+                            Need an account?{' '}
+                            <Link to="/admission" className="font-semibold text-ink underline decoration-brass underline-offset-4 hover:text-ink-700">
+                                Apply for admission
+                            </Link>
+                        </div>
+                    </motion.div>
                 </div>
-            </motion.div>
+            </section>
         </div>
     );
 }

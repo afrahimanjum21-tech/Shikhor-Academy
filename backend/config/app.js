@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export default {
-  name: process.env.APP_NAME || 'Uttoron Coaching Centre',
+  name: process.env.APP_NAME || 'Shikhor Academy',
   port: parseInt(process.env.APP_PORT || '8000', 10),
   env: process.env.APP_ENV || 'production',
   debug: process.env.APP_DEBUG === 'true',

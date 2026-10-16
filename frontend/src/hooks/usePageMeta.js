@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-const SITE_URL = "https://uttoron-coaching.vercel.app";
+const SITE_URL = "https://shikhoracademy.vercel.app";
 
 function setMeta(attr, key, content) {
   let el = document.head.querySelector(`meta[${attr}="${key}"]`);

@@ -45,6 +45,29 @@ export const store = async (req, res) => {
       type: type || null,
     });
 
+    try {
+      const batches = await models.Batch.findAll({
+        where: { course_id: exam.course_id },
+        attributes: ['id'],
+      });
+      const students = batches.length
+        ? await models.Student.findAll({
+            where: { current_batch_id: { [Op.in]: batches.map(batch => batch.id) } },
+            attributes: ['user_id'],
+          })
+        : [];
+      await NotificationService.createForStudents({
+        userIds: students.map(student => student.user_id),
+        type: 'exam',
+        title: 'New Exam Scheduled',
+        body: `A new exam "${name}" has been scheduled${date ? ` for ${date}` : ''}.`,
+        actionUrl: '/student/exams',
+        actionLabel: 'View Exam',
+      });
+    } catch (notifErr) {
+      console.error('Failed to notify students about new exam:', notifErr);
+    }
+
     return res.status(201).json({ message: 'Exam created successfully', data: exam });
   } catch (error) {
     console.error('ExamController.store error:', error);

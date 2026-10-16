@@ -43,8 +43,8 @@ test('dataset larger than one page -> correct offset/last_page/total and preserv
   assert.equal(captured.offset, 0);
   assert.equal(captured.limit, 20);
   assert.equal(captured.distinct, true);                 // de-dupes rows across the include join
-  assert.equal(captured.where.role, 'student');          // soft-delete / role filter preserved
-  assert.equal(captured.where.deletedAt, null);
+  assert.equal(captured.where.role, 'student');          // role filter preserved
+  assert.equal(captured.where.deletedAt, undefined);
   assert.deepEqual(captured.order, [['createdAt', 'DESC']]);
 
   assert.equal(res.body.total, 57);

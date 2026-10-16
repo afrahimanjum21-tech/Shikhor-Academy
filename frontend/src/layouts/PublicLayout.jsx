@@ -12,7 +12,7 @@ export default function PublicLayout() {
             <div className="fixed inset-0 -z-10">
                 <img src={HERO_IMAGE} alt=""
                     className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-white/75"></div>
+                <div className="absolute inset-0 bg-paper/75"></div>
             </div>
             <main className="flex-1 relative z-0">
                 <ErrorBoundary key={location.pathname}>

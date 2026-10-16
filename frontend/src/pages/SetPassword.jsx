@@ -12,8 +12,8 @@ import api from "../services/api";
 // from the URL and submitted to POST /set-password.
 export default function SetPassword() {
     usePageMeta({
-        title: "Set Your Password — Uttoron Coaching Centre",
-        description: "Set the password for your Uttoron Coaching Centre student account.",
+        title: "Set Your Password — Shikhor Academy",
+        description: "Set the password for your Shikhor Academy student account.",
         path: "/set-password",
     });
     const [searchParams] = useSearchParams();

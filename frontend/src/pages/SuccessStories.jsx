@@ -5,9 +5,8 @@ import { Link } from "react-router-dom";
 import api from "../services/api";
 import { buildAssetUrl } from "../services/config";
 import usePageMeta from "../hooks/usePageMeta";
-import PageBackground from "../components/common/PageBackground";
 
-const SITE_URL = "https://uttoron-coaching.vercel.app";
+const SITE_URL = "https://shikhoracademy.vercel.app";
 const PER_PAGE = 12;
 
 const initials = (name) =>
@@ -21,8 +20,8 @@ const initials = (name) =>
 
 export default function SuccessStories() {
     usePageMeta({
-        title: "Success Stories — Uttoron Coaching Centre",
-        description: "Meet our students — admissions to top universities, public exam results, and proud achievements at Uttoron Coaching Centre.",
+        title: "Success Stories — Shikhor Academy",
+        description: "Meet our students — admissions to top universities, public exam results, and proud achievements at Shikhor Academy.",
         path: "/success-stories",
     });
 
@@ -105,7 +104,7 @@ export default function SuccessStories() {
         script.textContent = JSON.stringify({
             "@context": "https://schema.org",
             "@type": "ItemList",
-            name: "Success Stories — Uttoron Coaching Centre",
+            name: "Success Stories — Shikhor Academy",
             itemListElement: stories.map((s, i) => ({
                 "@type": "ListItem",
                 position: i + 1,
@@ -131,72 +130,68 @@ export default function SuccessStories() {
     ];
 
     return (
-        <div className="min-h-screen relative overflow-hidden">
-            <PageBackground />
-
+        <div className="relative min-h-screen overflow-hidden bg-white font-sans text-ink">
             {/* Hero */}
-            <div className="max-w-7xl mx-auto px-4 pt-10 pb-6">
-                <nav aria-label="Breadcrumb" className="mb-4">
-                    <ol className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-500">
-                        <li><Link to="/" className="hover:text-[#1F4E79] transition font-medium">Home</Link></li>
-                        <li aria-hidden="true" className="text-gray-300">/</li>
-                        <li aria-current="page" className="text-[#1F4E79] font-semibold">Success Stories</li>
-                    </ol>
-                </nav>
+            <section className="relative overflow-hidden bg-ink text-white">
+                <div className="pointer-events-none absolute inset-0 opacity-50" style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)", backgroundSize: "22px 22px" }} aria-hidden="true" />
+                <div className="relative mx-auto max-w-6xl px-4 py-10 text-center sm:px-6 lg:py-12">
+                    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: "easeOut" }}>
+                        <p className="mb-1 font-bangla text-sm text-brass-100">আমাদের অর্জনসমূহ</p>
+                        <h1 className="font-display text-[1.7rem] font-semibold leading-tight sm:text-[2rem]">Our Success Stories</h1>
+                        <div className="mx-auto mt-3 h-px w-12 bg-brass" aria-hidden="true" />
+                        <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-300 sm:text-base">
+                            Real results from real students — admissions to top universities, outstanding public exam grades, and milestones that started here.
+                        </p>
+                    </motion.div>
+                </div>
+            </section>
 
-                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1F4E79]/10 text-[#1F4E79] text-xs font-bold uppercase tracking-wider mb-4">
-                        <Trophy size={14} /> Our Achievements
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-bold text-[#1F4E79] mb-4">Our Success Stories</h1>
-                    <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-                        Real results from real students — admissions to top universities, outstanding public exam grades, and milestones that started here.
-                    </p>
-                </motion.div>
-
+            <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
                 {/* Search + Sort */}
-                <div className="mt-8 flex flex-col sm:flex-row gap-3 max-w-3xl mx-auto">
-                    <div className="relative flex-1">
-                        <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        <input
-                            type="search"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search by student, achievement or batch…"
-                            aria-label="Search success stories"
-                            className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-4 py-3 text-sm outline-none focus:border-[#1F4E79] focus:ring-2 focus:ring-[#1F4E79]/20 shadow-sm"
-                        />
-                    </div>
-                    <div className="relative">
-                        <SortAsc size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        <select
-                            value={sort}
-                            onChange={(e) => setSort(e.target.value)}
-                            aria-label="Sort success stories"
-                            className="w-full sm:w-auto appearance-none rounded-lg border border-gray-300 bg-white pl-10 pr-9 py-3 text-sm outline-none focus:border-[#1F4E79] focus:ring-2 focus:ring-[#1F4E79]/20 shadow-sm text-gray-700 cursor-pointer"
-                        >
-                            {sortOptions.map((o) => (
-                                <option key={o.value} value={o.value}>{o.label}</option>
-                            ))}
-                        </select>
-                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-100/85 p-4 shadow-card backdrop-blur-sm sm:p-5">
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                        <div className="relative min-w-0 flex-1">
+                            <Search size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                            <input
+                                type="search"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Search by student, achievement or batch…"
+                                aria-label="Search success stories"
+                                className="min-h-12 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-ink focus:ring-2 focus:ring-ink/15"
+                            />
+                        </div>
+                        <div className="relative sm:w-52">
+                            <SortAsc size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                            <select
+                                value={sort}
+                                onChange={(e) => setSort(e.target.value)}
+                                aria-label="Sort success stories"
+                                className="min-h-12 w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-10 pr-9 text-sm text-slate-700 outline-none transition focus:border-ink focus:ring-2 focus:ring-ink/15"
+                            >
+                                {sortOptions.map((o) => (
+                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                ))}
+                            </select>
+                            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Grid */}
-            <div className="max-w-7xl mx-auto px-4 pb-16">
+            <div className="relative mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
                 {loading ? (
-                    <div className="flex items-center justify-center py-20 text-[#1F4E79]">
-                        <Loader2 size={28} className="animate-spin" />
+                    <div className="flex items-center justify-center py-20 text-ink" role="status" aria-label="Loading success stories">
+                        <Loader2 size={28} className="animate-spin" aria-hidden="true" />
                     </div>
                 ) : visible.length === 0 ? (
-                    <div className="text-center py-20 bg-white/70 backdrop-blur rounded-2xl border border-gray-200">
-                        <GraduationCap size={48} className="mx-auto text-[#1F4E79]/30 mb-4" />
-                        <h2 className="text-xl font-bold text-gray-700 mb-1">
+                    <div className="rounded-2xl border border-slate-200/80 bg-paper/80 px-5 py-20 text-center shadow-card backdrop-blur-sm">
+                        <GraduationCap size={48} className="mx-auto mb-4 text-ink/30" aria-hidden="true" />
+                        <h2 className="mb-1 text-xl font-display font-semibold text-ink">
                             {search ? "No stories match your search" : "Stories are coming soon"}
                         </h2>
-                        <p className="text-gray-500 text-sm max-w-md mx-auto">
+                        <p className="mx-auto max-w-md text-sm text-slate-500">
                             {search
                                 ? "Try a different name, achievement or batch."
                                 : "We are collecting our students' achievements — check back soon."}
@@ -204,7 +199,7 @@ export default function SuccessStories() {
                         {search && (
                             <button
                                 onClick={() => setSearch("")}
-                                className="mt-5 rounded-lg bg-[#1F4E79] text-white px-5 py-2.5 text-sm font-bold hover:bg-[#163859] transition"
+                                className="mt-5 min-h-11 rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass focus-visible:ring-offset-2"
                             >
                                 Clear search
                             </button>
@@ -212,10 +207,10 @@ export default function SuccessStories() {
                     </div>
                 ) : (
                     <>
-                        <p className="text-sm text-gray-500 mb-5 text-center" role="status">
+                        <p className="mb-5 text-center text-sm text-slate-500" role="status">
                             Showing {visible.length} of {total} {total === 1 ? "story" : "stories"}
                         </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {visible.map((story, idx) => (
                                 <motion.article
                                     key={story.id}
@@ -224,27 +219,27 @@ export default function SuccessStories() {
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true, margin: "-30px" }}
                                     transition={{ duration: 0.4, delay: Math.min(idx % 4, 3) * 0.06 }}
-                                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col hover:shadow-md hover:-translate-y-1 transition-all duration-200 group focus-within:ring-2 focus-within:ring-[#1F4E79]/40"
+                                    className="group flex flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-card transition-all duration-200 hover:-translate-y-1 hover:border-brass/40 hover:shadow-card-lg focus-within:ring-2 focus-within:ring-brass/50 sm:p-6"
                                 >
                                     <div className="flex items-center gap-3 mb-4">
-                                        <div className="w-12 h-12 rounded-full overflow-hidden bg-[#E6EEF5] flex items-center justify-center flex-shrink-0">
+                                        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100">
                                             {story.photo ? (
                                                 <img
                                                     src={buildAssetUrl(story.photo)}
-                                                    alt={`${story.student_name} — Uttoron Coaching Centre`}
+                                                    alt={`${story.student_name} — Shikhor Academy`}
                                                     width={48}
                                                     height={48}
                                                     loading="lazy"
                                                     className="w-full h-full object-cover"
                                                 />
                                             ) : (
-                                                <span className="text-[#1F4E79] font-bold text-base">{initials(story.student_name) || <Trophy size={18} />}</span>
+                                                <span className="text-base font-bold text-ink">{initials(story.student_name) || <Trophy size={18} />}</span>
                                             )}
                                         </div>
                                         <div className="min-w-0">
-                                            <h3 className="font-bold text-gray-800 leading-tight truncate">{story.student_name}</h3>
+                                            <h3 className="truncate font-display font-semibold leading-tight text-ink">{story.student_name}</h3>
                                             {story.batch_info && (
-                                                <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                                                <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
                                                     <CalendarDays size={12} className="flex-shrink-0" /> {story.batch_info}
                                                 </p>
                                             )}
@@ -252,17 +247,17 @@ export default function SuccessStories() {
                                     </div>
 
                                     {story.achievement && (
-                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-green-100 text-green-700 text-xs font-bold mb-3 w-fit">
+                                        <span className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-brass/25 bg-brass-100 px-3 py-1 text-xs font-semibold text-brass-600">
                                             <Award size={13} /> {story.achievement}
                                         </span>
                                     )}
 
-                                    <p className="text-gray-600 text-sm leading-relaxed flex-1 line-clamp-3">{story.story || "…"}</p>
+                                    <p className="line-clamp-3 flex-1 text-sm leading-relaxed text-slate-600">{story.story || "…"}</p>
 
                                     <Link
                                         to={`/success-stories/${story.slug || story.id}`}
                                         aria-label={`Read the full story of ${story.student_name}`}
-                                        className="mt-5 inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#1F4E79] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#163859] transition"
+                                        className="mt-5 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass focus-visible:ring-offset-2"
                                     >
                                         Read More <ArrowRight size={15} />
                                     </Link>
@@ -275,7 +270,7 @@ export default function SuccessStories() {
                                 <button
                                     onClick={loadMore}
                                     disabled={loadingMore}
-                                    className="inline-flex items-center gap-2 rounded-lg border-2 border-[#1F4E79] text-[#1F4E79] font-bold px-6 py-3 text-sm hover:bg-[#1F4E79] hover:text-white transition disabled:opacity-60"
+                                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-ink px-6 py-3 text-sm font-semibold text-ink transition hover:bg-ink hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass focus-visible:ring-offset-2 disabled:opacity-60"
                                 >
                                     {loadingMore ? <Loader2 size={16} className="animate-spin" /> : <ChevronDown size={16} />}
                                     {loadingMore ? "Loading…" : "Load More Stories"}
@@ -287,32 +282,34 @@ export default function SuccessStories() {
             </div>
 
             {/* CTA */}
-            <section className="max-w-7xl mx-auto px-4 pb-20">
+            <section className="w-full">
                 <motion.div
                     initial={{ opacity: 0, y: 24 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    className="rounded-2xl bg-gradient-to-r from-[#1F4E79] to-[#163859] text-white px-6 py-12 md:py-14 text-center relative overflow-hidden"
+                    className="relative overflow-hidden bg-ink px-6 py-12 text-center text-white shadow-card-lg sm:px-10 md:py-14"
                 >
                     <div className="absolute -top-10 -right-10 w-48 h-48 bg-white/5 rounded-full" aria-hidden="true" />
                     <div className="absolute -bottom-16 -left-10 w-64 h-64 bg-white/5 rounded-full" aria-hidden="true" />
-                    <h2 className="text-2xl md:text-3xl font-bold mb-3 relative">The Next Success Story Could Be Yours!</h2>
-                    <p className="text-white/80 max-w-xl mx-auto mb-8 relative text-sm md:text-base">
-                        Join the next generation of achievers at Uttoron Coaching Centre — expert mentors, regular evaluation, and a proven path to results.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-3 justify-center relative">
+                    <div className="relative mx-auto max-w-6xl">
+                        <h2 className="relative mb-3 font-display text-2xl font-semibold md:text-3xl">The Next Success Story Could Be Yours!</h2>
+                        <p className="relative mx-auto mb-8 max-w-xl text-sm text-slate-300 md:text-base">
+                            Join the next generation of achievers at Shikhor Academy — expert mentors, regular evaluation, and a proven path to results.
+                        </p>
+                        <div className="relative flex flex-col justify-center gap-3 sm:flex-row">
                         <Link
                             to="/admission"
-                            className="rounded-lg bg-white text-[#1F4E79] px-7 py-3 text-sm font-bold hover:bg-gray-100 transition"
+                            className="min-h-11 rounded-xl bg-brass px-7 py-3 text-sm font-semibold text-ink transition hover:bg-brass-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
                         >
                             Enroll Now
                         </Link>
                         <Link
                             to="/contact"
-                            className="rounded-lg border border-white/60 text-white px-7 py-3 text-sm font-bold hover:bg-white/10 transition"
+                            className="min-h-11 rounded-xl border border-white/30 px-7 py-3 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
                         >
                             Contact Us
                         </Link>
+                        </div>
                     </div>
                 </motion.div>
             </section>

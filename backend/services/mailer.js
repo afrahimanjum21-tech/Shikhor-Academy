@@ -29,8 +29,8 @@ function getDbMailConfig(row) {
     username: row.smtp_username || '',
     password: decryptSecret(row.smtp_password) || '',
     encryption: row.smtp_encryption || 'tls',
-    fromAddress: row.smtp_from_address || row.email || 'noreply@uttoron.com',
-    fromName: row.smtp_from_name || row.site_name || 'Uttoron Coaching Centre',
+    fromAddress: row.smtp_from_address || row.email || 'noreply@shikhoracademy.com',
+    fromName: row.smtp_from_name || row.site_name || 'Shikhor Academy',
   };
 }
 
@@ -51,7 +51,7 @@ export async function getSiteMailConfig() {
     console.error('[mailer] Failed to load SMTP settings from DB:', err.message);
   }
 
-  const dbFromCandidate = dbConfig?.fromAddress || 'noreply@uttoron.com';
+  const dbFromCandidate = dbConfig?.fromAddress || 'noreply@shikhoracademy.com';
   const fromCandidate = process.env.MAIL_FROM_ADDRESS || dbFromCandidate;
 
   // Gmail hard-fails SPF/DKIM alignment when the From address is a different
@@ -79,7 +79,7 @@ export async function getSiteMailConfig() {
       pass: process.env.MAIL_PASSWORD || dbConfig?.password || '',
     },
     fromAddress,
-    fromName: process.env.MAIL_FROM_NAME || dbConfig?.fromName || 'Uttoron Coaching Centre',
+    fromName: process.env.MAIL_FROM_NAME || dbConfig?.fromName || 'Shikhor Academy',
   };
 
   siteMailCache = { at: now, config };

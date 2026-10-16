@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyUnwrap, cleanPath, matchesPath, invalidationNamespace, keyPathInvalidated } from './responseUnwrap.js';
+import { applyUnwrap, cleanPath, matchesPath, invalidationNamespace, keyPathInvalidated, CROSS_INVALIDATE } from './responseUnwrap.js';
 
 /**
  * Regression tests for the Admin Student Manager pagination bug. Root cause:
@@ -119,4 +119,11 @@ test('I-10: cross-invalidation clears the paired public feed (and its pages)', (
   const ns = invalidationNamespace('/admin/notices');
   assert.equal(keyPathInvalidated('/public/notices?page=1', ns, ['/public/notices']), true);
   assert.equal(keyPathInvalidated('/public/success-stories', ns, ['/public/notices']), false);
+});
+
+test('student action mutations invalidate the plural student list cache', () => {
+  const ns = invalidationNamespace('/admin/student/delete/42');
+  assert.equal(ns, '/admin/student');
+  assert.equal(keyPathInvalidated('/admin/students?page=1', ns, CROSS_INVALIDATE[ns]), true);
+  assert.equal(keyPathInvalidated('/admin/teachers', ns, CROSS_INVALIDATE[ns]), false);
 });

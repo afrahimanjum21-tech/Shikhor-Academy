@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { buildAssetUrl } from "../../services/config";
 import PasswordInput from "../../components/common/PasswordInput";
 import {
     Building2,
@@ -16,8 +17,8 @@ import {
 } from "lucide-react";
 
 const defaultForm = {
-    site_name: "Uttoron Coaching Center",
-    home_hero_title: "Learn with confidence. Succeed with Uttoron.",
+    site_name: "Shikhor Academy",
+    home_hero_title: "Learn with confidence. Succeed with Shikhor Academy.",
     home_hero_subtitle: "Concept-based coaching, regular evaluation, and supportive guidance for every student.",
     footer_description: "Empowering students through quality education, discipline, concept-based learning, and expert mentorship.",
     address: "",
@@ -30,6 +31,9 @@ const defaultForm = {
     twitter_url: "",
     instagram_url: "",
     about_content: "",
+    about_photo_1: "",
+    about_photo_2: "",
+    about_photo_3: "",
     student_count: 0,
     years_experience: 0,
     established_year: "",
@@ -41,7 +45,7 @@ const defaultForm = {
     smtp_username: "",
     smtp_password: "",
     smtp_from_address: "",
-    smtp_from_name: "Uttoron Coaching Center",
+    smtp_from_name: "Shikhor Academy",
     smtp_encryption: "tls",
     email_enabled: false,
     email_provider: "brevo",
@@ -51,6 +55,7 @@ const defaultForm = {
 
 export default function SiteSettings() {
     const [form, setForm] = useState(defaultForm);
+    const [aboutPhotoFiles, setAboutPhotoFiles] = useState({});
     const [hasSmtpPassword, setHasSmtpPassword] = useState(false);
     const [hasEmailApiKey, setHasEmailApiKey] = useState(false);
     const [testTo, setTestTo] = useState("");
@@ -81,14 +86,22 @@ export default function SiteSettings() {
         setError("");
 
         try {
-            const payload = { ...form };
-            if (!payload.smtp_password) delete payload.smtp_password;
-            if (!payload.email_api_key) delete payload.email_api_key;
-            if (typeof payload.success_rate === 'string') payload.success_rate = parseInt(payload.success_rate.replace(/%/g, ''), 10) || 0;
+            const payload = new FormData();
+            Object.entries(form).forEach(([key, value]) => {
+                if (key.startsWith("about_photo_") || key === "hero_bg_image") return;
+                if (key === "smtp_password" && !value) return;
+                if (key === "email_api_key" && !value) return;
+                payload.append(key, value ?? "");
+            });
+            Object.entries(aboutPhotoFiles).forEach(([key, file]) => {
+                if (isImageFile(file)) payload.append(key, file);
+            });
+            if (typeof form.success_rate === 'string') payload.set("success_rate", parseInt(form.success_rate.replace(/%/g, ''), 10) || 0);
 
             const { data } = await api.post("/admin/site-settings", payload);
             const updated = data.data || data;
             setForm({ ...defaultForm, ...updated, smtp_password: "", email_api_key: "" });
+            setAboutPhotoFiles({});
             setHasSmtpPassword(Boolean(updated.has_smtp_password));
             setHasEmailApiKey(Boolean(updated.has_email_api_key));
             setMessage(data.message || "Site settings saved");
@@ -174,7 +187,7 @@ export default function SiteSettings() {
                                 maxLength={32}
                             />
                             <Field label="From Address" value={form.smtp_from_address || ""} onChange={(v) => update("smtp_from_address", v)} placeholder="your-email@gmail.com" />
-                            <Field label="From Name" value={form.smtp_from_name || ""} onChange={(v) => update("smtp_from_name", v)} placeholder="Uttoron Coaching Center" />
+                            <Field label="From Name" value={form.smtp_from_name || ""} onChange={(v) => update("smtp_from_name", v)} placeholder="Shikhor Academy" />
                             <div>
                                 <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Encryption</label>
                                 <select
@@ -301,6 +314,17 @@ export default function SiteSettings() {
                     </Section>
 
                     <Section icon={<Info size={20} />} title="About Us Content" subtitle="This markdown content is shown directly on the public About page.">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {[1, 2, 3].map((index) => (
+                                <ImageField
+                                    key={index}
+                                    label={["Mission photo", "Vision photo", "Approach photo"][index - 1]}
+                                    value={form[`about_photo_${index}`]}
+                                    file={aboutPhotoFiles[`about_photo_${index}`]}
+                                    onChange={(file) => setAboutPhotoFiles((prev) => ({ ...prev, [`about_photo_${index}`]: file }))}
+                                />
+                            ))}
+                        </div>
                         <textarea
                             value={form.about_content || ""}
                             onChange={(e) => update("about_content", e.target.value)}
@@ -394,5 +418,65 @@ function Field({ label, value, onChange, required = false, placeholder = "", tex
                 />
             )}
         </div>
+    );
+}
+
+function ImageField({ label, value, file, onChange }) {
+    const [filePreview, setFilePreview] = useState("");
+
+    useEffect(() => {
+        if (!isImageFile(file)) {
+            setFilePreview("");
+            return undefined;
+        }
+        const objectUrl = URL.createObjectURL(file);
+        setFilePreview(objectUrl);
+        return () => URL.revokeObjectURL(objectUrl);
+    }, [file]);
+
+    const preview = filePreview || buildAssetUrl(value);
+
+    return (
+        <div>
+            <label className="block text-xs font-bold uppercase text-gray-500 mb-1">{label}</label>
+            <div className="overflow-hidden rounded border border-gray-300 bg-gray-50">
+                <div className="flex aspect-[4/3] items-center justify-center">
+                    {preview ? (
+                        <img src={preview} alt={`${label} preview`} className="h-full w-full object-cover" />
+                    ) : (
+                        <span className="px-3 text-center text-xs text-gray-400">No image selected</span>
+                    )}
+                </div>
+                <div className="relative border-t border-gray-200 bg-white">
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.preventDefault();
+                            event.currentTarget.nextElementSibling?.click();
+                        }}
+                        className="flex min-h-11 w-full items-center justify-center px-3 text-xs font-semibold text-[#1F4E79] hover:bg-blue-50"
+                    >
+                        Choose image
+                    </button>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => onChange(event.target.files?.[0] || null)}
+                        className="sr-only"
+                    />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function isImageFile(value) {
+    return Boolean(
+        value
+        && typeof value === "object"
+        && typeof value.name === "string"
+        && typeof value.size === "number"
+        && typeof value.type === "string"
+        && value.type.startsWith("image/")
     );
 }

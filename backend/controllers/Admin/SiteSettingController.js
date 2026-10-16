@@ -1,10 +1,47 @@
-import models from '../../models/index.js';
+import models, { sequelize } from '../../models/index.js';
 import MediaService from '../../services/media/MediaService.js';
 import MediaDeleteService from '../../services/media/MediaDeleteService.js';
 import EmailService from '../../services/email/EmailService.js';
 import { resetMailConfigCache } from '../../services/mailer.js';
 import { encryptSecret } from '../../services/secretCrypto.js';
 import { parseBool } from '../../utils/parseBool.js';
+
+function parseOptionalInteger(value, emptyValue = null) {
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return emptyValue;
+  }
+  const parsed = Number.parseInt(String(value).trim(), 10);
+  return Number.isFinite(parsed) ? parsed : emptyValue;
+}
+
+// Some older production databases predate the latest SiteSettings migrations.
+// Bring only this allowlisted table forward before a save so settings remain
+// writable while the explicit migration runner can be applied separately.
+async function ensureSiteSettingSchema() {
+  const queryInterface = sequelize.getQueryInterface();
+  const columns = await queryInterface.describeTable('SiteSettings');
+  const additions = {
+    footer_description: { type: 'TEXT', allowNull: true },
+    about_photo_1: { type: 'VARCHAR(255)', allowNull: true },
+    about_photo_2: { type: 'VARCHAR(255)', allowNull: true },
+    about_photo_3: { type: 'VARCHAR(255)', allowNull: true },
+  };
+
+  for (const [name, definition] of Object.entries(additions)) {
+    if (!columns[name]) {
+      await queryInterface.addColumn('SiteSettings', name, definition);
+    }
+  }
+
+  for (const name of ['smtp_password', 'email_api_key']) {
+    if (columns[name] && !/\bTEXT\b/i.test(String(columns[name].type))) {
+      await queryInterface.changeColumn('SiteSettings', name, {
+        type: 'TEXT',
+        allowNull: true,
+      });
+    }
+  }
+}
 
 export const show = async (req, res) => {
   try {
@@ -34,10 +71,12 @@ export const show = async (req, res) => {
 
 export const update = async (req, res) => {
   try {
+    await ensureSiteSettingSchema();
     const setting = await models.SiteSetting.instance();
 
     const {
       site_name, hero_title, hero_subtitle, hero_bg_image,
+      about_photo_1, about_photo_2, about_photo_3,
       about_content, address, map_link, map_embed_url,
       phone, email,
       footer_description,
@@ -58,6 +97,9 @@ export const update = async (req, res) => {
     if (hero_subtitle !== undefined) updateData.hero_subtitle = hero_subtitle;
     if (home_hero_subtitle !== undefined) updateData.hero_subtitle = home_hero_subtitle;
     if (hero_bg_image !== undefined) updateData.hero_bg_image = hero_bg_image;
+    if (about_photo_1 !== undefined) updateData.about_photo_1 = about_photo_1;
+    if (about_photo_2 !== undefined) updateData.about_photo_2 = about_photo_2;
+    if (about_photo_3 !== undefined) updateData.about_photo_3 = about_photo_3;
     if (about_content !== undefined) updateData.about_content = about_content;
     if (footer_description !== undefined) updateData.footer_description = footer_description;
     if (address !== undefined) updateData.address = address;
@@ -71,14 +113,14 @@ export const update = async (req, res) => {
     if (linkedin_url !== undefined) updateData.linkedin_url = linkedin_url;
     if (instagram_url !== undefined) updateData.instagram_url = instagram_url;
     if (whatsapp_number !== undefined) updateData.whatsapp_number = whatsapp_number;
-    if (student_count !== undefined) updateData.student_count = student_count;
-    if (years_experience !== undefined) updateData.years_experience = years_experience;
+    if (student_count !== undefined) updateData.student_count = parseOptionalInteger(student_count, 0);
+    if (years_experience !== undefined) updateData.years_experience = parseOptionalInteger(years_experience, 0);
     if (success_rate !== undefined) updateData.success_rate = parseInt(String(success_rate).replace(/%/g, ''), 10) || 0;
     if (established_year !== undefined) updateData.established_year = parseInt(String(established_year), 10) || null;
     if (admission_email !== undefined) updateData.admission_email = admission_email;
     if (messages_email !== undefined) updateData.messages_email = messages_email;
     if (smtp_host !== undefined) updateData.smtp_host = smtp_host;
-    if (smtp_port !== undefined) updateData.smtp_port = smtp_port;
+    if (smtp_port !== undefined) updateData.smtp_port = parseOptionalInteger(smtp_port);
     if (smtp_username !== undefined) updateData.smtp_username = smtp_username;
     if (smtp_password !== undefined) updateData.smtp_password = encryptSecret(smtp_password);
     if (smtp_encryption !== undefined) updateData.smtp_encryption = smtp_encryption;
@@ -89,12 +131,21 @@ export const update = async (req, res) => {
     if (email_api_key !== undefined && email_api_key !== '') updateData.email_api_key = encryptSecret(email_api_key);
     if (email_from !== undefined) updateData.email_from = email_from;
 
-    if (req.file) {
-      const result = await MediaService.upload(req.file, { folder: 'site' });
-      if (setting.hero_bg_image) {
-        await MediaDeleteService.deleteByUrl(setting.hero_bg_image).catch(err => console.warn('Media cleanup:', err.message));
+    const files = req.files || {};
+    const uploadedFiles = {
+      hero_bg_image: files.hero_bg_image?.[0] || req.file,
+      about_photo_1: files.about_photo_1?.[0],
+      about_photo_2: files.about_photo_2?.[0],
+      about_photo_3: files.about_photo_3?.[0],
+    };
+
+    for (const [field, file] of Object.entries(uploadedFiles)) {
+      if (!file) continue;
+      const result = await MediaService.upload(file, { folder: 'site' });
+      if (setting[field]) {
+        await MediaDeleteService.deleteByUrl(setting[field]).catch(err => console.warn(`Media cleanup (${field}):`, err.message));
       }
-      updateData.hero_bg_image = result.url;
+      updateData[field] = result.url;
     }
 
     await setting.update(updateData);

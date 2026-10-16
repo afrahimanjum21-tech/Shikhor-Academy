@@ -97,16 +97,16 @@ async function runSeeders() {
     await models.SiteSetting.findOrCreate({
       where: { id: 1 },
       defaults: {
-        site_name: 'Uttoron Coaching Centre',
+        site_name: 'Shikhor Academy',
         student_count: 500,
         years_experience: 10,
         success_rate: 95,
         established_year: 2022,
         address: '123, Main Road, Dhaka, Bangladesh',
         phone: '+8801700000000',
-        email: 'info@uttoron.com',
-        facebook_url: 'https://facebook.com/uttoron',
-        youtube_url: 'https://youtube.com/@uttoron',
+        email: 'info@shikhoracademy.com',
+        facebook_url: 'https://facebook.com/shikhoracademy',
+        youtube_url: 'https://youtube.com/@shikhoracademy',
       },
     });
 

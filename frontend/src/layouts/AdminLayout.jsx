@@ -94,10 +94,10 @@ export default function AdminLayout() {
                             <p className="text-xs md:text-sm font-bold text-gray-800 truncate max-w-[100px] md:max-w-[160px]">{user?.name}</p>
                             <p className="text-[10px] md:text-xs text-gray-500">Admin</p>
                         </div>
-                        <img src={HERO_IMAGE} alt="Uttoron" className="h-7 w-7 md:h-9 md:w-9 rounded-full object-cover border-2 border-gray-100" />
+                        <img src={HERO_IMAGE} alt="Shikhor Academy" className="h-7 w-7 md:h-9 md:w-9 rounded-full object-cover border-2 border-gray-100" />
                     </div>
                 </header>
-                <main className="flex-1 overflow-auto p-3 md:p-8 bg-[#F8FAFC]"><div className="max-w-6xl mx-auto"><ErrorBoundary key={location.pathname}><Outlet /></ErrorBoundary></div></main>
+                <main className="min-h-0 min-w-0 flex-1 overflow-auto p-3 md:p-8 bg-[#F8FAFC]"><div className="max-w-6xl min-w-0 mx-auto"><ErrorBoundary key={location.pathname}><Outlet /></ErrorBoundary></div></main>
             </div>
 
             <FloatingUploadWidget />
