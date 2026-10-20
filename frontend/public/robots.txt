@@ -5,4 +5,4 @@ Disallow: /admin
 Disallow: /student
 Disallow: /teacher
 
-Sitemap: https://shikhoracademy.vercel.app/sitemap.xml
+Sitemap: https://www.shikhoracademy.me/sitemap.xml

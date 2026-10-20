@@ -275,7 +275,7 @@ export async function sendTest(toEmail) {
     title: 'Test email',
     body: 'This is a test email from the Shikhor Academy website. If you received this, the email notification system is working correctly.',
     actionLabel: 'Visit Website',
-    actionUrl: process.env.FRONTEND_URL || 'https://shikhoracademy.vercel.app',
+    actionUrl: process.env.FRONTEND_URL || 'https://www.shikhoracademy.me',
   });
   return sendOne(config, String(toEmail || '').trim(), email);
 }

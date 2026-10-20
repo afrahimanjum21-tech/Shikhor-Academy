@@ -1,6 +1,6 @@
 import { Facebook } from "lucide-react";
 
-const SITE_URL = "https://shikhoracademy.vercel.app";
+const SITE_URL = "https://www.shikhoracademy.me";
 
 function WhatsAppIcon({ size = 14 }) {
   return (

@@ -6,7 +6,7 @@ import api from "../services/api";
 import { buildAssetUrl } from "../services/config";
 import usePageMeta from "../hooks/usePageMeta";
 
-const SITE_URL = "https://shikhoracademy.vercel.app";
+const SITE_URL = "https://www.shikhoracademy.me";
 const PER_PAGE = 12;
 
 const initials = (name) =>

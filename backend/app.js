@@ -323,7 +323,7 @@ app.get('/sitemap.xml', async (req, res) => {
   // H-low9: the canonical site URL follows the configured deployment origin
   // (SITE_URL / FRONTEND_URL) instead of a hardcoded host, so the sitemap stays
   // correct if the public domain changes or the frontend deploys separately.
-  const base = (process.env.SITE_URL || process.env.FRONTEND_URL || 'https://shikhoracademy.vercel.app').replace(/\/+$/, '');
+  const base = (process.env.SITE_URL || process.env.FRONTEND_URL || 'https://www.shikhoracademy.me').replace(/\/+$/, '');
   const staticPaths = [
     { path: '', priority: '1.0', freq: 'daily' },
     { path: '/about', priority: '0.8', freq: 'monthly' },
