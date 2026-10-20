@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-const SITE_URL = "https://shikhoracademy.vercel.app";
+const SITE_URL = "https://www.shikhoracademy.me";
 
 function setMeta(attr, key, content) {
   let el = document.head.querySelector(`meta[${attr}="${key}"]`);
@@ -17,7 +17,7 @@ function setMeta(attr, key, content) {
 }
 
 function resolveImage(image) {
-  if (!image) return `${SITE_URL}/og-image.jpg`;
+  if (!image) return `${SITE_URL}/uttoron-logo.png`;
   return /^https?:\/\//.test(image) ? image : `${SITE_URL}${image}`;
 }
 

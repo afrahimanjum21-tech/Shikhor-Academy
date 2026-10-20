@@ -13,7 +13,7 @@ import usePageMeta from "../hooks/usePageMeta";
 
 export default function Home() {
   usePageMeta({
-    title: "Shikhor Academy — HSC, SSC & English Coaching in Bangladesh",
+    title: "Shikhor Academy",
     description: "Shikhor Academy offers quality HSC, SSC and English coaching with experienced teachers and proven academic results. Enroll today.",
     path: "/",
   });
