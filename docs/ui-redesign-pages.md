@@ -7,6 +7,7 @@ Companion to `ui-redesign-plan.md`. Every page/route in the app, grouped. Tick `
   - 2026-10-12: `paper` changed `#F6F8FB` → `#EEF2F7` (clearer soft off-white) and every solid `bg-white` surface across the redesigned pages + the shared `PublicLayout` backdrop wash swapped to `bg-paper`, so no page uses stark white anymore (navy/dark `bg-white/5../20` overlays kept). Backup: `.ui-backups/offwhite-2026-10-12/`.
   - 2026-10-12: segment-colour rhythm — the all-light inner pages (About, Courses, Faculty, Gallery, Notices) got a compact **navy (`bg-ink`) header band** (white title + brass eyebrow + dot-grid) so each page reads navy-header → off-white content → dark footer, matching Home's two-colour segment feel instead of one flat tone. (CourseDetail + Admission already have navy heroes; FacultyProfile still has a light header card — can match on request.) Backup: `.ui-backups/segment-colour-2026-10-12/`.
 - [x] Fonts (Fraunces display + Tiro Bangla + Inter) — `index.html`
+  - 2026-10-17/18: **canvas rule update** — new/redesigned pages use a **solid pure-white `#FFFFFF` content canvas** with a pale blue-gray (`bg-paper` #EEF2F7) toolbar/summary panel and white bordered cards on top; the decorative `PageBackground` gradient/blob layer (component in `components/common/PageBackground.jsx`) is retired per page as each page is redesigned (Library removed it first, in `A.15`; `SetPassword` still uses it until its own pass). Navy title bands, navy sidebar, paper panels and the site pattern on *other* not-yet-redesigned pages are unchanged.
 - [ ] Shared components still to modernize: **Navbar**, **Footer**, the 3 dashboard **Layouts** (sidebars)
   - 2026-10-12: **Footer** made mobile-compact (tighter padding/gaps, Quick Links in a 2-col grid on phones, long email/address wrap safely) — shared across all public pages; backup `.ui-backups/footer-mobile-2026-10-12/`.
 
@@ -29,7 +30,7 @@ Companion to `ui-redesign-plan.md`. Every page/route in the app, grouped. Tick `
 - [ ] 12. **Admission** — `/admission`  ⏳ redesigned (navy hero + 6 grouped section cards, accessible labels + htmlFor, native validation, pending/success/error states, mobile-first, reduced-motion, site bg-watermark preserved). Lint-clean; **awaiting your on-device screenshot before ticking** (can't render React in my sandbox).
 - [ ] 13. **Login** — `/login`
 - [ ] 14. **Set Password** — `/set-password`
-- [ ] 15. **Library (public)** — `/library`
+- [ ] 15. **Library (public)** — `/library` — ⏳ redesigned 2026-10-17/18 (shared component, serves `/library` + student `/student/library` — see the student-panel note in section D). Navy title band + brass eyebrow/divider; **PageBackground decorative pattern removed → solid #FFFFFF canvas** (pattern left intact for other pages that still use it, e.g. Set Password); pale blue-gray search/filter panel (search + subject select built only from real `subject` values + file/link type select + reset); white bordered cards with Fraunces titles, real metadata (type, subject, uploader, description) and 44px brass Download / Open-link actions; restricted items stay visible but locked (server already withholds `file_path`/`url`) with a "Restricted" tag + batch/class/course hint; guest view keeps the login prompt (navy panel + brass CTA to `/login`) and blurred 6-item preview; added loading skeleton + error/retry + clear-filters empty state; MotionConfig reducedMotion="user"; lint 0/0; verified in headless Chromium at 320/360/390/768/1440 (no page-level overflow, focus rings on all controls, locked cards contain no links).
 
 ## B. Utility pages (3)
 - [ ] 16. **Check Result** — `/check-result`
@@ -64,7 +65,7 @@ Companion to `ui-redesign-plan.md`. Every page/route in the app, grouped. Tick `
 - [ ] 41. **Student Dashboard** — `/student/dashboard`
 - [ ] 42. **Student Profile** — `/student/profile`
 - [ ] 43. **Notifications** — `/student/notifications`
-- [ ] 44. **Results** — `/student/results`
+- [ ] 44. **Results** — `/student/results` — ⏳ redesigned 2026-10-18 (first student-panel page in the new style; keeps the existing sidebar shell, same white workspace treatment as the shared Library). Navy title band + brass eyebrow/divider over a solid #FFFFFF workspace canvas; pale blue-gray summary strip (published exams / average / best — real values only, "—" instead of 0% when there are none) and a search + exam-type toolbar panel (Monthly Exams · Weekly MCQ pills with aria-pressed, 44px); white result cards with paper stat tiles (total/obtained/position/percentage), grade + pass/fail chips, teacher comment and a brass partial-publish notice; **subject marks are labelled stacked rows on mobile/tablet and a 5-column table at lg+** (own scroll container). Missing results no longer show F/Fail — cards with nothing published/recorded show an explanatory note (zero marks still show 0). Loading skeleton, error + retry, empty state; reduced-motion respected. `/student/results` fetch, markViewed, search, type filter and the grade/pass calculations are unchanged; lint 0/0; verified in headless Chromium at 320/360/390/768/1440 (no page-level overflow, keyboard focus rings on search + tabs, guest still redirected to `/login`) — **awaiting your on-device screenshot before ticking**.
 - [ ] 45. **Class Routine** — `/student/routine`
 - [ ] 46. **Academic Calendar** — `/student/calendar`
 - [ ] 47. **Attendance Report** — `/student/attendance-report`
@@ -73,7 +74,7 @@ Companion to `ui-redesign-plan.md`. Every page/route in the app, grouped. Tick `
 - [ ] 50. **E-Learning** — `/student/e-learning`
 - [ ] 51. **Assignments** — `/student/assignments`
 - [ ] 52. **Assignment Results** — `/student/assignment-results`
-  - (Student Library `/student/library` + Student Gallery `/student/gallery` reuse the public Library/Gallery pages above.)
+  - (Student Library `/student/library` + Student Gallery `/student/gallery` reuse the public Library/Gallery pages above.) — 2026-10-18: Student Library verified through the shared component (see A.15): white workspace canvas + navy band + tinted filter panel render correctly inside the student shell (single column on phone/tablet, 2–3 columns on large desktop), restricted materials stay locked with no leaked URLs, and the `/library → /student/library` redirect for students is intact.
 
 ## E. Teacher panel (8)
 - [ ] 53. **Teacher Dashboard** — `/teacher/dashboard`
