@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import LOGO from "../../images/uttoron-logo.png";
+import HeroDotWaves from "./HeroDotWaves";
+import LogoDotWaves from "./LogoDotWaves";
 
 // One orchestrated entrance for the hero (the single page-load moment).
 const container = { hidden: {}, visible: { transition: { staggerChildren: 0.12, delayChildren: 0.05 } } };
@@ -30,12 +32,12 @@ export default function HeroSection() {
 
   return (
     <section className="relative overflow-hidden bg-ink text-white">
-      {/* Depth: diagonal navy gradient + top-left light sheen + fine dot-grid + bottom vignette (no brass glows) */}
-      <div className="pointer-events-none absolute inset-0">
+      {/* Depth: diagonal navy gradient + top-left light sheen + interactive
+          wavy dot-field + bottom vignette (no brass glows) */}
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
         <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #21466A 0%, #14314C 40%, #0E2338 70%, #091A2B 100%)" }} />
         <div className="absolute inset-0" style={{ background: "radial-gradient(1100px 560px at 12% -5%, rgba(255,255,255,0.10), transparent 60%)" }} />
-        <div className="absolute inset-0 opacity-80"
-          style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
+        <HeroDotWaves />
         <div className="absolute inset-x-0 bottom-0 h-48" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.38), transparent)" }} />
       </div>
 
@@ -88,10 +90,15 @@ export default function HeroSection() {
               <motion.div
                 animate={{ y: [0, -10, 0] }}
                 transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                className="relative flex aspect-square items-center justify-center rounded-[22px] bg-paper p-5 shadow-card-lg sm:rounded-[28px] sm:p-12"
+                className="relative flex aspect-square items-center justify-center overflow-hidden rounded-[22px] p-5 shadow-card-lg sm:rounded-[28px] sm:p-12"
               >
-                <img src={LOGO} alt={siteName} className="w-full max-w-[300px] object-contain" />
+                {/* Paper-white base with a living field of white pearl dots on top */}
+                <div className="absolute inset-0" style={{ background: "linear-gradient(150deg, #F3F7FB 0%, #E8EFF6 52%, #DDE8F2 100%)" }} />
+                <LogoDotWaves />
+
+                <img src={LOGO} alt={siteName} className="relative z-10 w-full max-w-[300px] object-contain" />
               </motion.div>
+
               {/* brass corner bracket */}
               <div className="pointer-events-none absolute -right-3 -top-3 h-20 w-20 rounded-tr-[28px] border-r-2 border-t-2 border-brass" aria-hidden="true" />
               {successRate && (

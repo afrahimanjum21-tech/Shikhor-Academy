@@ -23,6 +23,21 @@ const navIcons = {
 
 const navPath = (item) => (item === "Home" ? "/" : `/${item.toLowerCase().replace(/\s+/g, "-")}`);
 
+// Detail routes that live outside a section's own path but belong to it.
+const navExtraPrefixes = {
+    Courses: ["/course/"],
+};
+
+const isNavItemActive = (item, pathname) => {
+    const path = navPath(item);
+    if (path === "/") return pathname === "/";
+    return (
+        pathname === path ||
+        pathname.startsWith(`${path}/`) ||
+        (navExtraPrefixes[item] || []).some((prefix) => pathname.startsWith(prefix))
+    );
+};
+
 // §D/O: the public DASHBOARD button must route to the signed-in user's OWN
 // panel, not always /admin/dashboard. Mirrors AppRoutes/Login role mapping;
 // an unknown/missing role falls back safely to login.
@@ -117,15 +132,23 @@ export default function Navbar() {
 
                     {/* Desktop Menu */}
                     <div className="hidden lg:flex lg:space-x-5 xl:space-x-6 items-center">
-                        {navItems.map((item) => (
-                            <Link
-                                key={item}
-                                to={navPath(item)}
-                                className="text-gray-600 hover:text-[#1F4F78] font-medium transition text-xs xl:text-sm uppercase tracking-wide hover:underline underline-offset-4 whitespace-nowrap"
-                            >
-                                {item}
-                            </Link>
-                        ))}
+                        {navItems.map((item) => {
+                            const isActive = isNavItemActive(item, location.pathname);
+                            return (
+                                <Link
+                                    key={item}
+                                    to={navPath(item)}
+                                    aria-current={isActive ? "page" : undefined}
+                                    className={`relative isolate whitespace-nowrap rounded-full text-xs font-medium uppercase tracking-wide transition-colors duration-200 before:absolute before:-inset-x-2 before:-inset-y-1.5 before:-z-10 before:rounded-full before:transition-colors before:duration-200 xl:text-sm ${
+                                        isActive
+                                            ? "font-bold text-[#1F4F78] before:bg-[#1F4F78]/10 before:ring-1 before:ring-inset before:ring-[#1F4F78]/20"
+                                            : "text-gray-600 hover:text-[#1F4F78] before:bg-transparent hover:before:bg-[#1F4F78]/5"
+                                    }`}
+                                >
+                                    {item}
+                                </Link>
+                            );
+                        })}
 
                         {user ? (
                             <div className="flex gap-4">
@@ -134,7 +157,15 @@ export default function Navbar() {
                                 </Link>
                             </div>
                         ) : (
-                            <Link to="/login" className="text-[#1F4F78] font-bold border border-[#1F4F78] px-4 xl:px-5 py-2 rounded-md hover:bg-[#1F4F78] hover:text-white transition text-[10px] xl:text-xs uppercase whitespace-nowrap">
+                            <Link
+                                to="/login"
+                                aria-current={location.pathname === "/login" ? "page" : undefined}
+                                className={`font-bold border px-4 xl:px-5 py-2 rounded-md transition text-[10px] xl:text-xs uppercase whitespace-nowrap ${
+                                    location.pathname === "/login"
+                                        ? "bg-[#1F4F78] border-[#1F4F78] text-white shadow-sm"
+                                        : "text-[#1F4F78] border-[#1F4F78] hover:bg-[#1F4F78] hover:text-white"
+                                }`}
+                            >
                                 LOGIN
                             </Link>
                         )}
@@ -205,9 +236,7 @@ export default function Navbar() {
                     <nav className="flex-1 overflow-y-auto overscroll-contain py-4 px-2 space-y-0.5">
                         {navItems.map((item) => {
                             const to = navPath(item);
-                            const isActive =
-                                location.pathname === to ||
-                                (to !== "/" && location.pathname.startsWith(`${to}/`));
+                            const isActive = isNavItemActive(item, location.pathname);
                             const Icon = navIcons[item];
                             return (
                                 <Link
