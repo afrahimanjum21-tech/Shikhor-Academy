@@ -141,6 +141,7 @@ function getAcademicRows(ctx, isEditing) {
 function getGuardianRows(ctx) {
     const { formData } = ctx;
     return [
+        { label: "Guardian Phone", name: "guardian_phone", value: formData?.guardian_phone, type: "text", placeholder: "e.g. 01712345678" },
         { label: "Father's Name", name: "father_name", value: formData?.father_name, type: "text" },
         { label: "Father's Occupation", name: "father_occupation", value: formData?.father_occupation, type: "text" },
         { label: "Father's Mobile", name: "father_phone", value: formData?.father_phone, type: "text" },

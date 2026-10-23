@@ -111,6 +111,7 @@ export default function StudentManager() {
             name: student.name,
             email: student.email,
             phone: student.phone,
+            guardian_phone: prof.guardian_phone || '',
             student_id_card_no: prof.student_id_card_no || '',
             current_batch_id: prof.current_batch_id || '',
             subject: prof.subject || '',
@@ -540,6 +541,7 @@ export default function StudentManager() {
                 <input className="w-full border p-2 rounded text-sm" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} placeholder="Name"/>
                 <input className="w-full border p-2 rounded text-sm" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} placeholder="Email"/>
                 <input className="w-full border p-2 rounded text-sm" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} placeholder="Phone"/>
+                <input className="w-full border p-2 rounded text-sm" value={editForm.guardian_phone || ''} onChange={e => setEditForm({...editForm, guardian_phone: e.target.value})} placeholder="Guardian Phone (WhatsApp)"/>
                 <input className="w-full border p-2 rounded text-sm" value={editForm.student_id_card_no} onChange={e => setEditForm({...editForm, student_id_card_no: e.target.value})} placeholder="ID No"/>
                 <select className="w-full border p-2 rounded text-sm bg-white" value={editForm.current_batch_id} onChange={e => setEditForm({...editForm, current_batch_id: e.target.value})}>
                     <option value="">Select Batch</option>

@@ -162,8 +162,10 @@ admin.post('/exams/:exam/publish', ExamController.togglePublish);
 
 admin.get('/attendance/sheet', AttendanceController.getSheet);
 admin.get('/attendance/monthly', AttendanceController.monthlySheet);
+admin.get('/attendance/daily', AttendanceController.manualSheet);
 admin.post('/attendance/save', AttendanceController.store);
 admin.post('/attendance/cell', AttendanceController.saveCell);
+admin.post('/attendance/manual', AttendanceController.manualSave);
 admin.get('/attendance/leave-requests', AttendanceController.leaveRequests);
 admin.post('/attendance/leave-requests/:attendance/approve', AttendanceController.approveLeave);
 admin.post('/attendance/leave-requests/:attendance/reject', AttendanceController.rejectLeave);
@@ -299,8 +301,10 @@ teacher.post('/profile/photo', uploadPhoto('teacher_photos').single('photo'), Te
 teacher.post('/profile/change-password', TeacherProfileController.changePassword);
 
 teacher.get('/attendance', TeacherAttendanceController.index);
+teacher.get('/attendance/daily', TeacherAttendanceController.manualSheet);
 teacher.get('/attendance/students/:batchId', TeacherAttendanceController.getStudentsForAttendance);
 teacher.post('/attendance/mark', TeacherAttendanceController.markAttendance);
+teacher.post('/attendance/manual', TeacherAttendanceController.manualSave);
 teacher.put('/attendance/:attendanceId', TeacherAttendanceController.updateAttendance);
 
 teacher.get('/exams', TeacherMarksController.getExams);

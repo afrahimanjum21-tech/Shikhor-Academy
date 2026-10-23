@@ -35,7 +35,11 @@ export default defineConfig({
     logLevel: 'warn',
     hmr: {
       overlay: false,
-      clientPort: 443,
+      // Local dev uses the page's own port (5173). Set this only when HMR is
+      // served through a reverse proxy on a different port (for example 443).
+      ...(process.env.VITE_HMR_CLIENT_PORT
+        ? { clientPort: Number(process.env.VITE_HMR_CLIENT_PORT) }
+        : {}),
     },
     proxy: {
       '/api': {

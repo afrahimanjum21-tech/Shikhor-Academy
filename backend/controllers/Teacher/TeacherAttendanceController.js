@@ -1,6 +1,11 @@
 import models from '../../models/index.js';
 import { Op } from 'sequelize';
 import { resolveSession } from '../../services/attendanceSession.js';
+import {
+  listEligibleStudents,
+  saveManualAttendance,
+  ManualAttendanceError,
+} from '../../services/attendance/ManualAttendanceService.js';
 
 export const index = async (req, res) => {
   try {
@@ -124,6 +129,82 @@ export const getStudentsForAttendance = async (req, res) => {
   } catch (error) {
     console.error('TeacherAttendanceController.getStudentsForAttendance error:', error);
     res.status(500).json({ message: 'Failed to fetch students' });
+  }
+};
+
+const manualErrorResponse = (res, error, fallback) => {
+  const known = error instanceof ManualAttendanceError;
+  if (!known) console.error(`${fallback}:`, error.message);
+  return res.status(known ? error.statusCode : 500).json({
+    message: known ? error.message : fallback,
+  });
+};
+
+const positiveId = (value) => {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+};
+
+export const manualSheet = async (req, res) => {
+  try {
+    const { batch_id, date, session } = req.query;
+    if (!batch_id || !date) {
+      return res.status(400).json({ message: 'batch_id and date are required' });
+    }
+
+    // Validate before the assignment lookup: passing a non-integer to an
+    // integer FK would otherwise become a database error (500).
+    const batchId = positiveId(batch_id);
+    if (!batchId) {
+      return res.status(400).json({ message: 'A valid batch is required' });
+    }
+
+    const assignment = await models.TeacherBatchAssignment.findOne({
+      where: { teacher_id: req.user.id, batch_id: batchId },
+    });
+    if (!assignment) {
+      return res.status(403).json({ message: 'You are not assigned to this batch' });
+    }
+
+    const data = await listEligibleStudents({ batchId, date, session });
+    return res.json({ data });
+  } catch (error) {
+    return manualErrorResponse(res, error, 'Failed to fetch manual attendance sheet');
+  }
+};
+
+export const manualSave = async (req, res) => {
+  try {
+    const { student_id, batch_id, date, session, status } = req.body || {};
+    if (!student_id || !batch_id || !date || !status) {
+      return res.status(400).json({
+        message: 'student_id, batch_id, date, and status are required',
+      });
+    }
+
+    const batchId = positiveId(batch_id);
+    if (!batchId) {
+      return res.status(400).json({ message: 'A valid batch is required' });
+    }
+
+    const assignment = await models.TeacherBatchAssignment.findOne({
+      where: { teacher_id: req.user.id, batch_id: batchId },
+    });
+    if (!assignment) {
+      return res.status(403).json({ message: 'You are not assigned to this batch' });
+    }
+
+    const data = await saveManualAttendance({
+      batchId,
+      studentId: student_id,
+      date,
+      session,
+      status,
+    });
+
+    return res.json({ message: 'Attendance saved successfully', data });
+  } catch (error) {
+    return manualErrorResponse(res, error, 'Failed to save attendance');
   }
 };
 

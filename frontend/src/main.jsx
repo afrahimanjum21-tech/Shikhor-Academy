@@ -7,6 +7,7 @@ import { AuthProvider } from './context/AuthContext'
 import { NotificationProvider } from './context/NotificationContext'
 import { UploadProvider } from './context/UploadContext'
 import { ConfirmProvider } from './components/common/ConfirmDialog'
+import SitePreloader from './components/common/SitePreloader'
 import { Toaster } from 'react-hot-toast'
 
 // Capture the PWA install prompt as early as possible so the Install App
@@ -28,7 +29,8 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <SitePreloader />
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <NotificationProvider>
           <UploadProvider>

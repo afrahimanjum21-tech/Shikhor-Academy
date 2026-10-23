@@ -4,6 +4,11 @@ import { Op, fn, col } from 'sequelize';
 import { resolveSession, dhakaTime, todayLocalDate } from '../../services/attendanceSession.js';
 import { attendanceSummary } from '../../services/attendanceStats.js';
 import { serializeLeaveRequests } from '../../services/leaveSerializer.js';
+import {
+  listEligibleStudents,
+  saveManualAttendance,
+  ManualAttendanceError,
+} from '../../services/attendance/ManualAttendanceService.js';
 
 // Resolve each student's current batch so attendance rows always carry the
 // batch_id that models/Attendance.js's unique index (student_id, batch_id,
@@ -278,6 +283,57 @@ export const saveCell = async (req, res) => {
   } catch (error) {
     console.error('AttendanceController.saveCell error:', error);
     return res.status(500).json({ message: 'Failed to update cell' });
+  }
+};
+
+const manualErrorResponse = (res, error, fallback) => {
+  const known = error instanceof ManualAttendanceError;
+  if (!known) console.error(`${fallback}:`, error.message);
+  return res.status(known ? error.statusCode : 500).json({
+    message: known ? error.message : fallback,
+  });
+};
+
+export const manualSheet = async (req, res) => {
+  try {
+    const { course_id, batch_id, date, session } = req.query;
+    if (!course_id || !batch_id || !date) {
+      return res.status(400).json({ message: 'course_id, batch_id, and date are required' });
+    }
+
+    const data = await listEligibleStudents({
+      batchId: batch_id,
+      courseId: course_id,
+      date,
+      session,
+    });
+    return res.json({ data });
+  } catch (error) {
+    return manualErrorResponse(res, error, 'Failed to fetch manual attendance sheet');
+  }
+};
+
+export const manualSave = async (req, res) => {
+  try {
+    const { student_id, batch_id, course_id, date, session, status } = req.body || {};
+    if (!student_id || !batch_id || !course_id || !date || !status) {
+      return res.status(400).json({
+        message: 'student_id, batch_id, course_id, date, and status are required',
+      });
+    }
+
+    const data = await saveManualAttendance({
+      batchId: batch_id,
+      courseId: course_id,
+      studentId: student_id,
+      date,
+      session,
+      status,
+    });
+
+    return res.json({ message: 'Attendance saved successfully', data });
+  } catch (error) {
+    return manualErrorResponse(res, error, 'Failed to save attendance');
   }
 };
 
