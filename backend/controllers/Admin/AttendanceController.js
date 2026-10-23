@@ -528,6 +528,14 @@ export const studentStats = async (req, res) => {
 
 export const requestLeave = async (req, res) => {
   try {
+    // `authorize()` intentionally lets super_admin through every area, so make
+    // this self-service endpoint explicitly student-only. Otherwise a staff
+    // account that opens the student portal could create a student-targeted
+    // "Leave Request Submitted" row in its own staff notification bell.
+    if (req.user.role !== 'student') {
+      return res.status(403).json({ message: 'Only student accounts can request leave' });
+    }
+
     const student = await models.Student.findOne({ where: { user_id: req.user.id } });
     if (!student) {
       return res.status(404).json({ message: 'Student profile not found' });

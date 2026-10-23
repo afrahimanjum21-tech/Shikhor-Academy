@@ -2,6 +2,7 @@ import models from '../models/index.js';
 import { Op, fn, col } from 'sequelize';
 import { parseSince, makeAfter } from '../utils/sinceFilters.js';
 import NotificationService from '../services/NotificationService.js';
+import { notificationVisibilityWhere } from '../services/notificationVisibility.js';
 
 const timeAgo = (date) => {
   if (!date) return '';
@@ -33,7 +34,7 @@ const buildSyntheticItems = async (user, after) => {
   // Unread notification rows per type, so a business event that already has
   // its own row is not ALSO listed as a synthetic summary item.
   const unreadRows = await models.Notification.findAll({
-    where: { user_id: user.id, read_at: null },
+    where: { ...notificationVisibilityWhere(user), read_at: null },
     attributes: ['type', [fn('COUNT', col('id')), 'n']],
     group: ['type'],
   });
@@ -121,7 +122,7 @@ export const index = async (req, res) => {
     const parsedLimit = parseInt(limit, 10) || 50;
     const parsedOffset = parseInt(offset, 10) || 0;
 
-    const where = { user_id: req.user.id, read_at: null };
+    const where = { ...notificationVisibilityWhere(req.user), read_at: null };
     if (type) where.type = type;
 
     const role = req.user.role;
@@ -169,7 +170,7 @@ export const unreadCount = async (req, res) => {
   try {
     const count = await models.Notification.count({
       where: {
-        user_id: req.user.id,
+        ...notificationVisibilityWhere(req.user),
         read_at: null,
       },
     });
@@ -240,7 +241,7 @@ export const markReadByType = async (req, res) => {
 export const recentActivity = async (req, res) => {
   try {
     const activities = await models.Notification.findAll({
-      where: { user_id: req.user.id },
+      where: notificationVisibilityWhere(req.user),
       order: [['createdAt', 'DESC']],
       limit: 20,
     });

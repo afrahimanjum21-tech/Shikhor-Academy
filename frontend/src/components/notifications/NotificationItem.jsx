@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { isNotificationVisibleForRole } from "./notificationVisibility";
 
 const levelColors = {
     critical: { bg: "#FEF2F2", dot: "#EF4444" },
@@ -11,6 +13,7 @@ const levelColors = {
 export default function NotificationItem({ notification, onMarkRead, onClose }) {
     const [hover, setHover] = useState(false);
     const navigate = useNavigate();
+    const { user } = useAuth();
     const colors = levelColors[notification.level] || levelColors.info;
 
     const handleClick = () => {
@@ -18,7 +21,7 @@ export default function NotificationItem({ notification, onMarkRead, onClose }) 
             onMarkRead(notification);
         }
         if (onClose) onClose();
-        if (notification.action_url) {
+        if (notification.action_url && isNotificationVisibleForRole(notification, user?.role)) {
             navigate(notification.action_url);
         }
     };

@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import api from "../../services/api";
 import NotificationItem from "./NotificationItem";
 import { useNotificationCounts } from "../../context/NotificationContext";
+import { useAuth } from "../../context/AuthContext";
+import { isNotificationVisibleForRole } from "./notificationVisibility";
 
 export default function NotificationDropdown({ open, onClose, triggerRef }) {
     const [notifications, setNotifications] = useState([]);
@@ -9,6 +11,8 @@ export default function NotificationDropdown({ open, onClose, triggerRef }) {
     const [hasMore, setHasMore] = useState(true);
     const dropdownRef = useRef(null);
     const { markNotificationRead, markNotificationAllRead } = useNotificationCounts();
+    const { user } = useAuth();
+    const role = user?.role;
 
     const fetch = useCallback((offset = 0, append = false) => {
         if (!open) return;
@@ -16,14 +20,15 @@ export default function NotificationDropdown({ open, onClose, triggerRef }) {
         const limit = 10;
         api.get("/notifications", { params: { limit, offset } })
             .then(({ data }) => {
-                const items = data?.data || (Array.isArray(data) ? data : []);
+                const rawItems = data?.data || (Array.isArray(data) ? data : []);
+                const items = rawItems.filter((item) => isNotificationVisibleForRole(item, role));
                 const total = data?.total ?? items.length;
                 setNotifications(prev => append ? [...prev, ...items] : items);
                 setHasMore((offset + items.length) < total);
             })
             .catch(() => {})
             .finally(() => setLoading(false));
-    }, [open]);
+    }, [open, role]);
 
     useEffect(() => {
         if (open) {

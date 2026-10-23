@@ -58,8 +58,15 @@ test('requestLeave returns 409 when a teacher already marked the class', async (
   models.Attendance.upsert = async () => { throw new Error('must not overwrite'); };
 
   const res = makeRes();
-  await requestLeave({ user: { id: 1 }, body: { date: '2099-01-01', reason: 'sick' } }, res);
+  await requestLeave({ user: { id: 1, role: 'student' }, body: { date: '2099-01-01', reason: 'sick' } }, res);
   assert.equal(res.statusCode, 409);
+});
+
+test('requestLeave rejects staff accounts even though super_admin may pass authorize()', async () => {
+  const res = makeRes();
+  await requestLeave({ user: { id: 1, role: 'super_admin' }, body: { date: '2099-01-01', reason: 'sick' } }, res);
+  assert.equal(res.statusCode, 403);
+  assert.match(res.body.message, /student accounts/i);
 });
 
 test('requestLeave creates a pending leave when the slot is empty', async () => {
@@ -70,7 +77,7 @@ test('requestLeave creates a pending leave when the slot is empty', async () => 
   NotificationService.createForAdmins = async () => ({});
 
   const res = makeRes();
-  await requestLeave({ user: { id: 1 }, body: { date: '2099-01-01', reason: 'sick' } }, res);
+  await requestLeave({ user: { id: 1, role: 'student' }, body: { date: '2099-01-01', reason: 'sick' } }, res);
   assert.equal(res.statusCode, 201);
   assert.equal(saved.status, 'leave');
   assert.equal(saved.leave_status, 'pending');

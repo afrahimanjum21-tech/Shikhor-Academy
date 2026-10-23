@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
+import { isNotificationVisibleForRole } from "./notificationVisibility";
 
 const typeIcons = {
     admission: "📋",
@@ -18,16 +20,22 @@ const typeIcons = {
 export default function RecentActivity({ limit = 5 }) {
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
+    const role = user?.role;
 
     useEffect(() => {
         api.get("/recent-activity")
             .then(({ data: res }) => {
                 const items = res.data || res || [];
-                setActivities((Array.isArray(items) ? items : []).slice(0, limit));
+                setActivities(
+                    (Array.isArray(items) ? items : [])
+                        .filter((item) => isNotificationVisibleForRole(item, role))
+                        .slice(0, limit),
+                );
             })
             .catch(() => {})
             .finally(() => setLoading(false));
-    }, [limit]);
+    }, [limit, role]);
 
     if (loading) {
         return (

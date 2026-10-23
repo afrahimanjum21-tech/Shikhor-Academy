@@ -1,6 +1,7 @@
 import models from '../models/index.js';
 import { Op, fn, col } from 'sequelize';
 import { parseSince, makeAfter } from '../utils/sinceFilters.js';
+import { notificationVisibilityWhere } from '../services/notificationVisibility.js';
 
 // Most business events (contact messages, admission applications, leave
 // requests) create BOTH a Notification row and a business-table row. Summing
@@ -53,11 +54,11 @@ export const counts = async (req, res) => {
     const after = makeAfter(since);
 
     const unreadNotifications = await models.Notification.count({
-      where: { user_id: user.id, read_at: null },
+      where: { ...notificationVisibilityWhere(user), read_at: null },
     });
 
     const unreadRows = await models.Notification.findAll({
-      where: { user_id: user.id, read_at: null },
+      where: { ...notificationVisibilityWhere(user), read_at: null },
       attributes: ['type', [fn('COUNT', col('id')), 'n']],
       group: ['type'],
     });
